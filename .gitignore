@@ -21,6 +21,9 @@ frontend/.env.local
 .vscode/
 .idea/
 *.swp
+~$*.docx
+~$*.xlsx
+~$*.pptx
 
 # Claude Code local session settings
 .claude/settings.local.json

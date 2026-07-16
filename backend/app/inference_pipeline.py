@@ -77,6 +77,36 @@ class FraudIntelligencePipeline:
     def known_customer_ids(self):
         return sorted(self.customer_histories.keys())
 
+    def detect_fraud_rings(self, min_customers: int = 2) -> list:
+        """Finds devices used by more than one distinct customer. A single
+        legitimate customer's own devices are namespaced to them, so a
+        device appearing across multiple customer_ids is a strong signal of
+        an organized fraud ring (e.g. a stolen or shared device used to hit
+        several accounts) rather than one customer behaving oddly alone."""
+        device_to_customers: dict[str, set] = {}
+        for customer_id, history in self.customer_histories.items():
+            if len(history) == 0 or "device_id" not in history.columns:
+                continue
+            for device in history["device_id"].dropna().unique():
+                device_to_customers.setdefault(device, set()).add(customer_id)
+
+        rings = []
+        for device, customers in device_to_customers.items():
+            if len(customers) >= min_customers:
+                txn_count = sum(
+                    int((self.customer_histories[c]["device_id"] == device).sum())
+                    for c in customers
+                )
+                rings.append({
+                    "ring_type": "shared_device",
+                    "identifier": device,
+                    "customer_ids": sorted(customers),
+                    "transaction_count": txn_count,
+                })
+
+        rings.sort(key=lambda r: (len(r["customer_ids"]), r["transaction_count"]), reverse=True)
+        return rings
+
     def score_transaction(self, txn: dict) -> dict:
         customer_id = txn["customer_id"]
         history = self._get_history(customer_id)

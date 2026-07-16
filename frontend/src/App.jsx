@@ -7,7 +7,41 @@ import AlertBanner from './components/AlertBanner'
 import ShapReasonsChart from './components/ShapReasonsChart'
 import FraudEvolutionTimeline from './components/FraudEvolutionTimeline'
 import SimilarityMeter from './components/SimilarityMeter'
-import { predictTransaction, getCustomerHistory, listCustomers } from './api'
+import ModelPerformance from './components/ModelPerformance'
+import FraudRings from './components/FraudRings'
+import BatchScoring from './components/BatchScoring'
+import { predictTransaction, getCustomerHistory, listCustomers, downloadReportPdf } from './api'
+
+const TABS = [
+  { key: 'live', label: 'Live Scan' },
+  { key: 'batch', label: 'Batch Scoring' },
+  { key: 'rings', label: 'Fraud Rings' },
+  { key: 'metrics', label: 'Model Performance' },
+]
+
+function TabBar({ active, onChange }) {
+  return (
+    <div className="flex gap-1 mb-6 border-b" style={{ borderColor: 'var(--border)' }}>
+      {TABS.map((tab) => {
+        const isActive = active === tab.key
+        return (
+          <button
+            key={tab.key}
+            onClick={() => onChange(tab.key)}
+            className="px-4 py-2.5 text-sm transition-colors relative -mb-px"
+            style={{
+              color: isActive ? 'var(--brand)' : 'var(--text-muted)',
+              fontFamily: 'var(--font-display)',
+              borderBottom: isActive ? '2px solid var(--brand)' : '2px solid transparent',
+            }}
+          >
+            {tab.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 const cardStyle = {
   background: 'var(--surface)',
@@ -31,6 +65,7 @@ function Card({ title, children, className = '' }) {
 }
 
 export default function App() {
+  const [activeTab, setActiveTab] = useState('live')
   const [customers, setCustomers] = useState([])
   const [selectedCustomer, setSelectedCustomer] = useState('')
   const [prediction, setPrediction] = useState(null)
@@ -38,6 +73,8 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [customersError, setCustomersError] = useState('')
+  const [reportLoading, setReportLoading] = useState(false)
+  const [reportError, setReportError] = useState('')
 
   useEffect(() => {
     listCustomers(500)
@@ -71,6 +108,7 @@ export default function App() {
     try {
       const result = await predictTransaction(payload)
       setPrediction(result)
+      setReportError('')
       await refreshHistory(payload.customer_id)
     } catch (err) {
       setError(
@@ -83,66 +121,116 @@ export default function App() {
     }
   }
 
+  const handleDownloadReport = async () => {
+    if (!prediction) return
+    setReportLoading(true)
+    setReportError('')
+    try {
+      await downloadReportPdf(prediction)
+    } catch {
+      setReportError('Could not generate the report. Is the backend running?')
+    } finally {
+      setReportLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       <Header selectedCustomer={selectedCustomer} />
 
-      <main className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
-        {/* left column: controls */}
-        <div className="space-y-6">
-          <Card title="Select Customer">
-            <CustomerSelector customers={customers} value={selectedCustomer} onChange={setSelectedCustomer} />
-            {customersError && (
-              <p className="text-xs mt-2" style={{ color: 'var(--risk-critical)' }}>{customersError}</p>
-            )}
-          </Card>
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        <TabBar active={activeTab} onChange={setActiveTab} />
 
-          <Card title="Scan a Transaction">
-            <TransactionForm customerId={selectedCustomer} onSubmit={handleSubmit} loading={loading} />
-            {!selectedCustomer && (
-              <p className="text-xs mt-3" style={{ color: 'var(--text-faint)' }}>
-                Select a customer above to enable scanning.
-              </p>
-            )}
-            {error && <p className="text-xs mt-3" style={{ color: 'var(--risk-critical)' }}>{error}</p>}
-          </Card>
-        </div>
+        {activeTab === 'live' && (
+          <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
+            {/* left column: controls */}
+            <div className="space-y-6">
+              <Card title="Select Customer">
+                <CustomerSelector customers={customers} value={selectedCustomer} onChange={setSelectedCustomer} />
+                {customersError && (
+                  <p className="text-xs mt-2" style={{ color: 'var(--risk-critical)' }}>{customersError}</p>
+                )}
+              </Card>
 
-        {/* right column: results dashboard */}
-        <div className="space-y-6">
-          {prediction && <AlertBanner level={prediction.alert_level} />}
+              <Card title="Scan a Transaction">
+                <TransactionForm customerId={selectedCustomer} onSubmit={handleSubmit} loading={loading} />
+                {!selectedCustomer && (
+                  <p className="text-xs mt-3" style={{ color: 'var(--text-faint)' }}>
+                    Select a customer above to enable scanning.
+                  </p>
+                )}
+                {error && <p className="text-xs mt-3" style={{ color: 'var(--risk-critical)' }}>{error}</p>}
+              </Card>
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <Card>
-              <RiskGauge label="Risk Score" value={prediction?.risk_score} sublabel="/ 100" />
-              <p className="text-[10px] text-center mt-2" style={{ color: 'var(--text-faint)' }}>
-                Trajectory risk from this customer's prior activity, before this transaction
-              </p>
-            </Card>
-            <Card>
-              <RiskGauge label="Fraud Probability" value={prediction?.fraud_probability} sublabel="%" decimals={1} />
-              <p className="text-[10px] text-center mt-2" style={{ color: 'var(--text-faint)' }}>
-                This specific transaction's fraud likelihood -- can be high even if prior trajectory was clean
-              </p>
-            </Card>
-            <Card>
-              <div className="h-full flex flex-col justify-center">
-                <SimilarityMeter
-                  similarityPct={prediction?.similarity_pct}
-                  deviationPct={prediction?.deviation_pct}
-                />
+            {/* right column: results dashboard */}
+            <div className="space-y-6">
+              {prediction && (
+                <div className="flex items-center gap-3">
+                  <div className="flex-1"><AlertBanner level={prediction.alert_level} /></div>
+                  <button
+                    onClick={handleDownloadReport}
+                    disabled={reportLoading}
+                    className="text-xs px-4 py-2.5 rounded-lg border shrink-0 transition-colors hover:border-[var(--brand)] disabled:opacity-40"
+                    style={{ borderColor: 'var(--border)', color: 'var(--text-primary)', background: 'var(--surface)', fontFamily: 'var(--font-display)' }}
+                  >
+                    {reportLoading ? 'Generating…' : 'Download Report'}
+                  </button>
+                </div>
+              )}
+              {reportError && <p className="text-xs" style={{ color: 'var(--risk-critical)' }}>{reportError}</p>}
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <Card>
+                  <RiskGauge label="Risk Score" value={prediction?.risk_score} sublabel="/ 100" />
+                  <p className="text-[10px] text-center mt-2" style={{ color: 'var(--text-faint)' }}>
+                    Trajectory risk from this customer's prior activity, before this transaction
+                  </p>
+                </Card>
+                <Card>
+                  <RiskGauge label="Fraud Probability" value={prediction?.fraud_probability} sublabel="%" decimals={1} />
+                  <p className="text-[10px] text-center mt-2" style={{ color: 'var(--text-faint)' }}>
+                    This specific transaction's fraud likelihood -- can be high even if prior trajectory was clean
+                  </p>
+                </Card>
+                <Card>
+                  <div className="h-full flex flex-col justify-center">
+                    <SimilarityMeter
+                      similarityPct={prediction?.similarity_pct}
+                      deviationPct={prediction?.deviation_pct}
+                    />
+                  </div>
+                </Card>
               </div>
-            </Card>
+
+              <Card title="Explainable AI &middot; Why This Score">
+                <ShapReasonsChart reasons={prediction?.reasons} />
+              </Card>
+
+              <Card title="Fraud Evolution Timeline">
+                <FraudEvolutionTimeline timeline={timeline} />
+              </Card>
+            </div>
           </div>
+        )}
 
-          <Card title="Explainable AI &middot; Why This Score">
-            <ShapReasonsChart reasons={prediction?.reasons} />
+        {activeTab === 'batch' && (
+          <Card title="Batch CSV Upload &amp; Bulk Scoring">
+            <BatchScoring />
           </Card>
+        )}
 
-          <Card title="Fraud Evolution Timeline">
-            <FraudEvolutionTimeline timeline={timeline} />
+        {activeTab === 'rings' && (
+          <Card title="Fraud Ring Detection">
+            <FraudRings />
           </Card>
-        </div>
+        )}
+
+        {activeTab === 'metrics' && (
+          <Card title="Model Performance">
+            <ModelPerformance />
+          </Card>
+        )}
       </main>
     </div>
   )

@@ -24,6 +24,12 @@ class PredictionResponse(BaseModel):
     customer_id: str
     timestamp: datetime
 
+    amount: float
+    merchant_category: str
+    device_id: str
+    location: str
+    failed_logins_24h: int
+
     risk_score: float = Field(..., description="0-100, from LSTM behavioral risk model")
     fraud_probability: float = Field(..., description="0-100%, from DNN real-time classifier")
     alert_level: str = Field(..., description="Low Risk / Medium Risk / High Risk / Critical Risk")
@@ -32,6 +38,33 @@ class PredictionResponse(BaseModel):
     deviation_pct: float
 
     reasons: List[ExplanationReason] = Field(default_factory=list, description="Top SHAP-derived reasons, empty if transaction looks normal")
+
+
+class FraudRing(BaseModel):
+    ring_type: str = Field(..., description="e.g. 'shared_device'")
+    identifier: str = Field(..., description="the shared device_id (or other identifier) linking these customers")
+    customer_ids: List[str]
+    transaction_count: int
+
+
+class FraudRingsResponse(BaseModel):
+    count: int
+    rings: List[FraudRing]
+
+
+class BatchPredictionResult(BaseModel):
+    transaction_id: str
+    customer_id: str
+    amount: float
+    risk_score: float
+    fraud_probability: float
+    alert_level: str
+
+
+class BatchPredictionResponse(BaseModel):
+    count: int
+    summary: dict
+    results: List[BatchPredictionResult]
 
 
 class TimelinePoint(BaseModel):

@@ -8,3 +8,5 @@ scikit-learn==1.8.0
 tensorflow==2.21.0
 shap==0.52.0
 pydantic==2.10.4
+reportlab==5.0.0
+python-multipart==0.0.32
