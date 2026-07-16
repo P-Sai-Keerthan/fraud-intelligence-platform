@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0a0e14;
+  --surface: #12151c;
+  --surface-raised: #171b24;
+  --border: #232733;
+  --border-subtle: #1a1e28;
+
+  --text-primary: #e7eaf0;
+  --text-muted: #8891a3;
+  --text-faint: #565e70;
+
+  --brand: #22d3ee;
+  --brand-dim: #22d3ee33;
+
+  --risk-low: #34d399;
+  --risk-low-dim: #34d39922;
+  --risk-medium: #fbbf24;
+  --risk-medium-dim: #fbbf2422;
+  --risk-high: #fb923c;
+  --risk-high-dim: #fb923c22;
+  --risk-critical: #f87171;
+  --risk-critical-dim: #f8717122;
+
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+}
+
+@keyframes helix-drift {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-120px); }
+}
+
+::selection {
+  background: var(--brand-dim);
+  color: var(--text-primary);
+}
+
+/* thin scrollbars matching the dark theme */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }

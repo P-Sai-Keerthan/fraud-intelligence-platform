@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+env/
+.venv/
+
+# Backend runtime artifacts
+backend/fraud_platform.db
+backend/*.db
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Claude Code local session settings
+.claude/settings.local.json
+
+# Large trained model files - comment these out if you want to commit them
+# (they're already included in this delivered zip; re-training regenerates them)
+# backend/models/saved/*.keras
+# data/*.csv
+# data/*.npy
