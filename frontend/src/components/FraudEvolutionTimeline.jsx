@@ -9,7 +9,9 @@ export default function FraudEvolutionTimeline({ timeline }) {
     )
   }
 
-  const data = timeline.map((t, i) => ({
+  // the API returns newest first; plot oldest -> newest, left to right
+  const chronological = [...timeline].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+  const data = chronological.map((t, i) => ({
     index: i + 1,
     risk_score: t.risk_score,
     fraud_probability: t.fraud_probability,

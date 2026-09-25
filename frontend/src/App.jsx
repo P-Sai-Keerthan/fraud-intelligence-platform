@@ -10,7 +10,7 @@ import SimilarityMeter from './components/SimilarityMeter'
 import ModelPerformance from './components/ModelPerformance'
 import FraudRings from './components/FraudRings'
 import BatchScoring from './components/BatchScoring'
-import { predictTransaction, getCustomerHistory, listCustomers, downloadReportPdf } from './api'
+import { predictTransaction, getCustomerHistory, getCustomerProfile, listCustomers, downloadReportPdf } from './api'
 
 const TABS = [
   { key: 'live', label: 'Live Scan' },
@@ -68,6 +68,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('live')
   const [customers, setCustomers] = useState([])
   const [selectedCustomer, setSelectedCustomer] = useState('')
+  const [profile, setProfile] = useState(null)
+  const [profileError, setProfileError] = useState('')
   const [prediction, setPrediction] = useState(null)
   const [timeline, setTimeline] = useState([])
   const [loading, setLoading] = useState(false)
@@ -101,6 +103,23 @@ export default function App() {
       refreshHistory(selectedCustomer)
     }
   }, [selectedCustomer, refreshHistory])
+
+  // the selected customer's usual device + home city, used as the form's
+  // defaults for a normal transaction
+  useEffect(() => {
+    setProfile(null)
+    setProfileError('')
+    if (!selectedCustomer) return
+    let cancelled = false
+    getCustomerProfile(selectedCustomer)
+      .then((data) => { if (!cancelled) setProfile(data) })
+      .catch(() => {
+        if (!cancelled) {
+          setProfileError("Could not load this customer's usual device and city. Enter them manually.")
+        }
+      })
+    return () => { cancelled = true }
+  }, [selectedCustomer])
 
   const handleSubmit = async (payload) => {
     setLoading(true)
@@ -153,7 +172,10 @@ export default function App() {
               </Card>
 
               <Card title="Scan a Transaction">
-                <TransactionForm customerId={selectedCustomer} onSubmit={handleSubmit} loading={loading} />
+                <TransactionForm customerId={selectedCustomer} profile={profile} onSubmit={handleSubmit} loading={loading} />
+                {profileError && (
+                  <p className="text-xs mt-3" style={{ color: 'var(--risk-critical)' }}>{profileError}</p>
+                )}
                 {!selectedCustomer && (
                   <p className="text-xs mt-3" style={{ color: 'var(--text-faint)' }}>
                     Select a customer above to enable scanning.

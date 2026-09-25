@@ -16,7 +16,11 @@ const QUICK_SCENARIOS = {
   },
 }
 
-export default function TransactionForm({ customerId, onSubmit, loading }) {
+// `profile` is the selected customer's { home_device, home_location } from
+// GET /customer/{id}/profile. Leaving Device ID / Location blank uses those,
+// so a normal transaction matches the customer's real usual device and city;
+// typing a different value (e.g. the suspicious scenario) overrides them.
+export default function TransactionForm({ customerId, profile, onSubmit, loading }) {
   const [form, setForm] = useState({
     amount: 1500,
     merchant_category: 'grocery',
@@ -24,6 +28,7 @@ export default function TransactionForm({ customerId, onSubmit, loading }) {
     location: '',
     failed_logins_24h: 0,
   })
+  const [formError, setFormError] = useState('')
 
   const update = (field, value) => setForm((f) => ({ ...f, [field]: value }))
 
@@ -34,12 +39,19 @@ export default function TransactionForm({ customerId, onSubmit, loading }) {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!customerId) return
+    const deviceId = form.device_id.trim() || profile?.home_device || ''
+    const location = form.location.trim() || profile?.home_location || ''
+    if (!deviceId || !location) {
+      setFormError("This customer's usual device and city aren't loaded yet. Enter a Device ID and Location.")
+      return
+    }
+    setFormError('')
     onSubmit({
       customer_id: customerId,
       amount: Number(form.amount),
       merchant_category: form.merchant_category,
-      device_id: form.device_id || `DEV_${customerId}_A`,
-      location: form.location || 'Hyderabad',
+      device_id: deviceId,
+      location,
       failed_logins_24h: Number(form.failed_logins_24h),
     })
   }
@@ -93,7 +105,7 @@ export default function TransactionForm({ customerId, onSubmit, loading }) {
         <div>
           <label className={labelClass} style={labelStyle}>Device ID</label>
           <input
-            type="text" placeholder={`DEV_${customerId || 'XXXX'}_A`}
+            type="text" placeholder={profile?.home_device || ''}
             className={inputClass} style={inputStyle}
             value={form.device_id}
             onChange={(e) => update('device_id', e.target.value)}
@@ -102,13 +114,18 @@ export default function TransactionForm({ customerId, onSubmit, loading }) {
         <div>
           <label className={labelClass} style={labelStyle}>Location</label>
           <input
-            type="text" placeholder="Hyderabad"
+            type="text" placeholder={profile?.home_location || ''}
             className={inputClass} style={inputStyle}
             value={form.location}
             onChange={(e) => update('location', e.target.value)}
           />
         </div>
       </div>
+      {profile && (
+        <p className="text-[10px] -mt-2" style={{ color: 'var(--text-faint)' }}>
+          Leave blank to use this customer's usual device ({profile.home_device}) and home city ({profile.home_location}).
+        </p>
+      )}
 
       <div>
         <label className={labelClass} style={labelStyle}>Failed Logins (24h)</label>
@@ -128,6 +145,7 @@ export default function TransactionForm({ customerId, onSubmit, loading }) {
       >
         {loading ? 'Scanning…' : 'Scan Transaction'}
       </button>
+      {formError && <p className="text-xs" style={{ color: 'var(--risk-critical)' }}>{formError}</p>}
     </form>
   )
 }

@@ -146,8 +146,6 @@ pytest -m "not slow"                  # skip the held-out metrics evaluation
 
 The tests use a throwaway SQLite database in a temp folder, so they never
 touch `fraud_platform.db`, and they don't need the API server running.
-Two tests are marked `xfail`: they document known bugs that are scheduled
-to be fixed, and will start passing once those fixes land.
 
 ---
 

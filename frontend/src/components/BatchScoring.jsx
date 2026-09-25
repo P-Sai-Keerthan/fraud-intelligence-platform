@@ -54,7 +54,8 @@ export default function BatchScoring() {
     <div className="space-y-5">
       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
         Upload a CSV of transactions to score them all at once. Required columns: customer_id, amount,
-        merchant_category. Optional: device_id, location, failed_logins_24h.{' '}
+        merchant_category. Optional: device_id, location (blank = the customer's usual device / home city),
+        failed_logins_24h.{' '}
         <button onClick={downloadSample} className="underline" style={{ color: 'var(--brand)' }}>
           Download a sample CSV
         </button>

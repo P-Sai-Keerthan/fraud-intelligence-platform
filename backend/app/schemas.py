@@ -67,6 +67,13 @@ class BatchPredictionResponse(BaseModel):
     results: List[BatchPredictionResult]
 
 
+class CustomerProfile(BaseModel):
+    customer_id: str
+    home_device: str = Field(..., description="the customer's most frequently used device_id")
+    home_location: str = Field(..., description="the customer's most frequent transaction city")
+    n_transactions: int = Field(..., description="transactions in the customer's history (seed + scored)")
+
+
 class TimelinePoint(BaseModel):
     transaction_id: str
     timestamp: datetime

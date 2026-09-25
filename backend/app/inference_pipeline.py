@@ -77,6 +77,29 @@ class FraudIntelligencePipeline:
     def known_customer_ids(self):
         return sorted(self.customer_histories.keys())
 
+    def get_customer_profile(self, customer_id: str):
+        """The customer's usual ("home") device and city, derived from their
+        own transaction history -- the same history the models use to decide
+        whether a device/location is new. Returns None for a customer with no
+        history. The most frequent value wins (ties broken alphabetically so
+        the result is deterministic); in the seed data this recovers every
+        customer's primary device and home city exactly."""
+        history = self.customer_histories.get(customer_id)
+        if history is None or len(history) == 0:
+            return None
+
+        def most_common(column: str) -> str:
+            counts = history[column].dropna().astype(str).value_counts()
+            top = counts.max()
+            return sorted(counts[counts == top].index)[0]
+
+        return {
+            "customer_id": customer_id,
+            "home_device": most_common("device_id"),
+            "home_location": most_common("location"),
+            "n_transactions": int(len(history)),
+        }
+
     def detect_fraud_rings(self, min_customers: int = 2) -> list:
         """Finds devices used by more than one distinct customer. A single
         legitimate customer's own devices are namespaced to them, so a

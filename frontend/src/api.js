@@ -16,6 +16,11 @@ export async function getCustomerHistory(customerId) {
   return data
 }
 
+export async function getCustomerProfile(customerId) {
+  const { data } = await api.get(`/customer/${customerId}/profile`)
+  return data
+}
+
 export async function listCustomers(limit = 100) {
   const { data } = await api.get(`/customers?limit=${limit}`)
   return data
