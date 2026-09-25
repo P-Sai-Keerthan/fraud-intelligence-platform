@@ -57,7 +57,7 @@ fraud-intelligence-platform/
 
 Install these first if you don't have them:
 
-- **Python 3.10 or newer** — check with `python3 --version`
+- **Python 3.12 or newer** (tested on 3.12 and 3.13; the pinned `shap`/`numpy`/`pandas` versions don't install on 3.10/3.11) — check with `python3 --version`
 - **Node.js 18 or newer** — check with `node --version`
 - **VS Code** (recommended) with the Python extension installed
 
@@ -133,6 +133,21 @@ curl -X POST http://localhost:8000/predict \
 You should get back a JSON response with `risk_score`, `fraud_probability`,
 `alert_level: "Critical Risk"`, and a list of `reasons` like "Foreign
 Location" and "New Device".
+
+### 3.5 Run the backend test suite
+
+With the virtual environment activated, from inside `backend/`:
+
+```bash
+pip install -r requirements-dev.txt   # pytest, httpx, pypdf (test-only)
+pytest                                # full suite, ~25 seconds
+pytest -m "not slow"                  # skip the held-out metrics evaluation
+```
+
+The tests use a throwaway SQLite database in a temp folder, so they never
+touch `fraud_platform.db`, and they don't need the API server running.
+Two tests are marked `xfail`: they document known bugs that are scheduled
+to be fixed, and will start passing once those fixes land.
 
 ---
 

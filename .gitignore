@@ -5,6 +5,7 @@ __pycache__/
 venv/
 env/
 .venv/
+.pytest_cache/
 
 # Backend runtime artifacts
 backend/fraud_platform.db
