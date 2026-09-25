@@ -108,8 +108,14 @@ You should see output ending with something like:
 ```
 [pipeline] Loading trained models...
 [pipeline] Loaded history for 500 customers.
+[startup] Restored 0 previously scored transaction(s) from the database.
 INFO:     Application startup complete.
 ```
+
+Every transaction you score is saved to the database. When the server
+restarts, those saved transactions are replayed into each customer's
+behavioral history, so the models still know about them (for example, a
+device first used before the restart is not treated as "new" after it).
 
 Leave this terminal running. Open **http://localhost:8000/docs** in your
 browser — you'll see the auto-generated Swagger UI where you can test every
@@ -140,12 +146,37 @@ With the virtual environment activated, from inside `backend/`:
 
 ```bash
 pip install -r requirements-dev.txt   # pytest, httpx, pypdf (test-only)
-pytest                                # full suite, ~25 seconds
-pytest -m "not slow"                  # skip the held-out metrics evaluation
+pytest                                # full suite, ~1 minute
+pytest -m "not slow"                  # skip the slowest tests (metrics, restart, env-var checks)
 ```
 
 The tests use a throwaway SQLite database in a temp folder, so they never
 touch `fraud_platform.db`, and they don't need the API server running.
+
+### 3.6 Configuration (environment variables)
+
+All settings are optional; the defaults work for local development.
+`backend/.env.example` lists them.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `DATABASE_URL` | `sqlite:///./fraud_platform.db` | Database for scored transactions (PostgreSQL also works). |
+| `CORS_ALLOW_ORIGINS` | `http://localhost:5173`, `http://127.0.0.1:5173`, `http://localhost:4173`, `http://127.0.0.1:4173` | Comma-separated browser origins allowed to call the API directly. |
+
+The dashboard's dev server reaches the API through Vite's `/api` proxy,
+which is same-origin, so local development needs no CORS setup at all.
+Set `CORS_ALLOW_ORIGINS` only when the frontend is served from another
+origin and calls the backend directly (i.e. `VITE_API_BASE_URL` is set),
+for example `CORS_ALLOW_ORIGINS=https://fraud-dashboard.example.com`.
+`*` allows any origin, with credentials disabled.
+
+Set variables in the shell before starting uvicorn, or put them in
+`backend/.env` and start the server with `--env-file .env`:
+
+```bash
+cp .env.example .env        # then edit .env
+uvicorn app.main:app --reload --port 8000 --env-file .env
+```
 
 ---
 

@@ -10,6 +10,7 @@ env/
 # Backend runtime artifacts
 backend/fraud_platform.db
 backend/*.db
+backend/.env
 
 # Node / frontend
 frontend/node_modules/

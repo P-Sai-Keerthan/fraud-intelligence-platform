@@ -19,15 +19,18 @@ Endpoints:
 import io
 import math
 import re
+from contextlib import asynccontextmanager
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
-from .db.database import engine, get_db, Base
+from .config import cors_allow_origins
+from .db.database import engine, get_db, Base, SessionLocal
 from .db import models as db_models
 from .schemas import (
     TransactionInput, PredictionResponse, ExplanationReason,
@@ -38,30 +41,61 @@ from .inference_pipeline import get_pipeline
 from .models.evaluate import evaluate_all
 from .report import build_pdf_report
 
-# create DB tables on startup if they don't exist
-Base.metadata.create_all(bind=engine)
+
+def _restore_history_from_db(pipeline) -> int:
+    """Replays every persisted scored transaction into the pipeline's
+    in-memory customer histories (see FraudIntelligencePipeline.restore_scored_history)."""
+    db = SessionLocal()
+    try:
+        rows = [
+            {
+                "transaction_id": r.transaction_id,
+                "customer_id": r.customer_id,
+                "timestamp": r.timestamp,
+                "amount": r.amount,
+                "merchant_category": r.merchant_category,
+                "device_id": r.device_id,
+                "location": r.location,
+                "failed_logins_24h": r.failed_logins_24h,
+            }
+            for r in db.query(db_models.Transaction).all()
+        ]
+    finally:
+        db.close()
+    return pipeline.restore_scored_history(rows)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # create DB tables if they don't exist
+    Base.metadata.create_all(bind=engine)
+    # forces the (potentially slow) model-loading step to happen once at
+    # startup rather than on the first incoming request
+    pipeline = get_pipeline()
+    # bring back what the models knew about each customer before the last restart
+    restored = _restore_history_from_db(pipeline)
+    print(f"[startup] Restored {restored} previously scored transaction(s) from the database.")
+    yield
+
 
 app = FastAPI(
     title="Explainable Fraud Intelligence Platform API",
     description="Behavioral Fraud DNA, real-time fraud detection, and explainable AI for banking transactions.",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
-# allow the React dashboard (running on a different port during development) to call this API
+# browser origins allowed to call this API directly -- configured with the
+# CORS_ALLOW_ORIGINS environment variable (see config.py / .env.example)
+CORS_ALLOW_ORIGINS = cors_allow_origins()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten this to your actual frontend origin before deploying publicly
-    allow_credentials=True,
+    allow_origins=CORS_ALLOW_ORIGINS,
+    # an allow-any-origin wildcard must not be combined with credentials
+    allow_credentials="*" not in CORS_ALLOW_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def load_models_on_startup():
-    # forces the (potentially slow) model-loading step to happen once at
-    # startup rather than on the first incoming request
-    get_pipeline()
 
 
 @app.get("/health")
@@ -273,8 +307,15 @@ async def predict_batch(file: UploadFile = File(...), db: Session = Depends(get_
     failed_logins_24h. The whole file is validated before anything is
     scored: if any row is invalid, nothing is scored or saved and the 400
     response lists the bad rows."""
-    pipeline = get_pipeline()
     contents = await file.read()
+    # parsing, validation and model scoring are CPU-bound; run them on a
+    # worker thread so a large batch doesn't block the event loop (and every
+    # other request) until it finishes
+    return await run_in_threadpool(_score_batch_csv, contents, db)
+
+
+def _score_batch_csv(contents: bytes, db: Session) -> BatchPredictionResponse:
+    pipeline = get_pipeline()
     try:
         # read every cell as a raw string so invalid values surface as
         # validation errors instead of being silently coerced by pandas

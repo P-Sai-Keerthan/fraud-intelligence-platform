@@ -16,8 +16,15 @@ on every incoming transaction, which is O(n) per call. This is fine at demo
 scale (a few hundred transactions per customer) but a production system
 would maintain incremental rolling statistics (updated in O(1) per
 transaction) instead of recomputing from scratch each time.
+
+PERSISTENCE: the in-memory histories start from the seed CSV. Every scored
+transaction is also saved to the database, and on application startup
+restore_scored_history() replays those saved rows on top of the seed data,
+so a restart does not lose what the models know about each customer.
 """
 
+import functools
+import threading
 import uuid
 from datetime import datetime
 
@@ -40,6 +47,18 @@ RAW_COLUMNS_FOR_FEATURES = [
     "customer_id", "transaction_id", "timestamp", "amount", "merchant_category",
     "device_id", "location", "failed_logins_24h", "is_new_device", "is_new_location", "is_fraud",
 ]
+
+
+def _synchronized(method):
+    """Serialize access to the shared in-memory customer histories. Requests
+    are handled on worker threads, and scoring is a read-modify-write of a
+    customer's history, so two concurrent scorings for the same customer
+    could otherwise lose one of the transactions."""
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        with self._lock:
+            return method(self, *args, **kwargs)
+    return wrapper
 
 
 class FraudIntelligencePipeline:
@@ -68,15 +87,78 @@ class FraudIntelligencePipeline:
             print("[pipeline] WARNING: no seed feature file found, starting with empty histories.")
             self.customer_histories = {}
 
+        # the untouched seed histories, kept so restore_scored_history() can
+        # rebuild from "seed + persisted scored transactions" at any time
+        self._seed_histories = dict(self.customer_histories)
+        self._lock = threading.RLock()
+
     def _get_history(self, customer_id: str) -> pd.DataFrame:
         if customer_id not in self.customer_histories:
             empty_cols = RAW_COLUMNS_FOR_FEATURES + FEATURE_COLUMNS
             self.customer_histories[customer_id] = pd.DataFrame(columns=empty_cols)
         return self.customer_histories[customer_id]
 
+    @_synchronized
+    def restore_scored_history(self, scored_rows: list[dict]) -> int:
+        """Rebuild every customer's in-memory history as seed history plus the
+        given previously-scored transactions (the rows persisted in the
+        database). Idempotent: it always starts again from the seed data, and
+        skips any transaction_id already present, so calling it repeatedly
+        never duplicates transactions. Rows are replayed in timestamp order,
+        recomputing is_new_device / is_new_location against everything before
+        them, exactly as score_transaction() did when they were first scored.
+        Returns the number of scored transactions restored."""
+        rows_by_customer: dict[str, list[dict]] = {}
+        for row in scored_rows:
+            rows_by_customer.setdefault(row["customer_id"], []).append(row)
+
+        self.customer_histories.clear()
+        self.customer_histories.update(self._seed_histories)
+
+        restored = 0
+        for customer_id, rows in rows_by_customer.items():
+            seed = self._seed_histories.get(customer_id)
+            if seed is not None and len(seed):
+                prior_raw = seed[RAW_COLUMNS_FOR_FEATURES]
+            else:
+                prior_raw = pd.DataFrame(columns=RAW_COLUMNS_FOR_FEATURES)
+            seen_ids = set(prior_raw["transaction_id"])
+            seen_devices = set(prior_raw["device_id"])
+            seen_locations = set(prior_raw["location"])
+
+            new_rows = []
+            for row in sorted(rows, key=lambda r: (pd.Timestamp(r["timestamp"]), r["transaction_id"])):
+                if row["transaction_id"] in seen_ids:
+                    continue
+                seen_ids.add(row["transaction_id"])
+                new_rows.append({
+                    "customer_id": customer_id,
+                    "transaction_id": row["transaction_id"],
+                    "timestamp": row["timestamp"],
+                    "amount": row["amount"],
+                    "merchant_category": row["merchant_category"],
+                    "device_id": row["device_id"],
+                    "location": row["location"],
+                    "failed_logins_24h": row["failed_logins_24h"] or 0,
+                    "is_new_device": int(row["device_id"] not in seen_devices),
+                    "is_new_location": int(row["location"] not in seen_locations),
+                    "is_fraud": 0,  # unknown, same placeholder score_transaction uses
+                })
+                seen_devices.add(row["device_id"])
+                seen_locations.add(row["location"])
+
+            if not new_rows:
+                continue
+            combined_raw = pd.concat([prior_raw, pd.DataFrame(new_rows)], ignore_index=True)
+            self.customer_histories[customer_id] = build_point_features(combined_raw)
+            restored += len(new_rows)
+        return restored
+
+    @_synchronized
     def known_customer_ids(self):
         return sorted(self.customer_histories.keys())
 
+    @_synchronized
     def get_customer_profile(self, customer_id: str):
         """The customer's usual ("home") device and city, derived from their
         own transaction history -- the same history the models use to decide
@@ -100,6 +182,7 @@ class FraudIntelligencePipeline:
             "n_transactions": int(len(history)),
         }
 
+    @_synchronized
     def detect_fraud_rings(self, min_customers: int = 2) -> list:
         """Finds devices used by more than one distinct customer. A single
         legitimate customer's own devices are namespaced to them, so a
@@ -130,6 +213,7 @@ class FraudIntelligencePipeline:
         rings.sort(key=lambda r: (len(r["customer_ids"]), r["transaction_count"]), reverse=True)
         return rings
 
+    @_synchronized
     def score_transaction(self, txn: dict) -> dict:
         customer_id = txn["customer_id"]
         history = self._get_history(customer_id)
