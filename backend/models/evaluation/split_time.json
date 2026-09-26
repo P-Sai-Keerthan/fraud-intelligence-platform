@@ -1,0 +1,92 @@
+{
+  "method": "time-based (out-of-time)",
+  "order": "customer_id, timestamp, transaction_id",
+  "episode_rule": "a customer's fraud transactions linked while less than 14 days apart",
+  "boundary_rule": "targets between the fraud episodes at 60% and 80% of episode start times; moved to the midnight within +/-14 days that the fewest episodes straddle; straddling episodes move whole to the later split",
+  "train_before": "2026-05-06 00:00:00",
+  "validation_before": "2026-06-01 00:00:00",
+  "test_from": "2026-06-01 00:00:00",
+  "episodes_total": 60,
+  "episodes_moved": [
+    {
+      "episode_id": 10,
+      "customer_id": "CUST_0052",
+      "start": "2026-05-25 09:11:45.970095",
+      "end": "2026-06-06 00:54:45.970095",
+      "moved_to": "test",
+      "rows_moved": 4
+    },
+    {
+      "episode_id": 11,
+      "customer_id": "CUST_0057",
+      "start": "2026-05-27 07:29:45.970095",
+      "end": "2026-06-07 05:44:45.970095",
+      "moved_to": "test",
+      "rows_moved": 8
+    },
+    {
+      "episode_id": 25,
+      "customer_id": "CUST_0142",
+      "start": "2026-05-25 20:15:45.970095",
+      "end": "2026-06-08 16:26:45.970095",
+      "moved_to": "test",
+      "rows_moved": 6
+    },
+    {
+      "episode_id": 45,
+      "customer_id": "CUST_0346",
+      "start": "2026-04-29 09:58:45.970095",
+      "end": "2026-05-11 09:44:45.970095",
+      "moved_to": "validation",
+      "rows_moved": 10
+    },
+    {
+      "episode_id": 50,
+      "customer_id": "CUST_0377",
+      "start": "2026-04-27 03:03:45.970095",
+      "end": "2026-05-11 13:10:45.970095",
+      "moved_to": "validation",
+      "rows_moved": 11
+    },
+    {
+      "episode_id": 54,
+      "customer_id": "CUST_0412",
+      "start": "2026-04-27 08:20:45.970095",
+      "end": "2026-05-10 07:58:45.970095",
+      "moved_to": "validation",
+      "rows_moved": 8
+    }
+  ],
+  "splits": {
+    "train": {
+      "transactions": 61143,
+      "fraud_transactions": 454,
+      "fraud_rate_pct": 0.743,
+      "fraud_episodes": 32,
+      "customers": 500,
+      "first_timestamp": "2026-01-12 00:07:45.970095",
+      "last_timestamp": "2026-05-05 23:59:45.970095",
+      "transaction_ids_sha256": "bacded9373514523554d5f328255c618b0e996984ff893c326533c5c226d2744"
+    },
+    "validation": {
+      "transactions": 13866,
+      "fraud_transactions": 164,
+      "fraud_rate_pct": 1.183,
+      "fraud_episodes": 12,
+      "customers": 500,
+      "first_timestamp": "2026-04-27 03:03:45.970095",
+      "last_timestamp": "2026-05-31 23:53:45.970095",
+      "transaction_ids_sha256": "1e1828b6dded8a1ac43db142624268b3ad0122499ed6060eafb58f635456cce7"
+    },
+    "test": {
+      "transactions": 18904,
+      "fraud_transactions": 201,
+      "fraud_rate_pct": 1.063,
+      "fraud_episodes": 16,
+      "customers": 500,
+      "first_timestamp": "2026-05-25 09:11:45.970095",
+      "last_timestamp": "2026-07-06 23:56:45.970095",
+      "transaction_ids_sha256": "de32667cfbd3d8ebb7026d426398924290193e65f385178dcbcefc3b7fcae808"
+    }
+  }
+}

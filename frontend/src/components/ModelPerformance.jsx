@@ -83,7 +83,7 @@ export default function ModelPerformance() {
   }, [])
 
   if (loading) {
-    return <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Evaluating held-out test set…</p>
+    return <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading evaluation report…</p>
   }
   if (error) {
     return <p className="text-sm" style={{ color: 'var(--risk-critical)' }}>{error}</p>
@@ -92,12 +92,13 @@ export default function ModelPerformance() {
   return (
     <div className="space-y-5">
       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-        Computed against an 80/20 stratified held-out test split -- the same split used at training time,
-        so these numbers reflect genuine generalization, not re-fit performance.
+        Time-based evaluation: models trained on the earliest transactions, the decision threshold chosen on the
+        following period, and these numbers measured on the latest period. Full methodology, baselines and
+        first-fraud metrics: GET /metrics/report.
       </p>
       <ModelBlock
         title="LSTM Risk Predictor"
-        subtitle="Predicts whether the transaction after a 10-step behavioral window will be fraudulent -- the leading trajectory signal."
+        subtitle="Predicts whether the transaction after a 10-step behavioral window will be fraudulent."
         data={metrics?.lstm_risk_predictor}
       />
       <ModelBlock

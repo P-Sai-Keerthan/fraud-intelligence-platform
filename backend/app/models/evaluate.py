@@ -1,119 +1,53 @@
 """
-Model Performance Evaluation
-==============================
-Evaluates the trained LSTM risk predictor and DNN fraud classifier against
-a held-out test split (same random_state and test_size as lstm_model.py /
-dnn_model.py, so this is a genuine held-out evaluation, not a re-fit).
+Model performance for GET /metrics and GET /metrics/report.
 
-The intermediate lstm_X.npy / lstm_y.npy / lstm_meta.csv training artifacts
-aren't shipped with the repo (only the final features CSV and trained
-weights are, so the app runs without retraining) -- so sequences are
-rebuilt on the fly from the tracked features CSV via build_sequences(),
-which is deterministic and produces the identical arrays that would have
-been saved during training.
+The numbers come from the corrected, leakage-safe evaluation in
+app/evaluation/ (time-based split, out-of-fold LSTM -> DNN stacking,
+thresholds chosen on validation). Training that evaluation takes ~11 min on a 2-core CPU,
+so it runs offline:
 
-Results are cached in-process after the first call, since re-scoring the
-full test set through both models takes a few seconds.
+    cd backend && python -m app.evaluation.run
+
+and writes models/evaluation/evaluation_report.json, which this module
+serves. The report is read once and cached; refresh re-reads the file
+(it does not retrain).
+
+Until Step 4B this module recomputed metrics for the production models on a
+random stratified 80/20 split at threshold 0.5. That method is kept in the
+report only as "legacy_random_split", for comparison.
 """
 
-import numpy as np
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
-from tensorflow import keras
+import json
 
-from ..config import (
-    FEATURES_CSV,
-    LSTM_MODEL_PATH, LSTM_FEATURE_MEAN_PATH, LSTM_FEATURE_STD_PATH,
-    DNN_MODEL_PATH, DNN_FEATURE_MEAN_PATH, DNN_FEATURE_STD_PATH,
-)
-from ..features.feature_engineering import build_sequences
-from .lstm_model import risk_probability_to_score
-from .dnn_model import DNN_INPUT_COLUMNS
+from ..config import EVAL_REPORT_PATH
 
-THRESHOLD = 0.5
-
-
-def _metrics_at_threshold(y_true, y_prob, threshold=THRESHOLD):
-    y_pred = (y_prob >= threshold).astype(int)
-    tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
-    return {
-        "precision": round(float(precision_score(y_true, y_pred, zero_division=0)), 4),
-        "recall": round(float(recall_score(y_true, y_pred, zero_division=0)), 4),
-        "f1_score": round(float(f1_score(y_true, y_pred, zero_division=0)), 4),
-        "auc_roc": round(float(roc_auc_score(y_true, y_prob)), 4) if len(np.unique(y_true)) > 1 else None,
-        "confusion_matrix": {
-            "true_negative": int(tn), "false_positive": int(fp),
-            "false_negative": int(fn), "true_positive": int(tp),
-        },
-        "test_set_size": int(len(y_true)),
-        "fraud_rate_pct": round(float(y_true.mean() * 100), 3),
-        "threshold": threshold,
-    }
-
-
-def _load_sequences():
-    feat_df = pd.read_csv(FEATURES_CSV, parse_dates=["timestamp"])
-    X_seq, y_seq, meta = build_sequences(feat_df)
-    return feat_df, X_seq, y_seq, meta
-
-
-def _evaluate_lstm(X_seq, y_seq):
-    _, X_test, _, y_test = train_test_split(
-        X_seq, y_seq, test_size=0.2, random_state=42, stratify=y_seq
-    )
-
-    model = keras.models.load_model(LSTM_MODEL_PATH)
-    mean = np.load(LSTM_FEATURE_MEAN_PATH)
-    std = np.load(LSTM_FEATURE_STD_PATH)
-    X_test_norm = (X_test - mean) / std
-
-    y_prob = model.predict(X_test_norm, batch_size=512, verbose=0).flatten()
-    return _metrics_at_threshold(y_test, y_prob)
-
-
-def _evaluate_dnn(feat_df, X_seq, meta):
-    lstm_model = keras.models.load_model(LSTM_MODEL_PATH)
-    lstm_mean = np.load(LSTM_FEATURE_MEAN_PATH)
-    lstm_std = np.load(LSTM_FEATURE_STD_PATH)
-    X_seq_norm = (X_seq - lstm_mean) / lstm_std
-
-    risk_probs = lstm_model.predict(X_seq_norm, batch_size=512, verbose=0).flatten()
-    lstm_meta = meta.copy()
-    lstm_meta["risk_score"] = [risk_probability_to_score(p) for p in risk_probs]
-
-    merged = feat_df.merge(lstm_meta[["transaction_id", "risk_score"]], on="transaction_id", how="inner")
-
-    X = merged[DNN_INPUT_COLUMNS].values.astype(np.float32)
-    y = merged["is_fraud"].values.astype(np.float32)
-    _, X_test, _, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
-
-    dnn_model = keras.models.load_model(DNN_MODEL_PATH)
-    dnn_mean = np.load(DNN_FEATURE_MEAN_PATH)
-    dnn_std = np.load(DNN_FEATURE_STD_PATH)
-    X_test_norm = np.clip((X_test - dnn_mean) / dnn_std, -6.0, 6.0)
-
-    y_prob = dnn_model.predict(X_test_norm, batch_size=512, verbose=0).flatten()
-    return _metrics_at_threshold(y_test, y_prob)
-
+MODEL_KEYS = ("lstm_risk_predictor", "dnn_fraud_classifier")
 
 _cache = None
 
 
-def evaluate_all(force_refresh: bool = False) -> dict:
+class EvaluationReportMissing(RuntimeError):
+    pass
+
+
+def load_report(force_refresh: bool = False) -> dict:
     global _cache
     if _cache is None or force_refresh:
-        feat_df, X_seq, y_seq, meta = _load_sequences()
-        _cache = {
-            "lstm_risk_predictor": _evaluate_lstm(X_seq, y_seq),
-            "dnn_fraud_classifier": _evaluate_dnn(feat_df, X_seq, meta),
-        }
+        if not EVAL_REPORT_PATH.exists():
+            raise EvaluationReportMissing(
+                f"{EVAL_REPORT_PATH.name} not found - run `python -m app.evaluation.run` from backend/ to create it"
+            )
+        _cache = json.loads(EVAL_REPORT_PATH.read_text())
     return _cache
+
+
+def evaluate_all(force_refresh: bool = False) -> dict:
+    """The two production-model entries of the corrected (primary, time-based)
+    evaluation, in the same shape /metrics has always returned."""
+    report = load_report(force_refresh)
+    return {key: report["primary"][key] for key in MODEL_KEYS}
 
 
 if __name__ == "__main__":
     # Run this with:  cd backend && python -m app.models.evaluate
-    import json
     print(json.dumps(evaluate_all(), indent=2))

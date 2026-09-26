@@ -225,6 +225,11 @@ python -m app.models.dnn_model                  # trains the DNN, ~1 minute
 python -m app.models.shap_explainer              # sanity-check SHAP explanations
 ```
 
+These scripts produce the **production** models used by `/predict`. They
+still use the original random 80/20 split, so their printed test scores are
+not a valid held-out evaluation; use the evaluation below for reported
+numbers.
+
 To regenerate the underlying synthetic dataset from scratch first (only
 needed if you want a different random sample):
 
@@ -236,6 +241,40 @@ python -m app.features.feature_engineering
 python -m app.models.lstm_model
 python -m app.models.dnn_model
 ```
+
+### Evaluating the models (corrected methodology)
+
+```bash
+cd backend
+python -m app.evaluation.run                  # ~11 minutes on a 2-core CPU
+python -m app.evaluation.run --skip-customer  # time-based split only, ~half the time
+```
+
+This trains **evaluation copies** of the LSTM and DNN (same architectures and
+hyperparameters) and writes `models/evaluation/evaluation_report.json`, which
+`GET /metrics` and `GET /metrics/report` serve. It never touches the
+production models. Methodology, in short:
+
+- **Time-based split** (primary). Train on the earliest transactions, choose
+  thresholds on the next period, test on the latest. The boundaries are
+  derived from the data (see `models/evaluation/split_time.json`), and a fraud
+  episode is never split across periods. A **customer-grouped split** is run
+  as a secondary check.
+- **Past-only LSTM windows**: the 10 transactions before each target.
+- **Leakage-safe stacking**: the DNN trains on *out-of-fold* LSTM risk
+  scores, and validation/test rows are scored by an LSTM trained on the
+  training period only.
+- **Thresholds chosen on validation**, never on test.
+- Reports PR-AUC, ROC-AUC, precision, recall, F1, confusion matrix, alerts
+  per 1,000 transactions, recall at 0.1% / 1% FPR, and fraud-episode
+  metrics (first-fraud recall, detection delay). It also includes baselines:
+  an amount/hour rule, logistic regression, and the DNN without the LSTM
+  score.
+
+Results and their interpretation are in `docs/EVALUATION.md`.
+
+Seeds are fixed and TensorFlow determinism is enabled; the split definitions
+are saved next to the report.
 
 ### Swapping in a real dataset (PaySim / IEEE-CIS)
 
@@ -288,9 +327,11 @@ models, and API all work off that one schema.
   tight variance in one dimension (e.g. very consistent spending amounts).
   This is a good "future work" paragraph for your paper: learned feature
   weighting for the similarity metric.
-- Report **Precision, Recall, F1, and AUC-ROC** in your results — not just
-  accuracy, since fraud is heavily imbalanced and accuracy alone looks
-  artificially high.
+- Report **PR-AUC, Precision, Recall, F1 and AUC-ROC** from the corrected
+  evaluation (section 5), not accuracy: fraud is heavily imbalanced and
+  accuracy alone looks artificially high. Include the baselines and the
+  first-fraud recall. On the current synthetic data, simple baselines are
+  already near-perfect, because the generator makes fraud easy to separate.
 
 See `docs/RESEARCH_NOTES.md` for a full IEEE/Springer paper structure
 template and suggested related-work citations.

@@ -11,7 +11,8 @@ Endpoints:
     GET  /customer/{customer_id}/profile   a customer's usual (home) device and city
     GET  /customer/{customer_id}/history   fraud evolution timeline for a customer
     GET  /fraud-rings                   customers linked by a shared device/identifier
-    GET  /metrics                       held-out test-set model performance (precision/recall/F1/AUC-ROC)
+    GET  /metrics                       held-out test-set model performance (corrected time-based evaluation)
+    GET  /metrics/report                full evaluation report (methodology, splits, baselines, first-fraud metrics)
     POST /report/pdf                    downloadable PDF explanation report for one prediction
     GET  /health                        basic health check
 """
@@ -38,7 +39,7 @@ from .schemas import (
     FraudRingsResponse, BatchPredictionResponse,
 )
 from .inference_pipeline import get_pipeline
-from .models.evaluate import evaluate_all
+from .models.evaluate import EvaluationReportMissing, evaluate_all, load_report
 from .report import build_pdf_report
 
 
@@ -217,10 +218,28 @@ def get_fraud_rings(min_customers: int = 2):
 
 @app.get("/metrics")
 def get_metrics(refresh: bool = False):
-    """Held-out test-set performance for both trained models (precision,
-    recall, F1, AUC-ROC, confusion matrix) -- computed once and cached,
-    pass ?refresh=true to force recomputation."""
-    return evaluate_all(force_refresh=refresh)
+    """Held-out test-set performance of the LSTM and DNN from the corrected
+    evaluation: time-based split, leakage-safe out-of-fold stacking, decision
+    threshold chosen on the validation period. Same fields as before (precision,
+    recall, f1_score, auc_roc, confusion_matrix, test_set_size, fraud_rate_pct,
+    threshold) plus pr_auc, alerts_per_1000, recall_at_fpr and episode metrics.
+    Served from the saved report (python -m app.evaluation.run);
+    ?refresh=true re-reads the report file."""
+    try:
+        return evaluate_all(force_refresh=refresh)
+    except EvaluationReportMissing as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@app.get("/metrics/report")
+def get_metrics_report(refresh: bool = False):
+    """The complete evaluation report: methodology, saved split definitions,
+    primary (time-based) and secondary (customer-grouped) results, baselines,
+    first-fraud / episode metrics, and the legacy random-split numbers."""
+    try:
+        return load_report(force_refresh=refresh)
+    except EvaluationReportMissing as e:
+        raise HTTPException(status_code=503, detail=str(e))
 
 
 _DECIMAL_RE = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?")

@@ -37,6 +37,12 @@ SHAP_BACKGROUND_PATH = MODELS_SAVED_DIR / "shap_background.npy"
 
 SEQUENCE_LENGTH = 10
 
+# corrected (time-based, leakage-safe) evaluation -- see app/evaluation/
+EVALUATION_DIR = BACKEND_DIR / "models" / "evaluation"
+EVAL_REPORT_PATH = EVALUATION_DIR / "evaluation_report.json"
+EVAL_TIME_SPLIT_PATH = EVALUATION_DIR / "split_time.json"
+EVAL_CUSTOMER_SPLIT_PATH = EVALUATION_DIR / "split_customer.json"
+
 
 # ---- CORS ---------------------------------------------------------------------
 # Browser origins allowed to call the API directly, as a comma-separated list

@@ -1,0 +1,889 @@
+{
+  "report_version": 1,
+  "generated_at": "2026-09-26T02:52:58+00:00",
+  "runtime_seconds": 695.9,
+  "dataset": {
+    "file": "transactions_with_features.csv",
+    "sha256": "8f6977dd110a7bda251b21d8b8bdfbb6e670b33404e1b1fbd3fb90cdb4118b33",
+    "transactions": 93913
+  },
+  "reproducibility": {
+    "seed": 42,
+    "out_of_fold_folds": 3,
+    "tensorflow_op_determinism": true,
+    "versions": {
+      "python": "3.13.13",
+      "tensorflow": "2.21.0",
+      "scikit_learn": "1.8.0",
+      "numpy": "2.4.4",
+      "pandas": "3.0.2"
+    }
+  },
+  "methodology": {
+    "primary_split": "time-based: train on the earliest transactions, choose thresholds on the next period, test on the latest",
+    "secondary_split": "customer-grouped: test customers never seen in training",
+    "windows": "the 10 transactions immediately before each target (strictly earlier in (timestamp, transaction_id) order)",
+    "stacking": "DNN training rows get out-of-fold LSTM scores (3 customer-grouped folds); validation/test rows are scored by an LSTM trained on the training split only",
+    "threshold": "chosen on validation (F1-maximizing); recall-at-FPR operating points also chosen on validation",
+    "early_stopping": "chronologically last 15% of each model's own training rows",
+    "evaluated_rows": "transactions with at least 10 earlier transactions (each customer's first 10 have no window)",
+    "models_evaluated": "evaluation copies trained by this run (models/evaluation/time_split); the production models used by /predict were trained with the legacy method and are not evaluated here"
+  },
+  "splits": {
+    "time": {
+      "method": "time-based (out-of-time)",
+      "order": "customer_id, timestamp, transaction_id",
+      "episode_rule": "a customer's fraud transactions linked while less than 14 days apart",
+      "boundary_rule": "targets between the fraud episodes at 60% and 80% of episode start times; moved to the midnight within +/-14 days that the fewest episodes straddle; straddling episodes move whole to the later split",
+      "train_before": "2026-05-06 00:00:00",
+      "validation_before": "2026-06-01 00:00:00",
+      "test_from": "2026-06-01 00:00:00",
+      "episodes_total": 60,
+      "episodes_moved": [
+        {
+          "episode_id": 10,
+          "customer_id": "CUST_0052",
+          "start": "2026-05-25 09:11:45.970095",
+          "end": "2026-06-06 00:54:45.970095",
+          "moved_to": "test",
+          "rows_moved": 4
+        },
+        {
+          "episode_id": 11,
+          "customer_id": "CUST_0057",
+          "start": "2026-05-27 07:29:45.970095",
+          "end": "2026-06-07 05:44:45.970095",
+          "moved_to": "test",
+          "rows_moved": 8
+        },
+        {
+          "episode_id": 25,
+          "customer_id": "CUST_0142",
+          "start": "2026-05-25 20:15:45.970095",
+          "end": "2026-06-08 16:26:45.970095",
+          "moved_to": "test",
+          "rows_moved": 6
+        },
+        {
+          "episode_id": 45,
+          "customer_id": "CUST_0346",
+          "start": "2026-04-29 09:58:45.970095",
+          "end": "2026-05-11 09:44:45.970095",
+          "moved_to": "validation",
+          "rows_moved": 10
+        },
+        {
+          "episode_id": 50,
+          "customer_id": "CUST_0377",
+          "start": "2026-04-27 03:03:45.970095",
+          "end": "2026-05-11 13:10:45.970095",
+          "moved_to": "validation",
+          "rows_moved": 11
+        },
+        {
+          "episode_id": 54,
+          "customer_id": "CUST_0412",
+          "start": "2026-04-27 08:20:45.970095",
+          "end": "2026-05-10 07:58:45.970095",
+          "moved_to": "validation",
+          "rows_moved": 8
+        }
+      ],
+      "splits": {
+        "train": {
+          "transactions": 61143,
+          "fraud_transactions": 454,
+          "fraud_rate_pct": 0.743,
+          "fraud_episodes": 32,
+          "customers": 500,
+          "first_timestamp": "2026-01-12 00:07:45.970095",
+          "last_timestamp": "2026-05-05 23:59:45.970095",
+          "transaction_ids_sha256": "bacded9373514523554d5f328255c618b0e996984ff893c326533c5c226d2744"
+        },
+        "validation": {
+          "transactions": 13866,
+          "fraud_transactions": 164,
+          "fraud_rate_pct": 1.183,
+          "fraud_episodes": 12,
+          "customers": 500,
+          "first_timestamp": "2026-04-27 03:03:45.970095",
+          "last_timestamp": "2026-05-31 23:53:45.970095",
+          "transaction_ids_sha256": "1e1828b6dded8a1ac43db142624268b3ad0122499ed6060eafb58f635456cce7"
+        },
+        "test": {
+          "transactions": 18904,
+          "fraud_transactions": 201,
+          "fraud_rate_pct": 1.063,
+          "fraud_episodes": 16,
+          "customers": 500,
+          "first_timestamp": "2026-05-25 09:11:45.970095",
+          "last_timestamp": "2026-07-06 23:56:45.970095",
+          "transaction_ids_sha256": "de32667cfbd3d8ebb7026d426398924290193e65f385178dcbcefc3b7fcae808"
+        }
+      }
+    },
+    "customer": {
+      "method": "customer-grouped",
+      "rule": "customers shuffled with seed 42, stratified by has-fraud, split 60/20/20; all of a customer's transactions stay together",
+      "splits": {
+        "train": {
+          "transactions": 55878,
+          "fraud_transactions": 461,
+          "fraud_rate_pct": 0.825,
+          "fraud_episodes": 36,
+          "customers": 300,
+          "first_timestamp": "2026-01-12 00:21:45.970095",
+          "last_timestamp": "2026-07-06 23:56:45.970095",
+          "transaction_ids_sha256": "41d297483e40d152d787d47a9fd1c86af58cd894c851bf68e0bd1b6e5310557d"
+        },
+        "validation": {
+          "transactions": 18397,
+          "fraud_transactions": 168,
+          "fraud_rate_pct": 0.913,
+          "fraud_episodes": 12,
+          "customers": 100,
+          "first_timestamp": "2026-01-12 00:08:45.970095",
+          "last_timestamp": "2026-07-06 23:36:45.970095",
+          "transaction_ids_sha256": "68eb0b20aa89476291a20c9d34256f7f302e1a835f1f9cf2822fe3ccc82c266e"
+        },
+        "test": {
+          "transactions": 19638,
+          "fraud_transactions": 190,
+          "fraud_rate_pct": 0.968,
+          "fraud_episodes": 12,
+          "customers": 100,
+          "first_timestamp": "2026-01-12 00:07:45.970095",
+          "last_timestamp": "2026-07-06 22:44:45.970095",
+          "transaction_ids_sha256": "0a010e492aa7a786c9a5afc04d1be699c1589ab462474a43030678fd3cc577b0"
+        }
+      }
+    }
+  },
+  "primary": {
+    "lstm_risk_predictor": {
+      "precision": 0.8294,
+      "recall": 0.8706,
+      "f1_score": 0.8495,
+      "false_positive_rate": 0.001925,
+      "alerts_per_1000": 11.16,
+      "confusion_matrix": {
+        "true_negative": 18667,
+        "false_positive": 36,
+        "false_negative": 26,
+        "true_positive": 175
+      },
+      "test_set_size": 18904,
+      "fraud_rate_pct": 1.063,
+      "pr_auc": 0.8294,
+      "auc_roc": 0.9474,
+      "threshold": 0.997932,
+      "threshold_source": "validation (F1-maximizing)",
+      "recall_at_fpr": {
+        "0.001": {
+          "threshold": 0.999627,
+          "test_recall": 0.8259,
+          "test_false_positive_rate": 0.001176
+        },
+        "0.01": {
+          "threshold": 0.369469,
+          "test_recall": 0.9055,
+          "test_false_positive_rate": 0.01064
+        }
+      },
+      "validation": {
+        "pr_auc": 0.8732,
+        "auc_roc": 0.9716,
+        "precision": 0.8772,
+        "recall": 0.9146,
+        "f1_score": 0.8955
+      },
+      "episodes": {
+        "fraud_episodes": 16,
+        "first_fraud_transactions": 16,
+        "first_fraud_recall": 0.0,
+        "overall_fraud_recall": 0.8706,
+        "episodes_detected": 16,
+        "episode_detection_rate": 1.0,
+        "detection_delay_fraud_transactions": {
+          "median": 1.5,
+          "mean": 1.5,
+          "max": 2
+        },
+        "detection_delay_hours": {
+          "median": 36.085,
+          "max": 243.07
+        }
+      },
+      "task": "fraud of the NEXT transaction, from the 10 transactions before it"
+    },
+    "dnn_fraud_classifier": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0,
+      "false_positive_rate": 0.0,
+      "alerts_per_1000": 10.63,
+      "confusion_matrix": {
+        "true_negative": 18703,
+        "false_positive": 0,
+        "false_negative": 0,
+        "true_positive": 201
+      },
+      "test_set_size": 18904,
+      "fraud_rate_pct": 1.063,
+      "pr_auc": 1.0,
+      "auc_roc": 1.0,
+      "threshold": 0.542248,
+      "threshold_source": "validation (F1-maximizing)",
+      "recall_at_fpr": {
+        "0.001": {
+          "threshold": 0.035265,
+          "test_recall": 1.0,
+          "test_false_positive_rate": 0.000962
+        },
+        "0.01": {
+          "threshold": 0.017878,
+          "test_recall": 1.0,
+          "test_false_positive_rate": 0.010212
+        }
+      },
+      "validation": {
+        "pr_auc": 1.0,
+        "auc_roc": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0
+      },
+      "episodes": {
+        "fraud_episodes": 16,
+        "first_fraud_transactions": 16,
+        "first_fraud_recall": 1.0,
+        "overall_fraud_recall": 1.0,
+        "episodes_detected": 16,
+        "episode_detection_rate": 1.0,
+        "detection_delay_fraud_transactions": {
+          "median": 0.0,
+          "mean": 0.0,
+          "max": 0
+        },
+        "detection_delay_hours": {
+          "median": 0.0,
+          "max": 0.0
+        }
+      },
+      "task": "fraud of the current transaction, from its 9 features + LSTM risk_score"
+    },
+    "baselines": {
+      "amount_hour_rule": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "false_positive_rate": 0.0,
+        "alerts_per_1000": 10.63,
+        "confusion_matrix": {
+          "true_negative": 18703,
+          "false_positive": 0,
+          "false_negative": 0,
+          "true_positive": 201
+        },
+        "test_set_size": 18904,
+        "fraud_rate_pct": 1.063,
+        "pr_auc": 1.0,
+        "auc_roc": 1.0,
+        "threshold": 188.297028,
+        "threshold_source": "validation (F1-maximizing)",
+        "recall_at_fpr": {
+          "0.001": {
+            "threshold": 0.0,
+            "test_recall": 1.0,
+            "test_false_positive_rate": 1.0
+          },
+          "0.01": {
+            "threshold": 0.0,
+            "test_recall": 1.0,
+            "test_false_positive_rate": 1.0
+          }
+        },
+        "validation": {
+          "pr_auc": 1.0,
+          "auc_roc": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0
+        },
+        "episodes": {
+          "fraud_episodes": 16,
+          "first_fraud_transactions": 16,
+          "first_fraud_recall": 1.0,
+          "overall_fraud_recall": 1.0,
+          "episodes_detected": 16,
+          "episode_detection_rate": 1.0,
+          "detection_delay_fraud_transactions": {
+            "median": 0.0,
+            "mean": 0.0,
+            "max": 0
+          },
+          "detection_delay_hours": {
+            "median": 0.0,
+            "max": 0.0
+          }
+        }
+      },
+      "logistic_regression": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "false_positive_rate": 0.0,
+        "alerts_per_1000": 10.63,
+        "confusion_matrix": {
+          "true_negative": 18703,
+          "false_positive": 0,
+          "false_negative": 0,
+          "true_positive": 201
+        },
+        "test_set_size": 18904,
+        "fraud_rate_pct": 1.063,
+        "pr_auc": 1.0,
+        "auc_roc": 1.0,
+        "threshold": 0.556005,
+        "threshold_source": "validation (F1-maximizing)",
+        "recall_at_fpr": {
+          "0.001": {
+            "threshold": 0.002898,
+            "test_recall": 1.0,
+            "test_false_positive_rate": 0.000909
+          },
+          "0.01": {
+            "threshold": 0.000265,
+            "test_recall": 1.0,
+            "test_false_positive_rate": 0.008983
+          }
+        },
+        "validation": {
+          "pr_auc": 1.0,
+          "auc_roc": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0
+        },
+        "episodes": {
+          "fraud_episodes": 16,
+          "first_fraud_transactions": 16,
+          "first_fraud_recall": 1.0,
+          "overall_fraud_recall": 1.0,
+          "episodes_detected": 16,
+          "episode_detection_rate": 1.0,
+          "detection_delay_fraud_transactions": {
+            "median": 0.0,
+            "mean": 0.0,
+            "max": 0
+          },
+          "detection_delay_hours": {
+            "median": 0.0,
+            "max": 0.0
+          }
+        }
+      },
+      "dnn_without_risk_score": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "false_positive_rate": 0.0,
+        "alerts_per_1000": 10.63,
+        "confusion_matrix": {
+          "true_negative": 18703,
+          "false_positive": 0,
+          "false_negative": 0,
+          "true_positive": 201
+        },
+        "test_set_size": 18904,
+        "fraud_rate_pct": 1.063,
+        "pr_auc": 1.0,
+        "auc_roc": 1.0,
+        "threshold": 0.668028,
+        "threshold_source": "validation (F1-maximizing)",
+        "recall_at_fpr": {
+          "0.001": {
+            "threshold": 0.102539,
+            "test_recall": 1.0,
+            "test_false_positive_rate": 0.000802
+          },
+          "0.01": {
+            "threshold": 0.040617,
+            "test_recall": 1.0,
+            "test_false_positive_rate": 0.008983
+          }
+        },
+        "validation": {
+          "pr_auc": 1.0,
+          "auc_roc": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0
+        },
+        "episodes": {
+          "fraud_episodes": 16,
+          "first_fraud_transactions": 16,
+          "first_fraud_recall": 1.0,
+          "overall_fraud_recall": 1.0,
+          "episodes_detected": 16,
+          "episode_detection_rate": 1.0,
+          "detection_delay_fraud_transactions": {
+            "median": 0.0,
+            "mean": 0.0,
+            "max": 0
+          },
+          "detection_delay_hours": {
+            "median": 0.0,
+            "max": 0.0
+          }
+        }
+      }
+    },
+    "stacking": {
+      "n_folds": 3,
+      "fold_models": [
+        {
+          "rows": 37420,
+          "fraud": 306,
+          "early_stop_rows": 5613,
+          "early_stop_fraud": 74,
+          "monitor": "val_auc",
+          "epochs_run": 13
+        },
+        {
+          "rows": 37450,
+          "fraud": 303,
+          "early_stop_rows": 5618,
+          "early_stop_fraud": 62,
+          "monitor": "val_auc",
+          "epochs_run": 13
+        },
+        {
+          "rows": 37416,
+          "fraud": 299,
+          "early_stop_rows": 5612,
+          "early_stop_fraud": 106,
+          "monitor": "val_auc",
+          "epochs_run": 8
+        }
+      ],
+      "final_lstm": {
+        "rows": 56143,
+        "fraud": 454,
+        "early_stop_rows": 8421,
+        "early_stop_fraud": 121,
+        "monitor": "val_auc",
+        "epochs_run": 18
+      },
+      "dnn": {
+        "rows": 56143,
+        "fraud": 454,
+        "early_stop_rows": 8421,
+        "early_stop_fraud": 121,
+        "monitor": "val_auc",
+        "epochs_run": 7
+      },
+      "train_out_of_fold_lstm": {
+        "pr_auc": 0.8579,
+        "auc_roc": 0.9721
+      }
+    },
+    "evaluated_rows": {
+      "train": {
+        "windows": 56143,
+        "fraud": 454
+      },
+      "validation": {
+        "windows": 13866,
+        "fraud": 164
+      },
+      "test": {
+        "windows": 18904,
+        "fraud": 201
+      }
+    }
+  },
+  "secondary_customer_grouped": {
+    "lstm_risk_predictor": {
+      "precision": 0.9219,
+      "recall": 0.9316,
+      "f1_score": 0.9267,
+      "false_positive_rate": 0.000813,
+      "alerts_per_1000": 10.3,
+      "confusion_matrix": {
+        "true_negative": 18433,
+        "false_positive": 15,
+        "false_negative": 13,
+        "true_positive": 177
+      },
+      "test_set_size": 18638,
+      "fraud_rate_pct": 1.019,
+      "pr_auc": 0.9128,
+      "auc_roc": 0.971,
+      "threshold": 0.968811,
+      "threshold_source": "validation (F1-maximizing)",
+      "recall_at_fpr": {
+        "0.001": {
+          "threshold": 0.865838,
+          "test_recall": 0.9368,
+          "test_false_positive_rate": 0.000922
+        },
+        "0.01": {
+          "threshold": 0.23521,
+          "test_recall": 0.9368,
+          "test_false_positive_rate": 0.008294
+        }
+      },
+      "validation": {
+        "pr_auc": 0.8602,
+        "auc_roc": 0.9691,
+        "precision": 0.9176,
+        "recall": 0.9286,
+        "f1_score": 0.9231
+      },
+      "episodes": {
+        "fraud_episodes": 12,
+        "first_fraud_transactions": 12,
+        "first_fraud_recall": 0.0,
+        "overall_fraud_recall": 0.9316,
+        "episodes_detected": 12,
+        "episode_detection_rate": 1.0,
+        "detection_delay_fraud_transactions": {
+          "median": 1.0,
+          "mean": 1.08,
+          "max": 2
+        },
+        "detection_delay_hours": {
+          "median": 17.255,
+          "max": 99.53
+        }
+      },
+      "task": "fraud of the NEXT transaction, from the 10 transactions before it"
+    },
+    "dnn_fraud_classifier": {
+      "precision": 0.9948,
+      "recall": 1.0,
+      "f1_score": 0.9974,
+      "false_positive_rate": 5.4e-05,
+      "alerts_per_1000": 10.25,
+      "confusion_matrix": {
+        "true_negative": 18447,
+        "false_positive": 1,
+        "false_negative": 0,
+        "true_positive": 190
+      },
+      "test_set_size": 18638,
+      "fraud_rate_pct": 1.019,
+      "pr_auc": 1.0,
+      "auc_roc": 1.0,
+      "threshold": 0.942738,
+      "threshold_source": "validation (F1-maximizing)",
+      "recall_at_fpr": {
+        "0.001": {
+          "threshold": 0.293135,
+          "test_recall": 1.0,
+          "test_false_positive_rate": 0.001626
+        },
+        "0.01": {
+          "threshold": 0.04905,
+          "test_recall": 1.0,
+          "test_false_positive_rate": 0.009866
+        }
+      },
+      "validation": {
+        "pr_auc": 1.0,
+        "auc_roc": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0
+      },
+      "episodes": {
+        "fraud_episodes": 12,
+        "first_fraud_transactions": 12,
+        "first_fraud_recall": 1.0,
+        "overall_fraud_recall": 1.0,
+        "episodes_detected": 12,
+        "episode_detection_rate": 1.0,
+        "detection_delay_fraud_transactions": {
+          "median": 0.0,
+          "mean": 0.0,
+          "max": 0
+        },
+        "detection_delay_hours": {
+          "median": 0.0,
+          "max": 0.0
+        }
+      },
+      "task": "fraud of the current transaction, from its 9 features + LSTM risk_score"
+    },
+    "baselines": {
+      "amount_hour_rule": {
+        "precision": 0.9896,
+        "recall": 1.0,
+        "f1_score": 0.9948,
+        "false_positive_rate": 0.000108,
+        "alerts_per_1000": 10.3,
+        "confusion_matrix": {
+          "true_negative": 18446,
+          "false_positive": 2,
+          "false_negative": 0,
+          "true_positive": 190
+        },
+        "test_set_size": 18638,
+        "fraud_rate_pct": 1.019,
+        "pr_auc": 1.0,
+        "auc_roc": 1.0,
+        "threshold": 197.844963,
+        "threshold_source": "validation (F1-maximizing)",
+        "recall_at_fpr": {
+          "0.001": {
+            "threshold": 106.584976,
+            "test_recall": 1.0,
+            "test_false_positive_rate": 0.001247
+          },
+          "0.01": {
+            "threshold": 0.0,
+            "test_recall": 1.0,
+            "test_false_positive_rate": 1.0
+          }
+        },
+        "validation": {
+          "pr_auc": 1.0,
+          "auc_roc": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0
+        },
+        "episodes": {
+          "fraud_episodes": 12,
+          "first_fraud_transactions": 12,
+          "first_fraud_recall": 1.0,
+          "overall_fraud_recall": 1.0,
+          "episodes_detected": 12,
+          "episode_detection_rate": 1.0,
+          "detection_delay_fraud_transactions": {
+            "median": 0.0,
+            "mean": 0.0,
+            "max": 0
+          },
+          "detection_delay_hours": {
+            "median": 0.0,
+            "max": 0.0
+          }
+        }
+      },
+      "logistic_regression": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "false_positive_rate": 0.0,
+        "alerts_per_1000": 10.19,
+        "confusion_matrix": {
+          "true_negative": 18448,
+          "false_positive": 0,
+          "false_negative": 0,
+          "true_positive": 190
+        },
+        "test_set_size": 18638,
+        "fraud_rate_pct": 1.019,
+        "pr_auc": 1.0,
+        "auc_roc": 1.0,
+        "threshold": 0.573246,
+        "threshold_source": "validation (F1-maximizing)",
+        "recall_at_fpr": {
+          "0.001": {
+            "threshold": 0.016397,
+            "test_recall": 1.0,
+            "test_false_positive_rate": 0.00103
+          },
+          "0.01": {
+            "threshold": 0.001467,
+            "test_recall": 1.0,
+            "test_false_positive_rate": 0.007372
+          }
+        },
+        "validation": {
+          "pr_auc": 1.0,
+          "auc_roc": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0
+        },
+        "episodes": {
+          "fraud_episodes": 12,
+          "first_fraud_transactions": 12,
+          "first_fraud_recall": 1.0,
+          "overall_fraud_recall": 1.0,
+          "episodes_detected": 12,
+          "episode_detection_rate": 1.0,
+          "detection_delay_fraud_transactions": {
+            "median": 0.0,
+            "mean": 0.0,
+            "max": 0
+          },
+          "detection_delay_hours": {
+            "median": 0.0,
+            "max": 0.0
+          }
+        }
+      },
+      "dnn_without_risk_score": {
+        "precision": 0.9845,
+        "recall": 1.0,
+        "f1_score": 0.9922,
+        "false_positive_rate": 0.000163,
+        "alerts_per_1000": 10.36,
+        "confusion_matrix": {
+          "true_negative": 18445,
+          "false_positive": 3,
+          "false_negative": 0,
+          "true_positive": 190
+        },
+        "test_set_size": 18638,
+        "fraud_rate_pct": 1.019,
+        "pr_auc": 1.0,
+        "auc_roc": 1.0,
+        "threshold": 0.894837,
+        "threshold_source": "validation (F1-maximizing)",
+        "recall_at_fpr": {
+          "0.001": {
+            "threshold": 0.447215,
+            "test_recall": 1.0,
+            "test_false_positive_rate": 0.002006
+          },
+          "0.01": {
+            "threshold": 0.07056,
+            "test_recall": 1.0,
+            "test_false_positive_rate": 0.009052
+          }
+        },
+        "validation": {
+          "pr_auc": 1.0,
+          "auc_roc": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1_score": 1.0
+        },
+        "episodes": {
+          "fraud_episodes": 12,
+          "first_fraud_transactions": 12,
+          "first_fraud_recall": 1.0,
+          "overall_fraud_recall": 1.0,
+          "episodes_detected": 12,
+          "episode_detection_rate": 1.0,
+          "detection_delay_fraud_transactions": {
+            "median": 0.0,
+            "mean": 0.0,
+            "max": 0
+          },
+          "detection_delay_hours": {
+            "median": 0.0,
+            "max": 0.0
+          }
+        }
+      }
+    },
+    "stacking": {
+      "n_folds": 3,
+      "fold_models": [
+        {
+          "rows": 35193,
+          "fraud": 306,
+          "early_stop_rows": 5279,
+          "early_stop_fraud": 54,
+          "monitor": "val_auc",
+          "epochs_run": 10
+        },
+        {
+          "rows": 35304,
+          "fraud": 307,
+          "early_stop_rows": 5296,
+          "early_stop_fraud": 30,
+          "monitor": "val_auc",
+          "epochs_run": 14
+        },
+        {
+          "rows": 35259,
+          "fraud": 309,
+          "early_stop_rows": 5289,
+          "early_stop_fraud": 27,
+          "monitor": "val_auc",
+          "epochs_run": 19
+        }
+      ],
+      "final_lstm": {
+        "rows": 52878,
+        "fraud": 461,
+        "early_stop_rows": 7932,
+        "early_stop_fraud": 56,
+        "monitor": "val_auc",
+        "epochs_run": 9
+      },
+      "dnn": {
+        "rows": 52878,
+        "fraud": 461,
+        "early_stop_rows": 7932,
+        "early_stop_fraud": 56,
+        "monitor": "val_auc",
+        "epochs_run": 6
+      },
+      "train_out_of_fold_lstm": {
+        "pr_auc": 0.8723,
+        "auc_roc": 0.9694
+      }
+    },
+    "evaluated_rows": {
+      "train": {
+        "windows": 52878,
+        "fraud": 461
+      },
+      "validation": {
+        "windows": 17397,
+        "fraud": 168
+      },
+      "test": {
+        "windows": 18638,
+        "fraud": 190
+      }
+    }
+  },
+  "legacy_random_split": {
+    "note": "OLD methodology: random stratified 80/20 split, threshold 0.5, production models. Kept for comparison only.",
+    "lstm_risk_predictor": {
+      "precision": 0.7042,
+      "recall": 0.9146,
+      "f1_score": 0.7958,
+      "false_positive_rate": 0.003576,
+      "alerts_per_1000": 11.98,
+      "confusion_matrix": {
+        "true_negative": 17556,
+        "false_positive": 63,
+        "false_negative": 14,
+        "true_positive": 150
+      },
+      "test_set_size": 17783,
+      "fraud_rate_pct": 0.922,
+      "pr_auc": 0.8833,
+      "auc_roc": 0.9624,
+      "threshold": 0.5
+    },
+    "dnn_fraud_classifier": {
+      "precision": 0.8367,
+      "recall": 1.0,
+      "f1_score": 0.9111,
+      "false_positive_rate": 0.001816,
+      "alerts_per_1000": 11.02,
+      "confusion_matrix": {
+        "true_negative": 17587,
+        "false_positive": 32,
+        "false_negative": 0,
+        "true_positive": 164
+      },
+      "test_set_size": 17783,
+      "fraud_rate_pct": 0.922,
+      "pr_auc": 1.0,
+      "auc_roc": 1.0,
+      "threshold": 0.5
+    }
+  }
+}
