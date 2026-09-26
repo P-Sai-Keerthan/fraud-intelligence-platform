@@ -276,7 +276,8 @@ class FraudIntelligencePipeline:
         # 100.00%. This keeps predictions inside the model's learned range.
         dnn_input_norm = np.clip(dnn_input_norm, -6.0, 6.0)
         fraud_prob = float(self.dnn_model.predict(dnn_input_norm[np.newaxis, :], verbose=0)[0][0])
-        # a calibrated model should never claim absolute certainty
+        # the output is the model's fraud score (class-weighted training, so it is
+        # not a calibrated probability); cap it so it is never shown as 100% certain
         fraud_prob = min(fraud_prob, 0.999)
         alert_level = alert_level_from_probability(fraud_prob)
 

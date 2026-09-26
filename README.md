@@ -1,9 +1,16 @@
 # Explainable Fraud Intelligence Platform
 
 An AI-powered banking fraud intelligence system that builds a **Behavioral
-Fraud DNA** profile per customer, predicts risk *before* fraud happens
-(LSTM), detects fraud in real time on individual transactions (DNN), and
-explains every decision (SHAP).
+Fraud DNA** profile per customer, detects fraud in real time on individual
+transactions (DNN), and explains every decision (SHAP). The pipeline
+combines each transaction's own features with a historical-risk signal: an
+LSTM score computed from the customer's previous transactions.
+
+The research hypothesis behind the LSTM was that this historical signal
+would rise *before* fraud happens. On the current synthetic dataset the
+corrected evaluation does not support that. The LSTM signal adds no
+measurable predictive value to the DNN, and it does not flag the first
+fraud transaction of an episode (see `docs/EVALUATION.md`).
 
 This repository is fully working end-to-end right now, using a **synthetic
 dataset** generated with realistic behavioral patterns (see
@@ -300,12 +307,18 @@ models, and API all work off that one schema.
    average, whether the hour/device/location/category is new or unusual,
    transaction velocity, failed logins.
 2. **LSTM Risk Predictor** (`lstm_model.py`): takes the customer's last 10
-   transactions' behavioral features as a sequence, predicts the
-   probability that the *next* transaction will be fraudulent. This score
-   (0-100) represents risk building up *before* an attack.
+   transactions' behavioral features as a sequence and predicts the
+   probability that the *next* transaction will be fraudulent, reported as
+   a Risk Score (0-100). It was designed as a historical-risk signal that
+   could rise *before* an attack; that is the research hypothesis.
+   Measured result on the current synthetic data: it does not. It flags 0
+   of 16 first-fraud transactions in the test period and rises only once an
+   episode is under way. Removing it from the DNN does not change detection
+   (`docs/EVALUATION.md`).
 3. **DNN Fraud Detector** (`dnn_model.py`): takes the current transaction's
-   own behavioral features *plus* the LSTM risk score, and outputs a
-   calibrated fraud probability for *this specific transaction*.
+   own behavioral features *plus* the LSTM risk score, and outputs a fraud
+   probability for *this specific transaction*. It is trained with class
+   weights, so the probability is not calibrated.
 4. **SHAP Explainer** (`shap_explainer.py`): wraps the DNN with
    `shap.GradientExplainer` and maps the top contributing features to
    human-readable reasons ("New Device", "Foreign Location", etc.).

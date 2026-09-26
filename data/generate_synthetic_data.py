@@ -3,8 +3,11 @@ Synthetic Banking Transaction Data Generator
 =============================================
 Generates realistic customer transaction histories with:
 - Normal behavioral patterns per customer (spending, timing, device, location)
-- Gradual behavioral drift leading up to fraud events (so the LSTM has a real
-  signal to learn "risk escalation before fraud" from)
+- Fraud episodes for ~12% of customers: a lower-severity "ramp-up" week
+  followed by a high-severity fraud week. The ramp-up was intended to give
+  the LSTM a "risk escalation before fraud" signal. Both weeks' transactions
+  are labeled is_fraud=1, though, so the data has no legitimate-labeled
+  lead-up period to learn an early warning from (see docs/EVALUATION.md).
 - Sudden anomalies for point-in-time fraud detection (so the DNN has a real
   signal to learn "this single transaction looks wrong" from)
 
@@ -87,9 +90,9 @@ def generate_normal_transaction(profile, ts):
 
 def generate_fraud_transaction(profile, ts, severity=1.0):
     """Fraud transactions deviate on multiple axes at once, scaled by severity
-    (0->1) so we can generate a *ramp* of increasingly suspicious activity
-    leading up to a confirmed fraud event -- this is what the LSTM risk
-    predictor learns to pick up on."""
+    (0->1), so a fraud episode can start with a milder ramp-up week before
+    the high-severity week. Every transaction generated here is labeled
+    is_fraud=1, ramp-up included."""
     hour = random.choice([h for h in range(24) if h not in profile["preferred_hours"]])
     ts = ts.replace(hour=hour, minute=random.randint(0, 59))
     amount = profile["avg_amount"] * (3 + 5 * severity) + np.random.uniform(0, 1000)
@@ -136,7 +139,7 @@ def generate_dataset():
                 )
 
                 if will_have_fraud and week == fraud_week - 1:
-                    # ramp-up week: mildly suspicious activity (early signal)
+                    # ramp-up week: milder anomalies, also labeled fraud (is_fraud=1)
                     row = generate_fraud_transaction(profile, ts, severity=random.uniform(0.15, 0.4))
                 elif will_have_fraud and week == fraud_week:
                     # confirmed fraud event(s): high severity

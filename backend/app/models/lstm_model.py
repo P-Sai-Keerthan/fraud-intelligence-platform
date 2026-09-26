@@ -2,14 +2,22 @@
 LSTM Behavioral Risk Predictor
 ================================
 Takes a sequence of a customer's past N transactions' behavioral features
-and predicts a Risk Score (0-100) representing how likely this customer's
-CURRENT trajectory is heading toward fraud -- i.e. prediction BEFORE the
-fraud transaction itself happens.
+and outputs a Risk Score (0-100): the predicted probability, x100, that the
+NEXT transaction is fraudulent. This is the pipeline's historical-risk
+signal; the DNN uses it as one extra input.
+
+Research hypothesis: the score rises BEFORE a customer's first fraudulent
+transaction, as an early warning.
+Current measured result (docs/EVALUATION.md, time-based test split of the
+synthetic data): the hypothesis is not supported. The score flags 0 of 16
+first-fraud transactions, rises only after an episode has started (median
+1.5 fraud transactions later), and the DNN performs the same with or
+without it.
 
 We train it as a binary classifier on "is the NEXT transaction after this
-window fraudulent" and then scale the predicted probability to 0-100 as the
-Risk Score. This is a clean, defensible approach for a paper: risk score is
-literally a calibrated probability * 100.
+window fraudulent" and scale the predicted probability to 0-100 as the
+Risk Score. Training uses class weights, so the probability is not
+calibrated.
 """
 
 import numpy as np

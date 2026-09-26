@@ -7,8 +7,8 @@ Turns a raw transaction log into two things:
    Used by the DNN for "is THIS transaction fraudulent" classification.
 
 2. SEQUENCE FEATURES  (one rolling window of past N transactions per customer)
-   Used by the LSTM for "how risky has this customer's behavior become"
-   prediction.
+   Used by the LSTM, which predicts from this history whether the NEXT
+   transaction is fraudulent (the historical-risk signal).
 
 Both share the same underlying per-transaction feature vector -- the LSTM
 just consumes it as a sequence, the DNN consumes the latest single vector.
@@ -128,8 +128,10 @@ def build_sequences(feat_df: pd.DataFrame, seq_len: int = SEQUENCE_LENGTH):
     """
     Builds sliding-window sequences of FEATURE_COLUMNS per customer, for LSTM
     input. Returns X (n_samples, seq_len, n_features), y (n_samples,) where y
-    is whether the transaction AFTER the window is fraudulent (i.e. "does
-    this behavioral trajectory predict fraud about to happen").
+    is whether the transaction AFTER the window is fraudulent: the LSTM's
+    training target ("does this history predict that the next transaction
+    is fraud?"). How well it does is measured in docs/EVALUATION.md; it does
+    not flag the first fraud transaction of an episode.
     Also returns the index of the "current" (last) row for each sequence, so
     predictions can be mapped back to transaction_id / customer_id.
     """
