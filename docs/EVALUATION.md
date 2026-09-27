@@ -143,4 +143,5 @@ python -m app.evaluation.run --output-dir DIR  # write the splits, report and mo
   - **Time split:** a fraud ring's episodes, and each episode's warning period, move together as one group.
   - **Customer split:** customers linked by a ring or a household are kept in the same split.
 - **v1 splits:** unchanged, using the 14-day episode rule.
+- **v2 analysis:** `python -m app.evaluation.analysis --dataset v2` reads the v2 report and the per-transaction scores the run saves (`scores_*.csv.gz`, v2 only). It writes `models/evaluation/v2/analysis.json`: per-fraud-type, warning-period, legitimate-context, ring and bootstrap-uncertainty results. The write-up is `docs/step4c2-v2-evaluation.md`.
 - **Report:** records the dataset version, file and SHA-256; for v2 it also records the generator version and a check against `manifest.json`. It also records the feature list and hash and where the evaluation models were saved.
