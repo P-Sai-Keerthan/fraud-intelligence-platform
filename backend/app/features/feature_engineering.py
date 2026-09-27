@@ -21,6 +21,7 @@ from ..config import (
     RAW_TRANSACTIONS_CSV, FEATURES_CSV, LSTM_X_PATH, LSTM_Y_PATH,
     LSTM_META_CSV, SEQUENCE_LENGTH as CONFIG_SEQ_LEN,
 )
+from .ground_truth import assert_no_ground_truth
 
 FEATURE_COLUMNS = [
     "amount_zscore",          # how far this amount is from the customer's normal (in std devs)
@@ -33,6 +34,9 @@ FEATURE_COLUMNS = [
     "txn_velocity_1h",        # number of transactions by this customer in the last hour
     "amount_pct_of_avg",      # amount as a percentage of the customer's average (captures scale)
 ]
+
+# The label and the v2 ground-truth metadata columns must never be features.
+assert_no_ground_truth(FEATURE_COLUMNS, "FEATURE_COLUMNS")
 
 HOME_LOCATIONS = {
     "Hyderabad", "Mumbai", "Delhi", "Bangalore", "Chennai",
