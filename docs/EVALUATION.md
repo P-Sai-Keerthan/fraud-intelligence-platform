@@ -120,3 +120,27 @@ The customer-grouped split matches: LSTM first-fraud recall is 0/12, and every o
 - **Small sample:** there are only 16 test episodes (12 on the customer split), so one missed first fraud moves first-fraud recall by ~6 percentage points. No confidence intervals are reported yet.
 - **Different models:** the evaluation models (`models/evaluation/time_split/`) are trained on the training period only. The production models used by `/predict` are still the original ones, trained with the old random split and in-sample stacking. `/metrics` evaluates the training *recipe*, not those exact weights.
 - **Synthetic data:** until it has realistic overlap between legitimate and fraudulent behaviour (or a public benchmark is added), near-perfect scores are expected from any reasonable method and should be presented as such.
+
+## 6. Dataset versions
+
+The evaluation can run on either dataset. `app/evaluation/datasets.py` resolves every path for it:
+
+| Version | Data | Evaluation output | Notes |
+|---|---|---|---|
+| `v1` (default) | `data/transactions_with_features.csv` | `models/evaluation/` | the production dataset; the report here is what `GET /metrics` serves |
+| `v2` | `data/v2/` (generate with `python data/v2/generate.py`) | `models/evaluation/v2/` | evaluation only; `/metrics` never reads it |
+
+```bash
+cd backend
+python -m app.evaluation.run                   # v1, same as before
+python -m app.evaluation.run --dataset v2      # v2 (fails if data/v2 has not been generated; no fallback to v1)
+python -m app.evaluation.run --output-dir DIR  # write the splits, report and models somewhere else
+```
+
+- **Model input:** for both versions the model frame holds only the identifiers, `is_fraud` and the 9 production features. `evaluate_split` refuses a frame that contains any ground-truth column.
+- **v2 metadata:** fraud type, episode, stage, ring, warning period, context, segment, merchant and network are loaded separately, row-aligned with the frame, for analysis only.
+- **v2 splits:** they use the dataset's explicit episode ids.
+  - **Time split:** a fraud ring's episodes, and each episode's warning period, move together as one group.
+  - **Customer split:** customers linked by a ring or a household are kept in the same split.
+- **v1 splits:** unchanged, using the 14-day episode rule.
+- **Report:** records the dataset version, file and SHA-256; for v2 it also records the generator version and a check against `manifest.json`. It also records the feature list and hash and where the evaluation models were saved.

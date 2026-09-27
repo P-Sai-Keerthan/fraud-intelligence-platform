@@ -43,6 +43,14 @@ EVAL_REPORT_PATH = EVALUATION_DIR / "evaluation_report.json"
 EVAL_TIME_SPLIT_PATH = EVALUATION_DIR / "split_time.json"
 EVAL_CUSTOMER_SPLIT_PATH = EVALUATION_DIR / "split_customer.json"
 
+# Dataset versions for the EVALUATION only (see app/evaluation/datasets.py).
+# v1 = the files above (the production dataset, and the default). v2 = the
+# generated dataset in data/v2 (not committed; `python data/v2/generate.py`).
+# v2 evaluation output goes to its own directory, so it can never replace the
+# v1 report that GET /metrics serves. Production inference always uses v1.
+DATA_V2_DIR = DATA_DIR / "v2"
+EVALUATION_V2_DIR = EVALUATION_DIR / "v2"
+
 
 # ---- CORS ---------------------------------------------------------------------
 # Browser origins allowed to call the API directly, as a comma-separated list

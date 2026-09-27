@@ -2,13 +2,17 @@
 Run the corrected evaluation end to end and write the report.
 
     cd backend
-    python -m app.evaluation.run                 # both splits (~11 min on a 2-core CPU)
+    python -m app.evaluation.run                 # v1, both splits (~11 min on a 2-core CPU)
     python -m app.evaluation.run --skip-customer # time-based split only
+    python -m app.evaluation.run --dataset v2    # the generated v2 dataset (evaluation only)
+    python -m app.evaluation.run --output-dir /tmp/eval   # write somewhere else
 
-Writes (models/evaluation/):
+Writes, for the default dataset v1 (models/evaluation/):
     split_time.json, split_customer.json   saved split definitions
     evaluation_report.json                  served by GET /metrics and /metrics/report
     time_split/                             the evaluation LSTM + DNN (+ scalers)
+and the same files under models/evaluation/v2/ for --dataset v2, which
+/metrics never reads. Dataset paths come from datasets.resolve_dataset.
 
 Nothing here touches the production models in models/saved/.
 """
@@ -23,11 +27,11 @@ from datetime import datetime, timezone
 import numpy as np
 import pandas as pd
 
-from ..config import (
-    EVALUATION_DIR, EVAL_REPORT_PATH, EVAL_TIME_SPLIT_PATH, EVAL_CUSTOMER_SPLIT_PATH, FEATURES_CSV,
-)
+from ..config import FEATURES_CSV
 from ..features.feature_engineering import FEATURE_COLUMNS
+from ..features.ground_truth import LABEL_COLUMN, assert_no_ground_truth
 from . import baselines
+from .datasets import DATASETS, DEFAULT_DATASET_VERSION, dataset_info, load_evaluation_data, resolve_dataset
 from .metrics import episode_metrics, evaluate_scores, ranking_metrics
 from .split import build_customer_split, build_time_split, canonical_order, save_definition
 from .stacking import EVAL_SEED, N_FOLDS, fit_dnn, fit_lstm, stacked_risk_scores
@@ -51,6 +55,9 @@ def evaluate_split(df, split_labels, episode_id, windows, fit_lstm_fn=fit_lstm, 
                    n_folds=N_FOLDS, seed=EVAL_SEED, log=_log):
     """Leakage-safe evaluation of the stacked LSTM -> DNN and the baselines
     on one split. `windows` = (X, y, target_index) from build_windows."""
+    # the frame must hold identifiers, the target and the production features only:
+    # ground-truth / metadata columns (v2) are kept out of every feature matrix
+    assert_no_ground_truth([c for c in df.columns if c != LABEL_COLUMN], "columns of the evaluation frame")
     X, y, target = windows
     split = np.asarray(split_labels)[target]
     tr, va, te = split == "train", split == "validation", split == "test"
@@ -151,18 +158,35 @@ def _save_models(models, directory):
     np.save(directory / "dnn_feature_std.npy", models["dnn"].std)
 
 
-def main(skip_customer: bool = False):
+def _display_path(path) -> str:
+    """Path relative to backend/ when possible (the report has no machine-specific paths)."""
+    from ..config import BACKEND_DIR
+    try:
+        return path.relative_to(BACKEND_DIR).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
+def feature_version() -> dict:
+    return {"columns": list(FEATURE_COLUMNS), "count": len(FEATURE_COLUMNS),
+            "sha256": hashlib.sha256(json.dumps(list(FEATURE_COLUMNS)).encode()).hexdigest()}
+
+
+def main(skip_customer: bool = False, dataset_version: str | None = None, output_dir=None):
+    spec = resolve_dataset(dataset_version)             # ValueError for an unknown version
+    if output_dir is not None:
+        spec = spec.with_output_dir(output_dir)
     import sklearn
     import tensorflow as tf
     started = time.time()
-    _log(f"loading {FEATURES_CSV.name}")
-    raw = FEATURES_CSV.read_bytes()
-    df = canonical_order(pd.read_csv(FEATURES_CSV))
+    _log(f"dataset {spec.version}: loading {spec.features_csv}")
+    data = load_evaluation_data(spec)                   # FileNotFoundError if missing; no fallback
+    df = data.frame                                     # identifiers + target + FEATURE_COLUMNS only
 
-    labels, episode_id, time_def = build_time_split(df)
-    save_definition(EVAL_TIME_SPLIT_PATH, time_def)
-    cust_labels, cust_def = build_customer_split(df, episode_id)
-    save_definition(EVAL_CUSTOMER_SPLIT_PATH, cust_def)
+    labels, episode_id, time_def = build_time_split(df, data.grouping)
+    save_definition(spec.time_split_path, time_def)
+    cust_labels, cust_def = build_customer_split(df, episode_id, data.grouping)
+    save_definition(spec.customer_split_path, cust_def)
     _log(f"time split: train < {time_def['train_before']} <= validation < {time_def['validation_before']} <= test")
 
     windows = build_windows(df)
@@ -171,21 +195,33 @@ def main(skip_customer: bool = False):
 
     _log("=== primary: time-based split ===")
     primary, models = evaluate_split(df, labels, episode_id, windows)
-    _save_models(models, EVALUATION_DIR / "time_split")
+    _save_models(models, spec.models_dir)
 
     secondary = None
     if not skip_customer:
         _log("=== secondary: customer-grouped split ===")
         secondary, _ = evaluate_split(df, cust_labels, episode_id, windows)
 
-    _log("legacy random-split metrics of the production models (for comparison)")
-    legacy = legacy_random_split_metrics()
+    if spec.legacy_comparison:
+        _log("legacy random-split metrics of the production models (for comparison)")
+        legacy = {
+            "note": "OLD methodology: random stratified 80/20 split, threshold 0.5, production models. Kept for comparison only.",
+            **legacy_random_split_metrics(),
+        }
+    else:
+        legacy = None
 
     report = {
-        "report_version": 1,
+        "report_version": 2,
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "runtime_seconds": round(time.time() - started, 1),
-        "dataset": {"file": FEATURES_CSV.name, "sha256": hashlib.sha256(raw).hexdigest(), "transactions": int(len(df))},
+        "dataset": dataset_info(data),
+        "feature_version": feature_version(),
+        "model_version": {
+            "recipe": "app/evaluation/stacking.py (architectures and hyperparameters of lstm_model.py / dnn_model.py)",
+            "trained_by": "this run, on the training split only",
+            "saved_to": _display_path(spec.models_dir),
+        },
         "reproducibility": {
             "seed": EVAL_SEED, "out_of_fold_folds": N_FOLDS, "tensorflow_op_determinism": True,
             "versions": {"python": platform.python_version(), "tensorflow": tf.__version__,
@@ -200,23 +236,26 @@ def main(skip_customer: bool = False):
             "threshold": "chosen on validation (F1-maximizing); recall-at-FPR operating points also chosen on validation",
             "early_stopping": "chronologically last 15% of each model's own training rows",
             "evaluated_rows": "transactions with at least 10 earlier transactions (each customer's first 10 have no window)",
-            "models_evaluated": "evaluation copies trained by this run (models/evaluation/time_split); "
+            "models_evaluated": f"evaluation copies trained by this run ({_display_path(spec.models_dir)}); "
                                 "the production models used by /predict were trained with the legacy method and are not evaluated here",
         },
         "splits": {"time": time_def, "customer": cust_def},
         "primary": primary,
         "secondary_customer_grouped": secondary,
-        "legacy_random_split": {
-            "note": "OLD methodology: random stratified 80/20 split, threshold 0.5, production models. Kept for comparison only.",
-            **legacy,
-        },
+        "legacy_random_split": legacy,
     }
-    EVAL_REPORT_PATH.write_text(json.dumps(report, indent=2) + "\n")
-    _log(f"wrote {EVAL_REPORT_PATH} in {report['runtime_seconds']}s")
+    spec.report_path.parent.mkdir(parents=True, exist_ok=True)
+    spec.report_path.write_text(json.dumps(report, indent=2) + "\n")
+    _log(f"wrote {spec.report_path} in {report['runtime_seconds']}s")
     return report
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--skip-customer", action="store_true", help="only run the primary time-based evaluation")
-    main(skip_customer=parser.parse_args().skip_customer)
+    parser.add_argument("--dataset", choices=sorted(DATASETS), default=DEFAULT_DATASET_VERSION,
+                        help=f"dataset version to evaluate (default: {DEFAULT_DATASET_VERSION})")
+    parser.add_argument("--output-dir", default=None,
+                        help="write the splits, report and evaluation models here instead of the dataset's default")
+    args = parser.parse_args()
+    main(skip_customer=args.skip_customer, dataset_version=args.dataset, output_dir=args.output_dir)

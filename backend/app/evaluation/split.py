@@ -29,6 +29,19 @@ history, and therefore every episode, stays in one split.
 Transaction order everywhere is (customer_id, timestamp, transaction_id);
 transaction_id breaks ties between same-customer transactions that share a
 timestamp.
+
+Datasets with explicit ground truth (v2, see datasets.py)
+----------------------------------------------------------
+When a Grouping is passed, the same two splits use it instead of the 14-day
+heuristic; the v1 path above is unchanged.
+* Time split: episodes come from the explicit fraud_episode_id. The unit that
+  is placed and moved is an episode GROUP: a whole fraud ring (all its
+  members' episodes) or a single episode, with its warning period included.
+  Boundaries use the same rule on unit start times; a straddling unit moves,
+  whole, to the later split (each member's rows inside its own span).
+* Customer split: customers linked by a ring or a household form one
+  component; components (not customers) are shuffled with the same seed,
+  stratified by whether they contain fraud, and divided 60 / 20 / 20.
 """
 
 import hashlib
@@ -163,8 +176,11 @@ def summarize(df: pd.DataFrame, labels: pd.Series, episode_id: pd.Series) -> dic
     return out
 
 
-def build_time_split(df: pd.DataFrame) -> tuple[pd.Series, pd.Series, dict]:
-    """df in canonical order -> (labels, episode_id, split definition dict)."""
+def build_time_split(df: pd.DataFrame, grouping=None) -> tuple[pd.Series, pd.Series, dict]:
+    """df in canonical order -> (labels, episode_id, split definition dict).
+    grouping (v2 only, datasets.Grouping) switches to explicit episodes and ring groups."""
+    if grouping is not None:
+        return _grouped_time_split(df, grouping)
     episode_id, episodes = find_episodes(df)
     b1, b2 = choose_time_boundaries(episodes)
     labels, moved = time_split(df, episode_id, episodes, b1, b2)
@@ -187,7 +203,83 @@ def build_time_split(df: pd.DataFrame) -> tuple[pd.Series, pd.Series, dict]:
     return labels, episode_id, definition
 
 
-def build_customer_split(df: pd.DataFrame, episode_id: pd.Series) -> tuple[pd.Series, dict]:
+def _grouped_time_split(df: pd.DataFrame, grouping) -> tuple[pd.Series, pd.Series, dict]:
+    episode_id = grouping.episode_id
+    units = grouping.units
+    b1, b2 = choose_time_boundaries(units)           # same rule, applied to episode groups
+    ts = df["timestamp"]
+    labels = pd.Series(np.where(ts < b1, "train", np.where(ts < b2, "validation", "test")), index=df.index)
+    rank = {name: i for i, name in enumerate(SPLITS)}
+
+    def split_of(t):
+        return "train" if t < b1 else ("validation" if t < b2 else "test")
+
+    moved = []
+    for key, unit in units.iterrows():
+        target = split_of(unit["end"])
+        if split_of(unit["start"]) == target:
+            continue
+        rows_moved = 0
+        for customer, start, end in unit["members"]:
+            span = (df["customer_id"] == customer) & (ts >= start) & (ts <= end)
+            span &= labels.map(rank) < rank[target]
+            labels[span] = target
+            rows_moved += int(span.sum())
+        moved.append({
+            "group": key, "episodes": [int(e) for e in unit["episodes"]], "customers": list(unit["customers"]),
+            "start": str(unit["start"]), "end": str(unit["end"]), "moved_to": target, "rows_moved": rows_moved,
+        })
+    definition = {
+        "method": "time-based (out-of-time)",
+        "order": "customer_id, timestamp, transaction_id",
+        "episode_rule": "explicit fraud_episode_id from the dataset; a fraud ring's episodes form one group; "
+                        "each group's span includes its warning period",
+        "boundary_rule": (
+            f"targets between the episode groups at {int(SPLIT_FRACTIONS[0]*100)}% and {int(SPLIT_FRACTIONS[1]*100)}% "
+            f"of group start times; moved to the midnight within +/-{BOUNDARY_SEARCH.days} days that the fewest "
+            "groups straddle; straddling groups move whole to the later split"
+        ),
+        "train_before": str(b1),
+        "validation_before": str(b2),
+        "test_from": str(b2),
+        "episodes_total": int(len(grouping.episodes)),
+        "episode_groups_total": int(len(units)),
+        "episodes_moved": moved,
+        "splits": summarize(df, labels, episode_id),
+    }
+    return labels, episode_id, definition
+
+
+def _component_customer_split(df: pd.DataFrame, grouping, seed: int = SPLIT_SEED) -> pd.Series:
+    rng = np.random.RandomState(seed)
+    comp = df["customer_id"].map(grouping.component_of)
+    if comp.isna().any():
+        raise ValueError("customers without a component")
+    has_fraud = df.groupby(comp)["is_fraud"].max()
+    assignment = {}
+    for flag in (1, 0):
+        components = np.array(sorted(has_fraud[has_fraud == flag].index))
+        rng.shuffle(components)
+        n = len(components)
+        n_train = int(round(CUSTOMER_SPLIT_FRACTIONS[0] * n))
+        n_val = int(round(CUSTOMER_SPLIT_FRACTIONS[1] * n))
+        for i, c in enumerate(components):
+            assignment[c] = "train" if i < n_train else ("validation" if i < n_train + n_val else "test")
+    return comp.map(assignment)
+
+
+def build_customer_split(df: pd.DataFrame, episode_id: pd.Series, grouping=None) -> tuple[pd.Series, dict]:
+    if grouping is not None:
+        labels = _component_customer_split(df, grouping)
+        definition = {
+            "method": "customer-grouped (components)",
+            "rule": f"customers linked by a fraud ring or a household form one component; components shuffled "
+                    f"with seed {SPLIT_SEED}, stratified by has-fraud, split "
+                    f"{'/'.join(str(int(f*100)) for f in CUSTOMER_SPLIT_FRACTIONS)}; a component stays together",
+            "components": int(grouping.component_of.nunique()),
+            "splits": summarize(df, labels, episode_id),
+        }
+        return labels, definition
     labels = customer_split(df)
     definition = {
         "method": "customer-grouped",
