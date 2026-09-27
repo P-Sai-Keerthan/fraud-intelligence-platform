@@ -113,7 +113,19 @@ def evaluate_split(df, split_labels, episode_id, windows, fit_lstm_fn=fit_lstm, 
     }
     result["lstm_risk_predictor"]["task"] = "fraud of the NEXT transaction, from the 10 transactions before it"
     result["dnn_fraud_classifier"]["task"] = "fraud of the current transaction, from its 9 features + LSTM risk_score"
-    models = {"lstm": final_lstm, "dnn": dnn}
+    # per-window scores for later analysis (by fraud type, warning period, ...). On
+    # training rows the LSTM scores are out-of-fold, the other models' are in-sample.
+    scores = pd.DataFrame({
+        "transaction_id": df["transaction_id"].to_numpy()[target],
+        "split": split,
+        "is_fraud": y.astype(int),
+        "lstm_risk_predictor": lstm_p,
+        "dnn_fraud_classifier": dnn_p,
+        "dnn_without_risk_score": dnn_nr_p,
+        "logistic_regression": lr_p,
+        "amount_hour_rule": rule_p,
+    })
+    models = {"lstm": final_lstm, "dnn": dnn, "scores": scores}
     return result, models
 
 
@@ -158,6 +170,18 @@ def _save_models(models, directory):
     np.save(directory / "dnn_feature_std.npy", models["dnn"].std)
 
 
+SCORES_FILES = {"time": "scores_time_split.csv.gz", "customer": "scores_customer_split.csv.gz"}
+
+
+def _save_scores(scores: pd.DataFrame, path) -> None:
+    """Per-window scores (datasets with metadata only, i.e. v2), for app.evaluation.analysis."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # no file name and mtime=0 in the gzip header, so reruns are byte-identical
+    import gzip
+    with open(path, "wb") as raw, gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as fh:
+        fh.write(scores.to_csv(index=False, float_format="%.17g", lineterminator="\n").encode())
+
+
 def _display_path(path) -> str:
     """Path relative to backend/ when possible (the report has no machine-specific paths)."""
     from ..config import BACKEND_DIR
@@ -196,11 +220,15 @@ def main(skip_customer: bool = False, dataset_version: str | None = None, output
     _log("=== primary: time-based split ===")
     primary, models = evaluate_split(df, labels, episode_id, windows)
     _save_models(models, spec.models_dir)
+    if spec.has_metadata:
+        _save_scores(models["scores"], spec.output_dir / SCORES_FILES["time"])
 
     secondary = None
     if not skip_customer:
         _log("=== secondary: customer-grouped split ===")
-        secondary, _ = evaluate_split(df, cust_labels, episode_id, windows)
+        secondary, secondary_models = evaluate_split(df, cust_labels, episode_id, windows)
+        if spec.has_metadata:
+            _save_scores(secondary_models["scores"], spec.output_dir / SCORES_FILES["customer"])
 
     if spec.legacy_comparison:
         _log("legacy random-split metrics of the production models (for comparison)")
