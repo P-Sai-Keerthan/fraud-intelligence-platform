@@ -186,25 +186,59 @@ def _hour_weights(rng, peaks, width_bounds, floor_bounds):
     return (1 - floor) * w + floor / 24
 
 
+def _place_trip(rng, trips, length_days, city, kind, horizon) -> bool:
+    for _ in range(20):
+        start = int(rng.integers(3 * DAY, horizon - (length_days + 1) * DAY))
+        end = start + length_days * DAY
+        if all(end + DAY <= s or start >= e + DAY for s, e, _, _ in trips):
+            trips.append((start, end, city, kind))
+            trips.sort()
+            return True
+    return False
+
+
 def _plan_trips(rng, cfg, seg, home_city, horizon):
+    """Domestic trips get their city here. A foreign trip is placed with city
+    None; _assign_foreign_destinations picks the cities for all travellers."""
     trips = []
-
-    def place(length_days, city, kind):
-        for _ in range(20):
-            start = int(rng.integers(3 * DAY, horizon - (length_days + 1) * DAY))
-            end = start + length_days * DAY
-            if all(end + DAY <= s or start >= e + DAY for s, e, _, _ in trips):
-                trips.append((start, end, city, kind))
-                return
-
     if rng.random() < seg["p_domestic_trip"]:
         for _ in range(_randint(rng, cfg.domestic_trips)):
             city = str(rng.choice([c for c in DOMESTIC_CITIES if c != home_city]))
-            place(_randint(rng, cfg.domestic_trip_days), city, "travel_domestic")
+            _place_trip(rng, trips, _randint(rng, cfg.domestic_trip_days), city, "travel_domestic", horizon)
     if rng.random() < seg["p_foreign_trip"]:
-        pool = FOREIGN_CITIES_TRAVEL if rng.random() < cfg.p_benign_foreign_destination else FOREIGN_CITIES_V1
-        place(_randint(rng, cfg.foreign_trip_days), str(rng.choice(pool)), "travel_foreign")
-    return sorted(trips)
+        _place_trip(rng, trips, _randint(rng, cfg.foreign_trip_days), None, "travel_foreign", horizon)
+    return trips
+
+
+def _assign_foreign_destinations(cfg, customers, horizon):
+    """Every foreign city is visited by at least one legitimate traveller, so no
+    city name appears only on fraud. If fewer customers travel abroad than
+    there are foreign cities, extra travellers are added (business travellers
+    first). The first trips cover each city once, in a seeded random order;
+    the rest are drawn with the benign/v1 destination split."""
+    rng = _rng(cfg, _PLAN, 2)
+    has_trip = lambda c: any(k == "travel_foreign" for *_, k in c.trips)  # noqa: E731
+    travellers = [c for c in customers if has_trip(c)]
+    if cfg.cover_foreign_destinations and len(travellers) < len(FOREIGN_CITIES):
+        order = sorted((c for c in customers if not has_trip(c)),
+                       key=lambda c: (c.segment != "business_traveller", float(rng.random())))
+        for c in order:
+            if len(travellers) >= len(FOREIGN_CITIES):
+                break
+            r = _rng(cfg, _PLAN, 3, c.idx)
+            if _place_trip(r, c.trips, _randint(r, cfg.foreign_trip_days), None, "travel_foreign", horizon):
+                travellers.append(c)
+    travellers.sort(key=lambda c: c.idx)
+    visit_order = rng.permutation(len(travellers))
+    cover = [str(x) for x in rng.permutation(FOREIGN_CITIES)] if cfg.cover_foreign_destinations else []
+    for rank, k in enumerate(visit_order):
+        c = travellers[k]
+        if rank < len(cover):
+            city = cover[rank]
+        else:
+            pool = FOREIGN_CITIES_TRAVEL if rng.random() < cfg.p_benign_foreign_destination else FOREIGN_CITIES_V1
+            city = str(rng.choice(pool))
+        c.trips = sorted((s, e, city if kind == "travel_foreign" else town, kind) for s, e, town, kind in c.trips)
 
 
 def build_plan(cfg: GeneratorConfig = DEFAULT_CONFIG) -> Plan:
@@ -288,6 +322,7 @@ def build_plan(cfg: GeneratorConfig = DEFAULT_CONFIG) -> Plan:
             trips=_plan_trips(r, cfg, seg, home_city, horizon),
         ))
 
+    _assign_foreign_destinations(cfg, customers, horizon)
     episodes, rings = _plan_fraud(cfg, customers, merchants, ids)
     days = pd.date_range(cfg.start_date, periods=cfg.days, freq="D")
     return Plan(cfg, customers, episodes, rings, merchants, city_carriers, city_public, proxy_networks, ids,
@@ -489,6 +524,12 @@ def _legit_transactions(plan: Plan, c: Customer, logins: list) -> list:
                 t = anchor + int(r.integers(60, HOUR))
                 if t < horizon:
                     make(t, ["burst"], category=str(r.choice(["online_retail", "dining", "entertainment"])))
+
+    # a trip always shows up in the data: at least one payment while away
+    for t_start, t_end, _, _ in c.trips:
+        if not any(t_start <= row["t"] < t_end for row in rows):
+            day = t_start // DAY + 1
+            make(day * DAY + int(r.choice(24, p=c.hour_weights)) * HOUR + int(r.integers(0, HOUR)), [])
 
     if c.borrow:
         t0, dev, k = c.borrow

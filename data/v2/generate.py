@@ -34,8 +34,12 @@ def main(argv=None):
     cfg = DEFAULT_CONFIG.with_overrides(seed=args.seed, n_customers=args.customers)
     data = generate(cfg)
     features = None if args.skip_features else build_features_table(data.transactions)
-    command = "python data/v2/generate.py " + " ".join(argv if argv is not None else sys.argv[1:])
-    manifest = write_dataset(data, args.out, features, command=command.strip())
+    # the recorded command lists only the options that change the content (not --out),
+    # so regenerating into another directory gives a byte-identical manifest
+    command = f"python data/v2/generate.py --seed {args.seed} --customers {args.customers}"
+    if args.skip_features:
+        command += " --skip-features"
+    manifest = write_dataset(data, args.out, features, command=command)
     s = manifest["summary"]
     print(f"{s['transactions']:,} transactions, {s['customers']} customers, "
           f"{s['fraud_transactions']} fraud ({s['fraud_rate_pct']}%), {s['episodes']} episodes, {s['rings']} rings")

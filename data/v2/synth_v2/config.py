@@ -9,7 +9,9 @@ reach any model score.
 
 from dataclasses import asdict, dataclass, field, replace
 
-GENERATOR_VERSION = "2.0.0"
+# 2.0.1 (Step 4C-2b): every foreign city has legitimate travellers, every trip has at least
+# one transaction, and the manifest no longer records the output directory.
+GENERATOR_VERSION = "2.0.1"
 
 # ---- fixed vocabulary (same values as v1) --------------------------------------
 
@@ -150,6 +152,7 @@ class GeneratorConfig:
     domestic_trip_days: tuple = (2, 7)
     foreign_trip_days: tuple = (4, 10)
     p_benign_foreign_destination: float = 0.80
+    cover_foreign_destinations: bool = True    # every foreign city gets >= 1 legitimate traveller (no fraud-only city)
     hour_peak_width: tuple = (0.7, 1.0)        # std-dev (hours) of each daily activity peak
     hour_uniform_floor: tuple = (0.03, 0.08)   # share of a customer's activity spread over all 24 hours
     amount_sigma: tuple = (0.25, 0.60)         # lognormal sigma around the customer's median

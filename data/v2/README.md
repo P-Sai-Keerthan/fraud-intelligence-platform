@@ -9,7 +9,10 @@ The design is in `claude/step4c2-synthetic-data-design.md` in the project notes.
 ```bash
 python data/v2/generate.py                      # default: 500 customers, seed 42 -> data/v2/
 python data/v2/generate.py --customers 60 --out /tmp/v2-sample --skip-features
+python data/v2/sanity_report.py                 # audits data/v2 -> data/v2/DATA_SANITY_REPORT.md (~1.5 min)
 ```
+
+The sanity report recomputes every check from the CSV files and exits with status 1 if it finds an anomaly.
 
 The generator writes these files:
 
@@ -20,7 +23,8 @@ The generator writes these files:
 | `customers.csv` | segment, home city, household, devices and trips for each customer |
 | `episodes.csv` | one row per fraud episode: type, ring, warning-period start, first and last fraud time |
 | `login_failures.csv` | every failed login as a timestamped event (typo, forgot_password, credential_attack, fraud_session) |
-| `manifest.json` | settings, counts, column lists and SHA-256 checksums. It is deterministic and records no wall-clock time. |
+| `manifest.json` | settings, counts, column lists and SHA-256 checksums. It records no wall-clock time and no output path, so a rerun in the same environment is byte-identical; the `versions` field (python / numpy / pandas) differs between environments, while the CSVs do not. |
+| `DATA_SANITY_REPORT.md` | written by `sanity_report.py`: structure, class balance, warning-sign overlap, archetypes, rings, failed-login checks, leakage and giveaway checks, integrity checks |
 
 The CSVs are not committed to git (`data/v2/.gitignore`). The same seed and settings reproduce them byte for byte, and `manifest.json` records their checksums.
 
