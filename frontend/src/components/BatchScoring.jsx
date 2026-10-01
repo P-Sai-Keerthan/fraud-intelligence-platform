@@ -14,7 +14,7 @@ CUST_0002,92000,electronics,DEV_UNKNOWN_1234,Lagos,5
 CUST_0003,2200,dining,,,0
 `
 
-export default function BatchScoring() {
+export default function BatchScoring({ riskColumn = 'Risk Score' }) {
   const [file, setFile] = useState(null)
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -101,7 +101,7 @@ export default function BatchScoring() {
                 <tr style={{ color: 'var(--text-muted)' }}>
                   <th className="text-left px-3 py-2 font-normal">Customer</th>
                   <th className="text-right px-3 py-2 font-normal">Amount</th>
-                  <th className="text-right px-3 py-2 font-normal">Risk Score</th>
+                  <th className="text-right px-3 py-2 font-normal">{riskColumn}</th>
                   <th className="text-right px-3 py-2 font-normal">Fraud Prob.</th>
                   <th className="text-left px-3 py-2 font-normal">Alert</th>
                 </tr>

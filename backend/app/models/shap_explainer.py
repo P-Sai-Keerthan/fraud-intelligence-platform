@@ -30,31 +30,50 @@ FEATURE_DISPLAY_NAMES = {
 
 
 class FraudExplainer:
-    def __init__(self, model, background_data: np.ndarray):
+    def __init__(self, model, background_data: np.ndarray, feature_names=None):
         """
         model: trained keras DNN model
         background_data: normalized background sample (n_samples, n_features)
                           used as the SHAP reference distribution
+        feature_names: the model's input columns, in input order (from the
+                       loaded model set). Defaults to the production DNN's
+                       DNN_INPUT_COLUMNS. The names must match the model's
+                       input width and the background width, otherwise a
+                       reason would be attributed to the wrong feature, so a
+                       mismatch raises ValueError instead.
         """
+        self.feature_names = list(DNN_INPUT_COLUMNS if feature_names is None else feature_names)
+        n = len(self.feature_names)
+        model_width = model.input_shape[-1]
+        if model_width != n:
+            raise ValueError(f"SHAP: model takes {model_width} inputs but {n} feature names were given")
+        if background_data.ndim != 2 or background_data.shape[1] != n:
+            raise ValueError(f"SHAP: background shape {background_data.shape} does not match {n} feature names")
         self.model = model
         # KernelExplainer works model-agnostically but is slow; for a Keras
         # dense model, GradientExplainer is much faster and accurate enough.
         self.explainer = shap.GradientExplainer(model, background_data)
 
-    def explain(self, x_normalized: np.ndarray, top_k: int = 4):
+    def explain(self, x_normalized: np.ndarray, top_k: int = 4, exclude=()):
         """
         x_normalized: single normalized feature vector, shape (1, n_features)
         Returns: list of {feature, display_name, shap_value, contribution} sorted
         by absolute contribution, top_k only, restricted to POSITIVE
         contributions (i.e. features pushing toward "fraud").
+        exclude: feature names never reported (e.g. inputs the pipeline
+        imputed because they were not observed).
         """
         shap_values = self.explainer.shap_values(x_normalized)
         # shap_values shape can be (1, n_features, 1) for single-output models
         values = np.array(shap_values)
         values = values.reshape(-1)  # flatten to (n_features,)
+        if len(values) != len(self.feature_names):
+            raise ValueError(f"SHAP returned {len(values)} values for {len(self.feature_names)} features")
 
         reasons = []
-        for feat_name, shap_val in zip(DNN_INPUT_COLUMNS, values):
+        for feat_name, shap_val in zip(self.feature_names, values):
+            if feat_name in exclude:
+                continue
             reasons.append({
                 "feature": feat_name,
                 "display_name": FEATURE_DISPLAY_NAMES.get(feat_name, feat_name),

@@ -30,8 +30,8 @@ class PredictionResponse(BaseModel):
     location: str
     failed_logins_24h: int
 
-    risk_score: float = Field(..., description="0-100, from LSTM behavioral risk model")
-    fraud_probability: float = Field(..., description="0-100%, from DNN real-time classifier")
+    risk_score: float = Field(..., description="0-100. production / v2_dnn_lstm: LSTM risk score from the customer's previous transactions; v2_dnn_only: repeats the DNN fraud score (no LSTM). See GET /model-info")
+    fraud_probability: float = Field(..., description="0-100, DNN fraud score (capped at 99.9); a model score, not a calibrated probability")
     alert_level: str = Field(..., description="Low Risk / Medium Risk / High Risk / Critical Risk")
 
     similarity_pct: float = Field(..., description="0-100, how closely this matches the customer's normal behavior")
@@ -69,7 +69,7 @@ class BatchPredictionResponse(BaseModel):
 
 class CustomerProfile(BaseModel):
     customer_id: str
-    home_device: str = Field(..., description="the customer's most frequently used device_id")
+    home_device: str = Field(..., description="the customer's most frequently used device_id in the 90 days up to their newest transaction (whole history if less than 90 days or fewer than 5 transactions in that window)")
     home_location: str = Field(..., description="the customer's most frequent transaction city")
     n_transactions: int = Field(..., description="transactions in the customer's history (seed + scored)")
 

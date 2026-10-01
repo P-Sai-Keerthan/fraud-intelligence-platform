@@ -89,13 +89,38 @@ def fit_lstm(X, y, timestamps, seed: int = EVAL_SEED) -> LSTMScorer:
     return LSTMScorer(model, mean, std, info)
 
 
+DNN_PREDICT_BATCH = 4096
+
+
+def predict_fixed_batch(model, X, batch_size: int = DNN_PREDICT_BATCH) -> np.ndarray:
+    """model outputs for X, computed in batches of exactly `batch_size` rows (the
+    last batch is zero-padded and the padding discarded).
+
+    A float32 forward pass is not batch-invariant: the CPU matmul kernels that
+    Keras/TensorFlow pick depend on the number of rows in the batch, so the same
+    row can come out a few ulp different depending on which other rows are
+    scored with it (e.g. all rows at once vs. a subset, or one row alone), and
+    how much depends on the platform (oneDNN on/off, instruction set, OS build).
+    With every batch the same shape, each row's result depends only on the row
+    itself, so scoring a subset reproduces scoring everything, bit for bit."""
+    X = np.asarray(X, dtype=np.float32)
+    out = []
+    for start in range(0, len(X), batch_size):
+        chunk = X[start:start + batch_size]
+        n = len(chunk)
+        if n < batch_size:
+            chunk = np.concatenate([chunk, np.zeros((batch_size - n,) + chunk.shape[1:], dtype=np.float32)])
+        out.append(np.asarray(model.predict_on_batch(chunk)).reshape(batch_size, -1)[:n, 0])
+    return np.concatenate(out) if out else np.zeros(0, dtype=np.float32)
+
+
 class DNNScorer:
     def __init__(self, model, mean, std, info):
         self.model, self.mean, self.std, self.info = model, mean, std, info
 
     def predict(self, X):
         Xn = np.clip((X - self.mean) / self.std, -CLIP, CLIP)
-        return self.model.predict(Xn, batch_size=4096, verbose=0).ravel()
+        return predict_fixed_batch(self.model, Xn)
 
 
 def fit_dnn(X, y, timestamps, seed: int = EVAL_SEED) -> DNNScorer:

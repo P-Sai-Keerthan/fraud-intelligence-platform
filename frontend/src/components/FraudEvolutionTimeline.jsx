@@ -1,6 +1,6 @@
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
-export default function FraudEvolutionTimeline({ timeline }) {
+export default function FraudEvolutionTimeline({ timeline, riskName = 'Risk Score' }) {
   if (!timeline || timeline.length === 0) {
     return (
       <div className="flex items-center justify-center h-48 text-sm" style={{ color: 'var(--text-faint)' }}>
@@ -37,7 +37,7 @@ export default function FraudEvolutionTimeline({ timeline }) {
           labelStyle={{ color: 'var(--text-primary)' }}
         />
         <Line
-          type="monotone" dataKey="risk_score" name="Risk Score"
+          type="monotone" dataKey="risk_score" name={riskName}
           stroke="var(--brand)" strokeWidth={2} dot={{ r: 3, fill: 'var(--brand)' }}
           activeDot={{ r: 5 }}
         />

@@ -6,6 +6,9 @@ pandas==3.0.2
 numpy==2.4.4
 scikit-learn==1.8.0
 tensorflow==2.21.0
+# Keras 3.15+ is required to load the saved .keras models (their initializer configs include
+# input_axes/output_axes, added in Keras 3.15.0); tensorflow 2.21 alone only requires keras>=3.12.
+keras>=3.15.0,<3.16
 shap==0.52.0
 pydantic==2.10.4
 reportlab==5.0.0

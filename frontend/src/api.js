@@ -31,6 +31,11 @@ export async function getMetrics() {
   return data
 }
 
+export async function getModelInfo() {
+  const { data } = await api.get('/model-info')
+  return data
+}
+
 export async function getFraudRings() {
   const { data } = await api.get('/fraud-rings')
   return data

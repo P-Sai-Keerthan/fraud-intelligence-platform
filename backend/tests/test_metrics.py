@@ -25,7 +25,11 @@ pytestmark = pytest.mark.slow
 
 
 def test_metrics_has_both_models(metrics):
-    assert set(metrics) == set(MODELS)
+    # the two model entries are unchanged; since 4C-2f-2 the response also names
+    # the loaded model set and what the metrics evaluate (tests/test_observability.py)
+    assert set(MODELS) <= set(metrics)
+    assert metrics["model_set"] == "production"
+    assert metrics["evaluation"]["dataset_version"] == "v1"
 
 
 @pytest.mark.parametrize("model", MODELS)

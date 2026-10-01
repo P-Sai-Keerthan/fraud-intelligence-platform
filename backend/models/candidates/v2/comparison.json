@@ -1,0 +1,1969 @@
+{
+  "dataset": {
+    "version": "v2",
+    "file": "transactions_with_features.csv",
+    "sha256": "a09d06114ce7c0dec4b93ff9946ab9506f5c7d25317bb95396b596f2f7b1ef08"
+  },
+  "split": {
+    "file": "split_time.json",
+    "sha256": "701301ae8d9fdb2a2c4a9f1d31f6753f2c402db905602a83e949dd98e690efcc",
+    "train_before": "2026-05-03 00:00:00",
+    "validation_before": "2026-06-01 00:00:00"
+  },
+  "features": {
+    "columns": [
+      "amount_zscore",
+      "hour_is_unusual",
+      "is_new_device",
+      "is_new_location",
+      "is_foreign_location",
+      "failed_logins_24h",
+      "category_is_unusual",
+      "txn_velocity_1h",
+      "amount_pct_of_avg"
+    ],
+    "sha256": "78f61bd7db8565c694e8a76c0157d3282d25edfa4332a2b1f6e5cdee1052ed3e"
+  },
+  "candidates": {
+    "candidate_a_dnn_lstm": {
+      "label": "Candidate A (DNN + LSTM)",
+      "directory": "dnn_lstm",
+      "manifest_sha256": "c9d033aedeb8318bbd65c65955194a49d55452db869eb26f104938449d005bee",
+      "dnn_weights_sha256": "4f1dd9534ec391e56d97ce5efa54bacf68f4958a1b39940ca06ac1a3d3f82ab1",
+      "lstm_weights_sha256": "d204d4cba7b902a9fb5569a60044dc58f2e2332a9a5b69f527ed8b799e762475",
+      "dnn_input_columns": [
+        "amount_zscore",
+        "hour_is_unusual",
+        "is_new_device",
+        "is_new_location",
+        "is_foreign_location",
+        "failed_logins_24h",
+        "category_is_unusual",
+        "txn_velocity_1h",
+        "amount_pct_of_avg",
+        "risk_score"
+      ],
+      "thresholds": {
+        "f1_optimal": 0.9592823386192322,
+        "source": "validation split only (F1-maximizing; metrics.select_threshold)",
+        "fpr_operating_points": {
+          "0.001": 0.9678832292556764,
+          "0.01": 0.7676545381546022,
+          "0.05": 0.5893999338150026
+        },
+        "fpr_operating_points_source": "validation split only (lowest threshold with validation FPR <= target)"
+      }
+    },
+    "candidate_b_dnn_only": {
+      "label": "Candidate B (DNN only)",
+      "directory": "dnn_only",
+      "manifest_sha256": "e3e8f1d256a13943d585967d086f4580776ccaec6f3fe485cbfdccc6196871a2",
+      "dnn_weights_sha256": "71516e889961c85c606eb374907a82a851d6494dccd77def865d42c572c1b1fc",
+      "lstm_weights_sha256": null,
+      "dnn_input_columns": [
+        "amount_zscore",
+        "hour_is_unusual",
+        "is_new_device",
+        "is_new_location",
+        "is_foreign_location",
+        "failed_logins_24h",
+        "category_is_unusual",
+        "txn_velocity_1h",
+        "amount_pct_of_avg"
+      ],
+      "thresholds": {
+        "f1_optimal": 0.7698138654232025,
+        "source": "validation split only (F1-maximizing; metrics.select_threshold)",
+        "fpr_operating_points": {
+          "0.001": 0.9118827581405641,
+          "0.01": 0.7743993997573854,
+          "0.05": 0.5765002965927125
+        },
+        "fpr_operating_points_source": "validation split only (lowest threshold with validation FPR <= target)"
+      }
+    }
+  },
+  "scores_note": "model scores are not calibrated probabilities (class-weighted training); thresholds come from the validation split only",
+  "rows": {
+    "validation": 16315,
+    "validation_fraud": 119,
+    "test": 21142,
+    "test_fraud": 61,
+    "test_legitimate": 21081,
+    "test_fraud_episodes": 14
+  },
+  "matches_4c2d_evaluation_scores": {
+    "available": true,
+    "candidate_a_dnn_lstm": {
+      "identical": true,
+      "max_abs_difference": 0.0
+    },
+    "candidate_b_dnn_only": {
+      "identical": true,
+      "max_abs_difference": 0.0
+    }
+  },
+  "overall_test": {
+    "candidate_a_dnn_lstm": {
+      "pr_auc": 0.1045,
+      "auc_roc": 0.8993,
+      "precision": 0.1837,
+      "recall": 0.1475,
+      "f1_score": 0.1636,
+      "false_positive_rate": 0.001897,
+      "alerts_per_1000": 2.32,
+      "confusion_matrix": {
+        "true_negative": 21041,
+        "false_positive": 40,
+        "false_negative": 52,
+        "true_positive": 9
+      },
+      "test_set_size": 21142,
+      "fraud_rate_pct": 0.289,
+      "threshold": 0.9592823386192322,
+      "false_negatives": 52,
+      "false_positives": 40
+    },
+    "candidate_b_dnn_only": {
+      "pr_auc": 0.1283,
+      "auc_roc": 0.8965,
+      "precision": 0.12,
+      "recall": 0.3934,
+      "f1_score": 0.1839,
+      "false_positive_rate": 0.008349,
+      "alerts_per_1000": 9.46,
+      "confusion_matrix": {
+        "true_negative": 20905,
+        "false_positive": 176,
+        "false_negative": 37,
+        "true_positive": 24
+      },
+      "test_set_size": 21142,
+      "fraud_rate_pct": 0.289,
+      "threshold": 0.7698138654232025,
+      "false_negatives": 37,
+      "false_positives": 176
+    }
+  },
+  "operating_points": {
+    "candidate_a_dnn_lstm": {
+      "f1_optimal": {
+        "threshold": 0.9592823386192322,
+        "validation_fpr": 0.002902,
+        "test_precision": 0.1837,
+        "test_recall": 0.1475,
+        "test_f1": 0.1636,
+        "test_fpr": 0.001897,
+        "test_alerts_per_1000": 2.32,
+        "test_true_positives": 9,
+        "test_false_positives": 40
+      },
+      "fpr_0.001": {
+        "threshold": 0.9678832292556764,
+        "validation_fpr": 0.00105,
+        "test_precision": 0.2,
+        "test_recall": 0.0656,
+        "test_f1": 0.0988,
+        "test_fpr": 0.000759,
+        "test_alerts_per_1000": 0.95,
+        "test_true_positives": 4,
+        "test_false_positives": 16
+      },
+      "fpr_0.01": {
+        "threshold": 0.7676545381546022,
+        "validation_fpr": 0.010002,
+        "test_precision": 0.1471,
+        "test_recall": 0.4098,
+        "test_f1": 0.2165,
+        "test_fpr": 0.006878,
+        "test_alerts_per_1000": 8.04,
+        "test_true_positives": 25,
+        "test_false_positives": 145
+      },
+      "fpr_0.05": {
+        "threshold": 0.5893999338150026,
+        "validation_fpr": 0.050012,
+        "test_precision": 0.038,
+        "test_recall": 0.6393,
+        "test_f1": 0.0718,
+        "test_fpr": 0.046819,
+        "test_alerts_per_1000": 48.53,
+        "test_true_positives": 39,
+        "test_false_positives": 987
+      }
+    },
+    "candidate_b_dnn_only": {
+      "f1_optimal": {
+        "threshold": 0.7698138654232025,
+        "validation_fpr": 0.01062,
+        "test_precision": 0.12,
+        "test_recall": 0.3934,
+        "test_f1": 0.1839,
+        "test_fpr": 0.008349,
+        "test_alerts_per_1000": 9.46,
+        "test_true_positives": 24,
+        "test_false_positives": 176
+      },
+      "fpr_0.001": {
+        "threshold": 0.9118827581405641,
+        "validation_fpr": 0.00105,
+        "test_precision": 0.4,
+        "test_recall": 0.1639,
+        "test_f1": 0.2326,
+        "test_fpr": 0.000712,
+        "test_alerts_per_1000": 1.18,
+        "test_true_positives": 10,
+        "test_false_positives": 15
+      },
+      "fpr_0.01": {
+        "threshold": 0.7743993997573854,
+        "validation_fpr": 0.010002,
+        "test_precision": 0.1224,
+        "test_recall": 0.3934,
+        "test_f1": 0.1868,
+        "test_fpr": 0.008159,
+        "test_alerts_per_1000": 9.27,
+        "test_true_positives": 24,
+        "test_false_positives": 172
+      },
+      "fpr_0.05": {
+        "threshold": 0.5765002965927125,
+        "validation_fpr": 0.050012,
+        "test_precision": 0.0353,
+        "test_recall": 0.6393,
+        "test_f1": 0.0669,
+        "test_fpr": 0.050567,
+        "test_alerts_per_1000": 52.27,
+        "test_true_positives": 39,
+        "test_false_positives": 1066
+      }
+    }
+  },
+  "alert_bands_production_25_50_80": {
+    "candidate_a_dnn_lstm": {
+      "bands": {
+        "Low": {
+          "legitimate": 17929,
+          "fraud": 9,
+          "per_1000_transactions": 848.45
+        },
+        "Medium": {
+          "legitimate": 1817,
+          "fraud": 7,
+          "per_1000_transactions": 86.27
+        },
+        "High": {
+          "legitimate": 1223,
+          "fraud": 23,
+          "per_1000_transactions": 58.93
+        },
+        "Critical": {
+          "legitimate": 112,
+          "fraud": 22,
+          "per_1000_transactions": 6.34
+        }
+      },
+      "high_or_critical_per_1000": 65.27,
+      "high_or_critical_legitimate_per_1000": 63.14,
+      "high_or_critical_fraud_recall": 0.7377
+    },
+    "candidate_b_dnn_only": {
+      "bands": {
+        "Low": {
+          "legitimate": 16906,
+          "fraud": 7,
+          "per_1000_transactions": 799.97
+        },
+        "Medium": {
+          "legitimate": 2501,
+          "fraud": 10,
+          "per_1000_transactions": 118.77
+        },
+        "High": {
+          "legitimate": 1530,
+          "fraud": 22,
+          "per_1000_transactions": 73.41
+        },
+        "Critical": {
+          "legitimate": 144,
+          "fraud": 22,
+          "per_1000_transactions": 7.85
+        }
+      },
+      "high_or_critical_per_1000": 81.26,
+      "high_or_critical_legitimate_per_1000": 79.18,
+      "high_or_critical_fraud_recall": 0.7213
+    }
+  },
+  "episodes_test": {
+    "candidate_a_dnn_lstm": {
+      "episodes": 14,
+      "first_fraud_transactions": 14,
+      "first_fraud_detected": 1,
+      "first_fraud_recall": 0.0714,
+      "first_fraud_recall_wilson95": [
+        0.0127,
+        0.3147
+      ],
+      "episodes_detected": 3,
+      "episodes_detected_only_after_onset": 2,
+      "episodes_never_detected": 11,
+      "median_delay_fraud_transactions_detected": 3.0,
+      "median_delay_hours_detected": 1.4,
+      "median_delay_hours_detected_after_onset": 16.93,
+      "per_episode": [
+        {
+          "episode": 97,
+          "fraud_type": "device_takeover",
+          "fraud_rows": 2,
+          "first_detected": false,
+          "detected": false,
+          "delay_fraud_transactions": null,
+          "delay_hours": null
+        },
+        {
+          "episode": 98,
+          "fraud_type": "device_takeover",
+          "fraud_rows": 1,
+          "first_detected": false,
+          "detected": false,
+          "delay_fraud_transactions": null,
+          "delay_hours": null
+        },
+        {
+          "episode": 99,
+          "fraud_type": "card_testing_cashout",
+          "fraud_rows": 8,
+          "first_detected": false,
+          "detected": true,
+          "delay_fraud_transactions": 4,
+          "delay_hours": 1.4
+        },
+        {
+          "episode": 100,
+          "fraud_type": "device_takeover",
+          "fraud_rows": 3,
+          "first_detected": false,
+          "detected": false,
+          "delay_fraud_transactions": null,
+          "delay_hours": null
+        },
+        {
+          "episode": 101,
+          "fraud_type": "normal_looking",
+          "fraud_rows": 4,
+          "first_detected": false,
+          "detected": false,
+          "delay_fraud_transactions": null,
+          "delay_hours": null
+        },
+        {
+          "episode": 102,
+          "fraud_type": "card_testing_cashout",
+          "fraud_rows": 3,
+          "first_detected": false,
+          "detected": false,
+          "delay_fraud_transactions": null,
+          "delay_hours": null
+        },
+        {
+          "episode": 103,
+          "fraud_type": "high_value_single",
+          "fraud_rows": 2,
+          "first_detected": false,
+          "detected": false,
+          "delay_fraud_transactions": null,
+          "delay_hours": null
+        },
+        {
+          "episode": 104,
+          "fraud_type": "card_testing_cashout",
+          "fraud_rows": 8,
+          "first_detected": false,
+          "detected": false,
+          "delay_fraud_transactions": null,
+          "delay_hours": null
+        },
+        {
+          "episode": 105,
+          "fraud_type": "account_takeover",
+          "fraud_rows": 3,
+          "first_detected": false,
+          "detected": false,
+          "delay_fraud_transactions": null,
+          "delay_hours": null
+        },
+        {
+          "episode": 106,
+          "fraud_type": "stolen_card_online",
+          "fraud_rows": 5,
+          "first_detected": false,
+          "detected": false,
+          "delay_fraud_transactions": null,
+          "delay_hours": null
+        },
+        {
+          "episode": 107,
+          "fraud_type": "account_takeover",
+          "fraud_rows": 2,
+          "first_detected": true,
+          "detected": true,
+          "delay_fraud_transactions": 0,
+          "delay_hours": 0.0
+        },
+        {
+          "episode": 108,
+          "fraud_type": "stolen_card_online",
+          "fraud_rows": 9,
+          "first_detected": false,
+          "detected": true,
+          "delay_fraud_transactions": 3,
+          "delay_hours": 32.46
+        },
+        {
+          "episode": 109,
+          "fraud_type": "account_takeover",
+          "fraud_rows": 5,
+          "first_detected": false,
+          "detected": false,
+          "delay_fraud_transactions": null,
+          "delay_hours": null
+        },
+        {
+          "episode": 110,
+          "fraud_type": "card_testing_cashout",
+          "fraud_rows": 6,
+          "first_detected": false,
+          "detected": false,
+          "delay_fraud_transactions": null,
+          "delay_hours": null
+        }
+      ]
+    },
+    "candidate_b_dnn_only": {
+      "episodes": 14,
+      "first_fraud_transactions": 14,
+      "first_fraud_detected": 5,
+      "first_fraud_recall": 0.3571,
+      "first_fraud_recall_wilson95": [
+        0.1634,
+        0.6124
+      ],
+      "episodes_detected": 7,
+      "episodes_detected_only_after_onset": 2,
+      "episodes_never_detected": 7,
+      "median_delay_fraud_transactions_detected": 0.0,
+      "median_delay_hours_detected": 0.0,
+      "median_delay_hours_detected_after_onset": 1.08,
+      "per_episode": [
+        {
+          "episode": 97,
+          "fraud_type": "device_takeover",
+          "fraud_rows": 2,
+          "first_detected": false,
+          "detected": false,
+          "delay_fraud_transactions": null,
+          "delay_hours": null
+        },
+        {
+          "episode": 98,
+          "fraud_type": "device_takeover",
+          "fraud_rows": 1,
+          "first_detected": true,
+          "detected": true,
+          "delay_fraud_transactions": 0,
+          "delay_hours": 0.0
+        },
+        {
+          "episode": 99,
+          "fraud_type": "card_testing_cashout",
+          "fraud_rows": 8,
+          "first_detected": false,
+          "detected": true,
+          "delay_fraud_transactions": 1,
+          "delay_hours": 1.05
+        },
+        {
+          "episode": 100,
+          "fraud_type": "device_takeover",
+          "fraud_rows": 3,
+          "first_detected": false,
+          "detected": false,
+          "delay_fraud_transactions": null,
+          "delay_hours": null
+        },
+        {
+          "episode": 101,
+          "fraud_type": "normal_looking",
+          "fraud_rows": 4,
+          "first_detected": false,
+          "detected": false,
+          "delay_fraud_transactions": null,
+          "delay_hours": null
+        },
+        {
+          "episode": 102,
+          "fraud_type": "card_testing_cashout",
+          "fraud_rows": 3,
+          "first_detected": false,
+          "detected": false,
+          "delay_fraud_transactions": null,
+          "delay_hours": null
+        },
+        {
+          "episode": 103,
+          "fraud_type": "high_value_single",
+          "fraud_rows": 2,
+          "first_detected": true,
+          "detected": true,
+          "delay_fraud_transactions": 0,
+          "delay_hours": 0.0
+        },
+        {
+          "episode": 104,
+          "fraud_type": "card_testing_cashout",
+          "fraud_rows": 8,
+          "first_detected": false,
+          "detected": true,
+          "delay_fraud_transactions": 4,
+          "delay_hours": 1.12
+        },
+        {
+          "episode": 105,
+          "fraud_type": "account_takeover",
+          "fraud_rows": 3,
+          "first_detected": true,
+          "detected": true,
+          "delay_fraud_transactions": 0,
+          "delay_hours": 0.0
+        },
+        {
+          "episode": 106,
+          "fraud_type": "stolen_card_online",
+          "fraud_rows": 5,
+          "first_detected": false,
+          "detected": false,
+          "delay_fraud_transactions": null,
+          "delay_hours": null
+        },
+        {
+          "episode": 107,
+          "fraud_type": "account_takeover",
+          "fraud_rows": 2,
+          "first_detected": true,
+          "detected": true,
+          "delay_fraud_transactions": 0,
+          "delay_hours": 0.0
+        },
+        {
+          "episode": 108,
+          "fraud_type": "stolen_card_online",
+          "fraud_rows": 9,
+          "first_detected": true,
+          "detected": true,
+          "delay_fraud_transactions": 0,
+          "delay_hours": 0.0
+        },
+        {
+          "episode": 109,
+          "fraud_type": "account_takeover",
+          "fraud_rows": 5,
+          "first_detected": false,
+          "detected": false,
+          "delay_fraud_transactions": null,
+          "delay_hours": null
+        },
+        {
+          "episode": 110,
+          "fraud_type": "card_testing_cashout",
+          "fraud_rows": 6,
+          "first_detected": false,
+          "detected": false,
+          "delay_fraud_transactions": null,
+          "delay_hours": null
+        }
+      ]
+    }
+  },
+  "warning_periods": {
+    "scope": "episodes whose first fraud is in the validation or test period (out-of-sample for both DNNs); an alert on a warning-period row is an alert on a LEGITIMATE transaction, not a fraud detection",
+    "episodes": 5,
+    "per_episode": [
+      {
+        "episode": 74,
+        "fraud_type": "account_takeover",
+        "split": "validation",
+        "warning_rows": 3,
+        "candidate_a_dnn_lstm": {
+          "max_warning_score": 0.775261,
+          "warning_rows_alerted": 0,
+          "alert_during_warning_period": false,
+          "first_fraud_alerted": true
+        },
+        "candidate_b_dnn_only": {
+          "max_warning_score": 0.819489,
+          "warning_rows_alerted": 1,
+          "alert_during_warning_period": true,
+          "first_fraud_alerted": true
+        },
+        "risk_score_a_warning_max": 18.33
+      },
+      {
+        "episode": 76,
+        "fraud_type": "account_takeover",
+        "split": "validation",
+        "warning_rows": 1,
+        "candidate_a_dnn_lstm": {
+          "max_warning_score": 0.092846,
+          "warning_rows_alerted": 0,
+          "alert_during_warning_period": false,
+          "first_fraud_alerted": false
+        },
+        "candidate_b_dnn_only": {
+          "max_warning_score": 0.224865,
+          "warning_rows_alerted": 0,
+          "alert_during_warning_period": false,
+          "first_fraud_alerted": true
+        },
+        "risk_score_a_warning_max": 16.65
+      },
+      {
+        "episode": 84,
+        "fraud_type": "card_testing_cashout",
+        "split": "validation",
+        "warning_rows": 1,
+        "candidate_a_dnn_lstm": {
+          "max_warning_score": 0.655633,
+          "warning_rows_alerted": 0,
+          "alert_during_warning_period": false,
+          "first_fraud_alerted": false
+        },
+        "candidate_b_dnn_only": {
+          "max_warning_score": 0.658525,
+          "warning_rows_alerted": 0,
+          "alert_during_warning_period": false,
+          "first_fraud_alerted": false
+        },
+        "risk_score_a_warning_max": 16.72
+      },
+      {
+        "episode": 90,
+        "fraud_type": "ring",
+        "split": "validation",
+        "warning_rows": 2,
+        "candidate_a_dnn_lstm": {
+          "max_warning_score": 0.609076,
+          "warning_rows_alerted": 0,
+          "alert_during_warning_period": false,
+          "first_fraud_alerted": false
+        },
+        "candidate_b_dnn_only": {
+          "max_warning_score": 0.789414,
+          "warning_rows_alerted": 1,
+          "alert_during_warning_period": true,
+          "first_fraud_alerted": false
+        },
+        "risk_score_a_warning_max": 17.55
+      },
+      {
+        "episode": 105,
+        "fraud_type": "account_takeover",
+        "split": "test",
+        "warning_rows": 2,
+        "candidate_a_dnn_lstm": {
+          "max_warning_score": 0.815711,
+          "warning_rows_alerted": 0,
+          "alert_during_warning_period": false,
+          "first_fraud_alerted": false
+        },
+        "candidate_b_dnn_only": {
+          "max_warning_score": 0.737012,
+          "warning_rows_alerted": 0,
+          "alert_during_warning_period": false,
+          "first_fraud_alerted": true
+        },
+        "risk_score_a_warning_max": 95.11
+      }
+    ],
+    "summary": {
+      "candidate_a_dnn_lstm": {
+        "before_warning": {
+          "rows": 69,
+          "median": 0.111356,
+          "mean": 0.201069,
+          "share_at_or_above_threshold": 0.0
+        },
+        "warning": {
+          "rows": 9,
+          "median": 0.609076,
+          "mean": 0.485838,
+          "share_at_or_above_threshold": 0.0
+        },
+        "first_fraud": {
+          "rows": 5,
+          "median": 0.811343,
+          "mean": 0.828942,
+          "share_at_or_above_threshold": 0.2
+        },
+        "later_fraud": {
+          "rows": 19,
+          "median": 0.853233,
+          "mean": 0.835608,
+          "share_at_or_above_threshold": 0.3684
+        },
+        "forgot_password_rows_other_customers": {
+          "rows": 865,
+          "median": 0.653264,
+          "mean": 0.609865,
+          "share_at_or_above_threshold": 0.0069
+        },
+        "episodes_with_an_alert_during_warning_period": 0,
+        "episodes_first_fraud_alerted": 1
+      },
+      "candidate_b_dnn_only": {
+        "before_warning": {
+          "rows": 69,
+          "median": 0.118099,
+          "mean": 0.197223,
+          "share_at_or_above_threshold": 0.0145
+        },
+        "warning": {
+          "rows": 9,
+          "median": 0.658525,
+          "mean": 0.519821,
+          "share_at_or_above_threshold": 0.2222
+        },
+        "first_fraud": {
+          "rows": 5,
+          "median": 0.854251,
+          "mean": 0.680919,
+          "share_at_or_above_threshold": 0.6
+        },
+        "later_fraud": {
+          "rows": 19,
+          "median": 0.81814,
+          "mean": 0.833292,
+          "share_at_or_above_threshold": 0.8947
+        },
+        "forgot_password_rows_other_customers": {
+          "rows": 865,
+          "median": 0.646749,
+          "mean": 0.590984,
+          "share_at_or_above_threshold": 0.1399
+        },
+        "episodes_with_an_alert_during_warning_period": 2,
+        "episodes_first_fraud_alerted": 3
+      }
+    }
+  },
+  "false_positives": {
+    "by_legit_context": [
+      {
+        "context": "(all legitimate)",
+        "legitimate_rows": 21081,
+        "candidate_a_dnn_lstm.flagged": 40,
+        "candidate_a_dnn_lstm.fpr": 0.0019,
+        "candidate_b_dnn_only.flagged": 176,
+        "candidate_b_dnn_only.fpr": 0.00835
+      },
+      {
+        "context": "(no unusual context)",
+        "legitimate_rows": 15824,
+        "candidate_a_dnn_lstm.flagged": 0,
+        "candidate_a_dnn_lstm.fpr": 0.0,
+        "candidate_b_dnn_only.flagged": 1,
+        "candidate_b_dnn_only.fpr": 6e-05
+      },
+      {
+        "context": "big_purchase",
+        "legitimate_rows": 303,
+        "candidate_a_dnn_lstm.flagged": 1,
+        "candidate_a_dnn_lstm.fpr": 0.0033,
+        "candidate_b_dnn_only.flagged": 42,
+        "candidate_b_dnn_only.fpr": 0.13861
+      },
+      {
+        "context": "borrowed_device",
+        "legitimate_rows": 7,
+        "candidate_a_dnn_lstm.flagged": 0,
+        "candidate_a_dnn_lstm.fpr": 0.0,
+        "candidate_b_dnn_only.flagged": 0,
+        "candidate_b_dnn_only.fpr": 0.0
+      },
+      {
+        "context": "burst",
+        "legitimate_rows": 382,
+        "candidate_a_dnn_lstm.flagged": 4,
+        "candidate_a_dnn_lstm.fpr": 0.01047,
+        "candidate_b_dnn_only.flagged": 28,
+        "candidate_b_dnn_only.fpr": 0.0733
+      },
+      {
+        "context": "device_upgrade",
+        "legitimate_rows": 334,
+        "candidate_a_dnn_lstm.flagged": 0,
+        "candidate_a_dnn_lstm.fpr": 0.0,
+        "candidate_b_dnn_only.flagged": 1,
+        "candidate_b_dnn_only.fpr": 0.00299
+      },
+      {
+        "context": "forgot_password",
+        "legitimate_rows": 541,
+        "candidate_a_dnn_lstm.flagged": 3,
+        "candidate_a_dnn_lstm.fpr": 0.00555,
+        "candidate_b_dnn_only.flagged": 76,
+        "candidate_b_dnn_only.fpr": 0.14048
+      },
+      {
+        "context": "household_device",
+        "legitimate_rows": 836,
+        "candidate_a_dnn_lstm.flagged": 0,
+        "candidate_a_dnn_lstm.fpr": 0.0,
+        "candidate_b_dnn_only.flagged": 6,
+        "candidate_b_dnn_only.fpr": 0.00718
+      },
+      {
+        "context": "new_category",
+        "legitimate_rows": 594,
+        "candidate_a_dnn_lstm.flagged": 1,
+        "candidate_a_dnn_lstm.fpr": 0.00168,
+        "candidate_b_dnn_only.flagged": 7,
+        "candidate_b_dnn_only.fpr": 0.01178
+      },
+      {
+        "context": "public_network",
+        "legitimate_rows": 932,
+        "candidate_a_dnn_lstm.flagged": 0,
+        "candidate_a_dnn_lstm.fpr": 0.0,
+        "candidate_b_dnn_only.flagged": 4,
+        "candidate_b_dnn_only.fpr": 0.00429
+      },
+      {
+        "context": "small_purchase",
+        "legitimate_rows": 1041,
+        "candidate_a_dnn_lstm.flagged": 1,
+        "candidate_a_dnn_lstm.fpr": 0.00096,
+        "candidate_b_dnn_only.flagged": 4,
+        "candidate_b_dnn_only.fpr": 0.00384
+      },
+      {
+        "context": "travel_domestic",
+        "legitimate_rows": 391,
+        "candidate_a_dnn_lstm.flagged": 0,
+        "candidate_a_dnn_lstm.fpr": 0.0,
+        "candidate_b_dnn_only.flagged": 1,
+        "candidate_b_dnn_only.fpr": 0.00256
+      },
+      {
+        "context": "travel_foreign",
+        "legitimate_rows": 59,
+        "candidate_a_dnn_lstm.flagged": 39,
+        "candidate_a_dnn_lstm.fpr": 0.66102,
+        "candidate_b_dnn_only.flagged": 57,
+        "candidate_b_dnn_only.fpr": 0.9661
+      },
+      {
+        "context": "vpn",
+        "legitimate_rows": 381,
+        "candidate_a_dnn_lstm.flagged": 0,
+        "candidate_a_dnn_lstm.fpr": 0.0,
+        "candidate_b_dnn_only.flagged": 3,
+        "candidate_b_dnn_only.fpr": 0.00787
+      }
+    ],
+    "by_signal": [
+      {
+        "signal": "(all legitimate)",
+        "legitimate_rows_with_signal": 21081,
+        "candidate_a_dnn_lstm.false_positives_with_signal": 40,
+        "candidate_a_dnn_lstm.share_of_all_false_positives": 1.0,
+        "candidate_a_dnn_lstm.fpr_within_signal": 0.0019,
+        "candidate_b_dnn_only.false_positives_with_signal": 176,
+        "candidate_b_dnn_only.share_of_all_false_positives": 1.0,
+        "candidate_b_dnn_only.fpr_within_signal": 0.00835
+      },
+      {
+        "signal": "foreign location",
+        "legitimate_rows_with_signal": 59,
+        "candidate_a_dnn_lstm.false_positives_with_signal": 39,
+        "candidate_a_dnn_lstm.share_of_all_false_positives": 0.975,
+        "candidate_a_dnn_lstm.fpr_within_signal": 0.66102,
+        "candidate_b_dnn_only.false_positives_with_signal": 57,
+        "candidate_b_dnn_only.share_of_all_false_positives": 0.3239,
+        "candidate_b_dnn_only.fpr_within_signal": 0.9661
+      },
+      {
+        "signal": "new device",
+        "legitimate_rows_with_signal": 30,
+        "candidate_a_dnn_lstm.false_positives_with_signal": 0,
+        "candidate_a_dnn_lstm.share_of_all_false_positives": 0.0,
+        "candidate_a_dnn_lstm.fpr_within_signal": 0.0,
+        "candidate_b_dnn_only.false_positives_with_signal": 0,
+        "candidate_b_dnn_only.share_of_all_false_positives": 0.0,
+        "candidate_b_dnn_only.fpr_within_signal": 0.0
+      },
+      {
+        "signal": "unusual hour",
+        "legitimate_rows_with_signal": 2711,
+        "candidate_a_dnn_lstm.false_positives_with_signal": 13,
+        "candidate_a_dnn_lstm.share_of_all_false_positives": 0.325,
+        "candidate_a_dnn_lstm.fpr_within_signal": 0.0048,
+        "candidate_b_dnn_only.false_positives_with_signal": 89,
+        "candidate_b_dnn_only.share_of_all_false_positives": 0.5057,
+        "candidate_b_dnn_only.fpr_within_signal": 0.03283
+      },
+      {
+        "signal": "unusual category",
+        "legitimate_rows_with_signal": 2571,
+        "candidate_a_dnn_lstm.false_positives_with_signal": 12,
+        "candidate_a_dnn_lstm.share_of_all_false_positives": 0.3,
+        "candidate_a_dnn_lstm.fpr_within_signal": 0.00467,
+        "candidate_b_dnn_only.false_positives_with_signal": 56,
+        "candidate_b_dnn_only.share_of_all_false_positives": 0.3182,
+        "candidate_b_dnn_only.fpr_within_signal": 0.02178
+      },
+      {
+        "signal": "failed logins in previous 24h",
+        "legitimate_rows_with_signal": 798,
+        "candidate_a_dnn_lstm.false_positives_with_signal": 6,
+        "candidate_a_dnn_lstm.share_of_all_false_positives": 0.15,
+        "candidate_a_dnn_lstm.fpr_within_signal": 0.00752,
+        "candidate_b_dnn_only.false_positives_with_signal": 83,
+        "candidate_b_dnn_only.share_of_all_false_positives": 0.4716,
+        "candidate_b_dnn_only.fpr_within_signal": 0.10401
+      },
+      {
+        "signal": "another transaction within the hour (burst)",
+        "legitimate_rows_with_signal": 2632,
+        "candidate_a_dnn_lstm.false_positives_with_signal": 8,
+        "candidate_a_dnn_lstm.share_of_all_false_positives": 0.2,
+        "candidate_a_dnn_lstm.fpr_within_signal": 0.00304,
+        "candidate_b_dnn_only.false_positives_with_signal": 40,
+        "candidate_b_dnn_only.share_of_all_false_positives": 0.2273,
+        "candidate_b_dnn_only.fpr_within_signal": 0.0152
+      },
+      {
+        "signal": "amount >= 300% of customer average",
+        "legitimate_rows_with_signal": 374,
+        "candidate_a_dnn_lstm.false_positives_with_signal": 1,
+        "candidate_a_dnn_lstm.share_of_all_false_positives": 0.025,
+        "candidate_a_dnn_lstm.fpr_within_signal": 0.00267,
+        "candidate_b_dnn_only.false_positives_with_signal": 45,
+        "candidate_b_dnn_only.share_of_all_false_positives": 0.2557,
+        "candidate_b_dnn_only.fpr_within_signal": 0.12032
+      }
+    ],
+    "by_customer_segment": [
+      {
+        "customer_segment": "business_traveller",
+        "legitimate_rows": 2467,
+        "candidate_a_dnn_lstm.false_positives": 14,
+        "candidate_a_dnn_lstm.fpr": 0.00567,
+        "candidate_b_dnn_only.false_positives": 40,
+        "candidate_b_dnn_only.fpr": 0.01621
+      },
+      {
+        "customer_segment": "household",
+        "legitimate_rows": 3129,
+        "candidate_a_dnn_lstm.false_positives": 0,
+        "candidate_a_dnn_lstm.fpr": 0.0,
+        "candidate_b_dnn_only.false_positives": 18,
+        "candidate_b_dnn_only.fpr": 0.00575
+      },
+      {
+        "customer_segment": "night_shift",
+        "legitimate_rows": 1714,
+        "candidate_a_dnn_lstm.false_positives": 0,
+        "candidate_a_dnn_lstm.fpr": 0.0,
+        "candidate_b_dnn_only.false_positives": 11,
+        "candidate_b_dnn_only.fpr": 0.00642
+      },
+      {
+        "customer_segment": "retiree",
+        "legitimate_rows": 1330,
+        "candidate_a_dnn_lstm.false_positives": 6,
+        "candidate_a_dnn_lstm.fpr": 0.00451,
+        "candidate_b_dnn_only.false_positives": 17,
+        "candidate_b_dnn_only.fpr": 0.01278
+      },
+      {
+        "customer_segment": "salaried_commuter",
+        "legitimate_rows": 8266,
+        "candidate_a_dnn_lstm.false_positives": 20,
+        "candidate_a_dnn_lstm.fpr": 0.00242,
+        "candidate_b_dnn_only.false_positives": 59,
+        "candidate_b_dnn_only.fpr": 0.00714
+      },
+      {
+        "customer_segment": "student",
+        "legitimate_rows": 4175,
+        "candidate_a_dnn_lstm.false_positives": 0,
+        "candidate_a_dnn_lstm.fpr": 0.0,
+        "candidate_b_dnn_only.false_positives": 31,
+        "candidate_b_dnn_only.fpr": 0.00743
+      }
+    ]
+  },
+  "fraud_types": {
+    "test": {
+      "account_takeover": {
+        "episodes": 3,
+        "fraud_transactions": 10,
+        "candidate_a_dnn_lstm": {
+          "recall": 0.2,
+          "caught": 2,
+          "first_fraud_detected": 1,
+          "episodes_detected": 1,
+          "median_delay_fraud_transactions": 0.0,
+          "median_delay_hours": 0.0
+        },
+        "candidate_b_dnn_only": {
+          "recall": 0.3,
+          "caught": 3,
+          "first_fraud_detected": 2,
+          "episodes_detected": 2,
+          "median_delay_fraud_transactions": 0.0,
+          "median_delay_hours": 0.0
+        }
+      },
+      "card_testing_cashout": {
+        "episodes": 4,
+        "fraud_transactions": 25,
+        "candidate_a_dnn_lstm": {
+          "recall": 0.12,
+          "caught": 3,
+          "first_fraud_detected": 0,
+          "episodes_detected": 1,
+          "median_delay_fraud_transactions": 4.0,
+          "median_delay_hours": 1.4
+        },
+        "candidate_b_dnn_only": {
+          "recall": 0.36,
+          "caught": 9,
+          "first_fraud_detected": 0,
+          "episodes_detected": 2,
+          "median_delay_fraud_transactions": 2.5,
+          "median_delay_hours": 1.08
+        }
+      },
+      "device_takeover": {
+        "episodes": 3,
+        "fraud_transactions": 6,
+        "candidate_a_dnn_lstm": {
+          "recall": 0.0,
+          "caught": 0,
+          "first_fraud_detected": 0,
+          "episodes_detected": 0,
+          "median_delay_fraud_transactions": null,
+          "median_delay_hours": null
+        },
+        "candidate_b_dnn_only": {
+          "recall": 0.1667,
+          "caught": 1,
+          "first_fraud_detected": 1,
+          "episodes_detected": 1,
+          "median_delay_fraud_transactions": 0.0,
+          "median_delay_hours": 0.0
+        }
+      },
+      "high_value_single": {
+        "episodes": 1,
+        "fraud_transactions": 2,
+        "candidate_a_dnn_lstm": {
+          "recall": 0.0,
+          "caught": 0,
+          "first_fraud_detected": 0,
+          "episodes_detected": 0,
+          "median_delay_fraud_transactions": null,
+          "median_delay_hours": null
+        },
+        "candidate_b_dnn_only": {
+          "recall": 1.0,
+          "caught": 2,
+          "first_fraud_detected": 1,
+          "episodes_detected": 1,
+          "median_delay_fraud_transactions": 0.0,
+          "median_delay_hours": 0.0
+        }
+      },
+      "normal_looking": {
+        "episodes": 1,
+        "fraud_transactions": 4,
+        "candidate_a_dnn_lstm": {
+          "recall": 0.0,
+          "caught": 0,
+          "first_fraud_detected": 0,
+          "episodes_detected": 0,
+          "median_delay_fraud_transactions": null,
+          "median_delay_hours": null
+        },
+        "candidate_b_dnn_only": {
+          "recall": 0.0,
+          "caught": 0,
+          "first_fraud_detected": 0,
+          "episodes_detected": 0,
+          "median_delay_fraud_transactions": null,
+          "median_delay_hours": null
+        }
+      },
+      "stolen_card_online": {
+        "episodes": 2,
+        "fraud_transactions": 14,
+        "candidate_a_dnn_lstm": {
+          "recall": 0.2857,
+          "caught": 4,
+          "first_fraud_detected": 0,
+          "episodes_detected": 1,
+          "median_delay_fraud_transactions": 3.0,
+          "median_delay_hours": 32.46
+        },
+        "candidate_b_dnn_only": {
+          "recall": 0.6429,
+          "caught": 9,
+          "first_fraud_detected": 1,
+          "episodes_detected": 1,
+          "median_delay_fraud_transactions": 0.0,
+          "median_delay_hours": 0.0
+        }
+      },
+      "_types_without_episodes": [
+        "ring"
+      ]
+    },
+    "validation_and_test_supplementary": {
+      "account_takeover": {
+        "episodes": 9,
+        "fraud_transactions": 35,
+        "candidate_a_dnn_lstm": {
+          "recall": 0.4,
+          "caught": 14,
+          "first_fraud_detected": 3,
+          "episodes_detected": 3,
+          "median_delay_fraud_transactions": 0.0,
+          "median_delay_hours": 0.0
+        },
+        "candidate_b_dnn_only": {
+          "recall": 0.6571,
+          "caught": 23,
+          "first_fraud_detected": 7,
+          "episodes_detected": 7,
+          "median_delay_fraud_transactions": 0.0,
+          "median_delay_hours": 0.0
+        }
+      },
+      "card_testing_cashout": {
+        "episodes": 6,
+        "fraud_transactions": 41,
+        "candidate_a_dnn_lstm": {
+          "recall": 0.0732,
+          "caught": 3,
+          "first_fraud_detected": 0,
+          "episodes_detected": 1,
+          "median_delay_fraud_transactions": 4.0,
+          "median_delay_hours": 1.4
+        },
+        "candidate_b_dnn_only": {
+          "recall": 0.4146,
+          "caught": 17,
+          "first_fraud_detected": 0,
+          "episodes_detected": 4,
+          "median_delay_fraud_transactions": 2.5,
+          "median_delay_hours": 1.08
+        }
+      },
+      "device_takeover": {
+        "episodes": 6,
+        "fraud_transactions": 13,
+        "candidate_a_dnn_lstm": {
+          "recall": 0.0,
+          "caught": 0,
+          "first_fraud_detected": 0,
+          "episodes_detected": 0,
+          "median_delay_fraud_transactions": null,
+          "median_delay_hours": null
+        },
+        "candidate_b_dnn_only": {
+          "recall": 0.1538,
+          "caught": 2,
+          "first_fraud_detected": 2,
+          "episodes_detected": 2,
+          "median_delay_fraud_transactions": 0.0,
+          "median_delay_hours": 0.0
+        }
+      },
+      "high_value_single": {
+        "episodes": 4,
+        "fraud_transactions": 7,
+        "candidate_a_dnn_lstm": {
+          "recall": 0.0,
+          "caught": 0,
+          "first_fraud_detected": 0,
+          "episodes_detected": 0,
+          "median_delay_fraud_transactions": null,
+          "median_delay_hours": null
+        },
+        "candidate_b_dnn_only": {
+          "recall": 0.5714,
+          "caught": 4,
+          "first_fraud_detected": 3,
+          "episodes_detected": 3,
+          "median_delay_fraud_transactions": 0.0,
+          "median_delay_hours": 0.0
+        }
+      },
+      "normal_looking": {
+        "episodes": 5,
+        "fraud_transactions": 14,
+        "candidate_a_dnn_lstm": {
+          "recall": 0.0,
+          "caught": 0,
+          "first_fraud_detected": 0,
+          "episodes_detected": 0,
+          "median_delay_fraud_transactions": null,
+          "median_delay_hours": null
+        },
+        "candidate_b_dnn_only": {
+          "recall": 0.0,
+          "caught": 0,
+          "first_fraud_detected": 0,
+          "episodes_detected": 0,
+          "median_delay_fraud_transactions": null,
+          "median_delay_hours": null
+        }
+      },
+      "ring": {
+        "episodes": 3,
+        "fraud_transactions": 4,
+        "candidate_a_dnn_lstm": {
+          "recall": 0.0,
+          "caught": 0,
+          "first_fraud_detected": 0,
+          "episodes_detected": 0,
+          "median_delay_fraud_transactions": null,
+          "median_delay_hours": null
+        },
+        "candidate_b_dnn_only": {
+          "recall": 0.0,
+          "caught": 0,
+          "first_fraud_detected": 0,
+          "episodes_detected": 0,
+          "median_delay_fraud_transactions": null,
+          "median_delay_hours": null
+        }
+      },
+      "stolen_card_online": {
+        "episodes": 9,
+        "fraud_transactions": 66,
+        "candidate_a_dnn_lstm": {
+          "recall": 0.2576,
+          "caught": 17,
+          "first_fraud_detected": 0,
+          "episodes_detected": 3,
+          "median_delay_fraud_transactions": 1.0,
+          "median_delay_hours": 22.36
+        },
+        "candidate_b_dnn_only": {
+          "recall": 0.3485,
+          "caught": 23,
+          "first_fraud_detected": 3,
+          "episodes_detected": 3,
+          "median_delay_fraud_transactions": 0.0,
+          "median_delay_hours": 0.0
+        }
+      },
+      "_types_without_episodes": []
+    }
+  },
+  "rings": {
+    "rings_total": 4,
+    "rings_in_test": [],
+    "per_ring": [
+      {
+        "ring": 4,
+        "split": [
+          "validation"
+        ],
+        "victims": 3,
+        "fraud_transactions": 4,
+        "out_of_sample": "all models",
+        "thresholds_selected_on_these_rows": true,
+        "candidate_a_dnn_lstm": {
+          "fraud_caught": 0,
+          "victims_detected": 0
+        },
+        "candidate_b_dnn_only": {
+          "fraud_caught": 0,
+          "victims_detected": 0
+        }
+      }
+    ],
+    "legitimate_shared_devices": {
+      "legitimate_test_rows_on_shared_devices": 1424,
+      "candidate_a_dnn_lstm.flagged": 0,
+      "candidate_b_dnn_only.flagged": 7
+    },
+    "production_ring_detector": {
+      "rule": "a device used by 2+ customers (app/inference_pipeline.py detect_fraud_rings, unchanged)",
+      "flagged_devices": 55,
+      "by_kind": {
+        "ring": 5,
+        "legitimate_only": 47,
+        "other_fraud": 3
+      },
+      "precision_ring_devices": 0.0909,
+      "rings_with_a_flagged_ring_device": 3,
+      "scope": "full v2 history (all splits); the detector is not a trained model"
+    }
+  },
+  "lstm_contribution": {
+    "detection_overlap_test": {
+      "per_model": {
+        "candidate_a_dnn_lstm": {
+          "pr_auc": 0.10449439393903685,
+          "auc_roc": 0.8992830930812534,
+          "precision": 0.1836734693877551,
+          "recall": 0.14754098360655737,
+          "f1": 0.16363636363636364,
+          "fpr": 0.0018974431952943408,
+          "alerts_per_1000": 2.3176615268186547,
+          "tp": 9,
+          "fp": 40
+        },
+        "candidate_b_dnn_only": {
+          "pr_auc": 0.12825819587652798,
+          "auc_roc": 0.8965162476350003,
+          "precision": 0.12,
+          "recall": 0.39344262295081966,
+          "f1": 0.1839080459770115,
+          "fpr": 0.0083487500592951,
+          "alerts_per_1000": 9.459842966606754,
+          "tp": 24,
+          "fp": 176
+        }
+      },
+      "difference_with_minus_without": {
+        "pr_auc": -0.023763801937491127,
+        "auc_roc": 0.0027668454462531633,
+        "precision": 0.06367346938775512,
+        "recall": -0.2459016393442623,
+        "f1": -0.020271682340647856,
+        "fpr": -0.006451306864000759,
+        "alerts_per_1000": -7.142181439788099,
+        "tp": -15,
+        "fp": -136
+      },
+      "fraud_caught_only_with_lstm": 0,
+      "fraud_caught_only_without_lstm": 15,
+      "fraud_caught_by_both": 9,
+      "fraud_missed_by_both": 37,
+      "false_positives_only_with_lstm": 2,
+      "false_positives_only_without_lstm": 138,
+      "false_positives_both": 38,
+      "episodes_detected_with": 3,
+      "episodes_detected_without": 7,
+      "episodes_only_with_lstm": 0,
+      "episodes_only_without_lstm": 4,
+      "first_frauds_only_with_lstm": 0,
+      "first_frauds_only_without_lstm": 4,
+      "score_correlation_test": 0.861493734083829
+    },
+    "score_differences_test": {
+      "all": {
+        "rows": 21142,
+        "mean": -0.022817,
+        "median": -0.001291,
+        "p05": -0.175948,
+        "p95": 0.053881,
+        "mean_abs": 0.049672,
+        "share_a_higher": 0.4675
+      },
+      "legitimate": {
+        "rows": 21081,
+        "mean": -0.022926,
+        "median": -0.001306,
+        "p05": -0.17573,
+        "p95": 0.051828,
+        "mean_abs": 0.04949,
+        "share_a_higher": 0.4673
+      },
+      "fraud": {
+        "rows": 61,
+        "mean": 0.014908,
+        "median": 0.007771,
+        "p05": -0.285525,
+        "p95": 0.257329,
+        "mean_abs": 0.112539,
+        "share_a_higher": 0.541
+      },
+      "correlation": 0.861494,
+      "fraud_rows": [
+        {
+          "episode": 97,
+          "fraud_type": "device_takeover",
+          "stage": "first",
+          "a": 0.649043,
+          "b": 0.520018,
+          "risk_score_a": 26.78
+        },
+        {
+          "episode": 97,
+          "fraud_type": "device_takeover",
+          "stage": "subsequent",
+          "a": 0.379869,
+          "b": 0.665394,
+          "risk_score_a": 17.56
+        },
+        {
+          "episode": 98,
+          "fraud_type": "device_takeover",
+          "stage": "first",
+          "a": 0.758653,
+          "b": 0.829352,
+          "risk_score_a": 11.36
+        },
+        {
+          "episode": 99,
+          "fraud_type": "card_testing_cashout",
+          "stage": "first",
+          "a": 0.870459,
+          "b": 0.613129,
+          "risk_score_a": 92.64
+        },
+        {
+          "episode": 99,
+          "fraud_type": "card_testing_cashout",
+          "stage": "subsequent",
+          "a": 0.94528,
+          "b": 0.799847,
+          "risk_score_a": 99.07
+        },
+        {
+          "episode": 99,
+          "fraud_type": "card_testing_cashout",
+          "stage": "subsequent",
+          "a": 0.935486,
+          "b": 0.781273,
+          "risk_score_a": 99.11
+        },
+        {
+          "episode": 99,
+          "fraud_type": "card_testing_cashout",
+          "stage": "subsequent",
+          "a": 0.94439,
+          "b": 0.863635,
+          "risk_score_a": 99.2
+        },
+        {
+          "episode": 99,
+          "fraud_type": "card_testing_cashout",
+          "stage": "subsequent",
+          "a": 0.965066,
+          "b": 0.916348,
+          "risk_score_a": 99.26
+        },
+        {
+          "episode": 99,
+          "fraud_type": "card_testing_cashout",
+          "stage": "subsequent",
+          "a": 0.970521,
+          "b": 0.926886,
+          "risk_score_a": 99.22
+        },
+        {
+          "episode": 99,
+          "fraud_type": "card_testing_cashout",
+          "stage": "subsequent",
+          "a": 0.97061,
+          "b": 0.927272,
+          "risk_score_a": 99.2
+        },
+        {
+          "episode": 99,
+          "fraud_type": "card_testing_cashout",
+          "stage": "subsequent",
+          "a": 0.694703,
+          "b": 0.521202,
+          "risk_score_a": 97.69
+        },
+        {
+          "episode": 100,
+          "fraud_type": "device_takeover",
+          "stage": "first",
+          "a": 0.649533,
+          "b": 0.649024,
+          "risk_score_a": 16.47
+        },
+        {
+          "episode": 100,
+          "fraud_type": "device_takeover",
+          "stage": "subsequent",
+          "a": 0.571621,
+          "b": 0.759428,
+          "risk_score_a": 21.4
+        },
+        {
+          "episode": 100,
+          "fraud_type": "device_takeover",
+          "stage": "subsequent",
+          "a": 0.583674,
+          "b": 0.599244,
+          "risk_score_a": 27.43
+        },
+        {
+          "episode": 101,
+          "fraud_type": "normal_looking",
+          "stage": "first",
+          "a": 0.172396,
+          "b": 0.461268,
+          "risk_score_a": 13.21
+        },
+        {
+          "episode": 101,
+          "fraud_type": "normal_looking",
+          "stage": "subsequent",
+          "a": 0.453655,
+          "b": 0.550704,
+          "risk_score_a": 13.31
+        },
+        {
+          "episode": 101,
+          "fraud_type": "normal_looking",
+          "stage": "subsequent",
+          "a": 0.364241,
+          "b": 0.494386,
+          "risk_score_a": 15.74
+        },
+        {
+          "episode": 101,
+          "fraud_type": "normal_looking",
+          "stage": "subsequent",
+          "a": 0.161434,
+          "b": 0.15594,
+          "risk_score_a": 16.57
+        },
+        {
+          "episode": 102,
+          "fraud_type": "card_testing_cashout",
+          "stage": "first",
+          "a": 0.050143,
+          "b": 0.081446,
+          "risk_score_a": 22.45
+        },
+        {
+          "episode": 102,
+          "fraud_type": "card_testing_cashout",
+          "stage": "subsequent",
+          "a": 0.039727,
+          "b": 0.072162,
+          "risk_score_a": 18.42
+        },
+        {
+          "episode": 102,
+          "fraud_type": "card_testing_cashout",
+          "stage": "subsequent",
+          "a": 0.281245,
+          "b": 0.37438,
+          "risk_score_a": 14.54
+        },
+        {
+          "episode": 103,
+          "fraud_type": "high_value_single",
+          "stage": "first",
+          "a": 0.880261,
+          "b": 0.957329,
+          "risk_score_a": 18.65
+        },
+        {
+          "episode": 103,
+          "fraud_type": "high_value_single",
+          "stage": "subsequent",
+          "a": 0.857318,
+          "b": 0.963652,
+          "risk_score_a": 91.23
+        },
+        {
+          "episode": 104,
+          "fraud_type": "card_testing_cashout",
+          "stage": "first",
+          "a": 0.055414,
+          "b": 0.047643,
+          "risk_score_a": 14.79
+        },
+        {
+          "episode": 104,
+          "fraud_type": "card_testing_cashout",
+          "stage": "subsequent",
+          "a": 0.244728,
+          "b": 0.383034,
+          "risk_score_a": 13.5
+        },
+        {
+          "episode": 104,
+          "fraud_type": "card_testing_cashout",
+          "stage": "subsequent",
+          "a": 0.674316,
+          "b": 0.732839,
+          "risk_score_a": 11.49
+        },
+        {
+          "episode": 104,
+          "fraud_type": "card_testing_cashout",
+          "stage": "subsequent",
+          "a": 0.405164,
+          "b": 0.753887,
+          "risk_score_a": 13.27
+        },
+        {
+          "episode": 104,
+          "fraud_type": "card_testing_cashout",
+          "stage": "subsequent",
+          "a": 0.76015,
+          "b": 0.829534,
+          "risk_score_a": 13.72
+        },
+        {
+          "episode": 104,
+          "fraud_type": "card_testing_cashout",
+          "stage": "subsequent",
+          "a": 0.784099,
+          "b": 0.846418,
+          "risk_score_a": 14.59
+        },
+        {
+          "episode": 104,
+          "fraud_type": "card_testing_cashout",
+          "stage": "subsequent",
+          "a": 0.741859,
+          "b": 0.858162,
+          "risk_score_a": 14.65
+        },
+        {
+          "episode": 104,
+          "fraud_type": "card_testing_cashout",
+          "stage": "subsequent",
+          "a": 0.653941,
+          "b": 0.643218,
+          "risk_score_a": 12.28
+        },
+        {
+          "episode": 105,
+          "fraud_type": "account_takeover",
+          "stage": "first",
+          "a": 0.868512,
+          "b": 0.88129,
+          "risk_score_a": 96.4
+        },
+        {
+          "episode": 105,
+          "fraud_type": "account_takeover",
+          "stage": "subsequent",
+          "a": 0.696113,
+          "b": 0.499934,
+          "risk_score_a": 97.41
+        },
+        {
+          "episode": 105,
+          "fraud_type": "account_takeover",
+          "stage": "subsequent",
+          "a": 0.68208,
+          "b": 0.699653,
+          "risk_score_a": 95.97
+        },
+        {
+          "episode": 106,
+          "fraud_type": "stolen_card_online",
+          "stage": "first",
+          "a": 0.512526,
+          "b": 0.499746,
+          "risk_score_a": 9.04
+        },
+        {
+          "episode": 106,
+          "fraud_type": "stolen_card_online",
+          "stage": "subsequent",
+          "a": 0.652103,
+          "b": 0.409109,
+          "risk_score_a": 54.91
+        },
+        {
+          "episode": 106,
+          "fraud_type": "stolen_card_online",
+          "stage": "subsequent",
+          "a": 0.559542,
+          "b": 0.574478,
+          "risk_score_a": 40.28
+        },
+        {
+          "episode": 106,
+          "fraud_type": "stolen_card_online",
+          "stage": "subsequent",
+          "a": 0.102819,
+          "b": 0.151134,
+          "risk_score_a": 21.27
+        },
+        {
+          "episode": 106,
+          "fraud_type": "stolen_card_online",
+          "stage": "subsequent",
+          "a": 0.071384,
+          "b": 0.074467,
+          "risk_score_a": 21.39
+        },
+        {
+          "episode": 107,
+          "fraud_type": "account_takeover",
+          "stage": "first",
+          "a": 0.979501,
+          "b": 0.932472,
+          "risk_score_a": 48.15
+        },
+        {
+          "episode": 107,
+          "fraud_type": "account_takeover",
+          "stage": "subsequent",
+          "a": 0.967207,
+          "b": 0.873215,
+          "risk_score_a": 98.0
+        },
+        {
+          "episode": 108,
+          "fraud_type": "stolen_card_online",
+          "stage": "first",
+          "a": 0.851311,
+          "b": 0.877856,
+          "risk_score_a": 17.52
+        },
+        {
+          "episode": 108,
+          "fraud_type": "stolen_card_online",
+          "stage": "subsequent",
+          "a": 0.944226,
+          "b": 0.922151,
+          "risk_score_a": 54.37
+        },
+        {
+          "episode": 108,
+          "fraud_type": "stolen_card_online",
+          "stage": "subsequent",
+          "a": 0.945346,
+          "b": 0.899791,
+          "risk_score_a": 63.15
+        },
+        {
+          "episode": 108,
+          "fraud_type": "stolen_card_online",
+          "stage": "subsequent",
+          "a": 0.968776,
+          "b": 0.921681,
+          "risk_score_a": 91.61
+        },
+        {
+          "episode": 108,
+          "fraud_type": "stolen_card_online",
+          "stage": "subsequent",
+          "a": 0.96193,
+          "b": 0.865316,
+          "risk_score_a": 93.44
+        },
+        {
+          "episode": 108,
+          "fraud_type": "stolen_card_online",
+          "stage": "subsequent",
+          "a": 0.9491,
+          "b": 0.916343,
+          "risk_score_a": 62.6
+        },
+        {
+          "episode": 108,
+          "fraud_type": "stolen_card_online",
+          "stage": "subsequent",
+          "a": 0.955464,
+          "b": 0.854638,
+          "risk_score_a": 75.81
+        },
+        {
+          "episode": 108,
+          "fraud_type": "stolen_card_online",
+          "stage": "subsequent",
+          "a": 0.966644,
+          "b": 0.920042,
+          "risk_score_a": 88.76
+        },
+        {
+          "episode": 108,
+          "fraud_type": "stolen_card_online",
+          "stage": "subsequent",
+          "a": 0.959749,
+          "b": 0.903186,
+          "risk_score_a": 84.93
+        },
+        {
+          "episode": 109,
+          "fraud_type": "account_takeover",
+          "stage": "first",
+          "a": 0.228519,
+          "b": 0.524587,
+          "risk_score_a": 9.72
+        },
+        {
+          "episode": 109,
+          "fraud_type": "account_takeover",
+          "stage": "subsequent",
+          "a": 0.587175,
+          "b": 0.641794,
+          "risk_score_a": 12.48
+        },
+        {
+          "episode": 109,
+          "fraud_type": "account_takeover",
+          "stage": "subsequent",
+          "a": 0.542037,
+          "b": 0.655431,
+          "risk_score_a": 21.67
+        },
+        {
+          "episode": 109,
+          "fraud_type": "account_takeover",
+          "stage": "subsequent",
+          "a": 0.488676,
+          "b": 0.470025,
+          "risk_score_a": 32.18
+        },
+        {
+          "episode": 109,
+          "fraud_type": "account_takeover",
+          "stage": "subsequent",
+          "a": 0.39702,
+          "b": 0.577963,
+          "risk_score_a": 31.72
+        },
+        {
+          "episode": 110,
+          "fraud_type": "card_testing_cashout",
+          "stage": "first",
+          "a": 0.69373,
+          "b": 0.648473,
+          "risk_score_a": 22.4
+        },
+        {
+          "episode": 110,
+          "fraud_type": "card_testing_cashout",
+          "stage": "subsequent",
+          "a": 0.820819,
+          "b": 0.764806,
+          "risk_score_a": 92.31
+        },
+        {
+          "episode": 110,
+          "fraud_type": "card_testing_cashout",
+          "stage": "subsequent",
+          "a": 0.782347,
+          "b": 0.583787,
+          "risk_score_a": 95.7
+        },
+        {
+          "episode": 110,
+          "fraud_type": "card_testing_cashout",
+          "stage": "subsequent",
+          "a": 0.775198,
+          "b": 0.112382,
+          "risk_score_a": 95.69
+        },
+        {
+          "episode": 110,
+          "fraud_type": "card_testing_cashout",
+          "stage": "subsequent",
+          "a": 0.704326,
+          "b": 0.334996,
+          "risk_score_a": 93.4
+        },
+        {
+          "episode": 110,
+          "fraud_type": "card_testing_cashout",
+          "stage": "subsequent",
+          "a": 0.677866,
+          "b": 0.282865,
+          "risk_score_a": 88.19
+        }
+      ]
+    },
+    "uncertainty_test": {
+      "method": "customer-cluster bootstrap on the test split, 2000 resamples (seed 42), thresholds fixed at their validation values, 2.5/97.5 percentiles; Wilson 95% intervals for episode-level first-fraud recall",
+      "test_customers": 500,
+      "test_fraud_customers": 14,
+      "resamples_without_fraud_skipped": 0,
+      "models": {
+        "candidate_a_dnn_lstm": {
+          "precision": 0.1837,
+          "precision_ci95": [
+            0.0,
+            0.5
+          ],
+          "recall": 0.1475,
+          "recall_ci95": [
+            0.0,
+            0.2885
+          ],
+          "f1": 0.1636,
+          "f1_ci95": [
+            0.0,
+            0.3219
+          ],
+          "pr_auc": 0.1045,
+          "pr_auc_ci95": [
+            0.0237,
+            0.2742
+          ],
+          "first_fraud_recall": "1/14",
+          "first_fraud_recall_wilson95": [
+            0.0127,
+            0.3147
+          ]
+        },
+        "candidate_b_dnn_only": {
+          "precision": 0.12,
+          "precision_ci95": [
+            0.0294,
+            0.2271
+          ],
+          "recall": 0.3934,
+          "recall_ci95": [
+            0.1333,
+            0.6375
+          ],
+          "f1": 0.1839,
+          "f1_ci95": [
+            0.0495,
+            0.3224
+          ],
+          "pr_auc": 0.1283,
+          "pr_auc_ci95": [
+            0.0325,
+            0.3088
+          ],
+          "first_fraud_recall": "5/14",
+          "first_fraud_recall_wilson95": [
+            0.1634,
+            0.6124
+          ]
+        }
+      },
+      "pr_auc_difference_dnn_with_minus_without_lstm": {
+        "point": -0.0238,
+        "ci95": [
+          -0.1141,
+          0.0344
+        ],
+        "share_of_resamples_above_zero": 0.2605
+      }
+    }
+  },
+  "limitations": [
+    "one synthetic dataset (v2 generator 2.0.1); the difficulty comes from generator settings",
+    "14 test fraud episodes and 61 test fraud transactions; one episode changes first-fraud recall by ~7 points",
+    "no fraud ring and one warning-period episode in the test period",
+    "scores are not calibrated probabilities; thresholds come from 119 validation fraud rows",
+    "both candidates are the 4C-2d evaluation models; this comparison adds no new training evidence",
+    "DNN training inputs were unclipped while scoring clips them to +-6 (as evaluated in 4C-2d)"
+  ]
+}

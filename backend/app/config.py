@@ -51,6 +51,11 @@ EVAL_CUSTOMER_SPLIT_PATH = EVALUATION_DIR / "split_customer.json"
 DATA_V2_DIR = DATA_DIR / "v2"
 EVALUATION_V2_DIR = EVALUATION_DIR / "v2"
 
+# Candidate models (Step 4C-2e): trained with the corrected evaluation recipe
+# and saved here, one directory per candidate (models/candidates/<dataset>/<name>/).
+# Nothing reads them in production; /predict keeps loading models/saved/.
+CANDIDATES_DIR = BACKEND_DIR / "models" / "candidates"
+
 
 # ---- CORS ---------------------------------------------------------------------
 # Browser origins allowed to call the API directly, as a comma-separated list

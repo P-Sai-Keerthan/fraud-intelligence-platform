@@ -10,7 +10,8 @@ import SimilarityMeter from './components/SimilarityMeter'
 import ModelPerformance from './components/ModelPerformance'
 import FraudRings from './components/FraudRings'
 import BatchScoring from './components/BatchScoring'
-import { predictTransaction, getCustomerHistory, getCustomerProfile, listCustomers, downloadReportPdf } from './api'
+import { predictTransaction, getCustomerHistory, getCustomerProfile, listCustomers, downloadReportPdf, getModelInfo } from './api'
+import { scoreWording, modelSetLabel } from './modelWording'
 
 const TABS = [
   { key: 'live', label: 'Live Scan' },
@@ -77,6 +78,12 @@ export default function App() {
   const [customersError, setCustomersError] = useState('')
   const [reportLoading, setReportLoading] = useState(false)
   const [reportError, setReportError] = useState('')
+  const [modelInfo, setModelInfo] = useState(null)
+  const wording = scoreWording(modelInfo)
+
+  useEffect(() => {
+    getModelInfo().then(setModelInfo).catch(() => setModelInfo(null))
+  }, [])
 
   useEffect(() => {
     listCustomers(500)
@@ -202,17 +209,20 @@ export default function App() {
               )}
               {reportError && <p className="text-xs" style={{ color: 'var(--risk-critical)' }}>{reportError}</p>}
 
+              <p className="text-[10px]" style={{ color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
+                Loaded {modelSetLabel(modelInfo)}
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 <Card>
-                  <RiskGauge label="Risk Score" value={prediction?.risk_score} sublabel="/ 100" />
+                  <RiskGauge label={wording.riskLabel} value={prediction?.risk_score} sublabel="/ 100" />
                   <p className="text-[10px] text-center mt-2" style={{ color: 'var(--text-faint)' }}>
-                    Trajectory risk from this customer's prior activity, before this transaction
+                    {wording.riskCaption}
                   </p>
                 </Card>
                 <Card>
                   <RiskGauge label="Fraud Probability" value={prediction?.fraud_probability} sublabel="%" decimals={1} />
                   <p className="text-[10px] text-center mt-2" style={{ color: 'var(--text-faint)' }}>
-                    This specific transaction's fraud likelihood -- can be high even if prior trajectory was clean
+                    {wording.fraudCaption}
                   </p>
                 </Card>
                 <Card>
@@ -230,7 +240,7 @@ export default function App() {
               </Card>
 
               <Card title="Fraud Evolution Timeline">
-                <FraudEvolutionTimeline timeline={timeline} />
+                <FraudEvolutionTimeline timeline={timeline} riskName={wording.timelineRisk} />
               </Card>
             </div>
           </div>
@@ -238,7 +248,7 @@ export default function App() {
 
         {activeTab === 'batch' && (
           <Card title="Batch CSV Upload &amp; Bulk Scoring">
-            <BatchScoring />
+            <BatchScoring riskColumn={wording.riskColumn} />
           </Card>
         )}
 

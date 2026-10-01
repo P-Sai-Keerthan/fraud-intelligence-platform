@@ -89,12 +89,44 @@ export default function ModelPerformance() {
     return <p className="text-sm" style={{ color: 'var(--risk-critical)' }}>{error}</p>
   }
 
+  const modelSet = metrics?.model_set
+  const noteStyle = { color: 'var(--text-muted)' }
+  const tagStyle = { color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }
+
+  // candidate model sets: the v1 report does not evaluate them (4C-2f-2)
+  if (modelSet && modelSet !== 'production') {
+    const ev = metrics?.candidate_evaluation
+    const title = modelSet === 'v2_dnn_lstm' ? 'DNN Fraud Classifier (v2 candidate: LSTM risk score -> DNN)' : 'DNN Fraud Classifier (v2 candidate: DNN only)'
+    return (
+      <div className="space-y-5">
+        <p className="text-[11px]" style={tagStyle}>Loaded model set {modelSet} ({metrics.model_version})</p>
+        <p className="text-xs" style={noteStyle}>
+          The v1 evaluation shown for the production model set does not evaluate this model set, so it is not shown.
+          {ev?.available
+            ? ' Below: this candidate on the v2 synthetic test period (candidate comparison), at its validation-chosen F1 threshold. Scores are not calibrated probabilities; this threshold is not applied by live scoring, which still uses the 25/50/80 alert bands.'
+            : ` No candidate evaluation is available (${ev?.reason || 'unknown reason'}).`}
+        </p>
+        {ev?.available && (
+          <ModelBlock
+            title={title}
+            subtitle={`v2 test period: ${ev.rows?.test?.toLocaleString()} transactions, ${ev.rows?.test_fraud_episodes} fraud episodes. PR-AUC ${ev.overall_test?.pr_auc}; first-fraud recall ${ev.episodes_test?.first_fraud_detected}/${ev.episodes_test?.first_fraud_transactions}.`}
+            data={ev.overall_test}
+          />
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-5">
-      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-        Time-based evaluation: models trained on the earliest transactions, the decision threshold chosen on the
-        following period, and these numbers measured on the latest period. Full methodology, baselines and
-        first-fraud metrics: GET /metrics/report.
+      {modelSet && (
+        <p className="text-[11px]" style={tagStyle}>Loaded model set {modelSet} ({metrics.model_version}) &middot; v1 evaluation</p>
+      )}
+      <p className="text-xs" style={noteStyle}>
+        Time-based evaluation on dataset v1: evaluation copies of the production models trained on the earliest
+        transactions, the decision threshold chosen on the following period, and these numbers measured on the
+        latest period. Scores are not calibrated probabilities. Full methodology, baselines and first-fraud
+        metrics: GET /metrics/report.
       </p>
       <ModelBlock
         title="LSTM Risk Predictor"

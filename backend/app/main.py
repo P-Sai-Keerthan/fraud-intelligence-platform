@@ -11,8 +11,9 @@ Endpoints:
     GET  /customer/{customer_id}/profile   a customer's usual (home) device and city
     GET  /customer/{customer_id}/history   fraud evolution timeline for a customer
     GET  /fraud-rings                   customers linked by a shared device/identifier
-    GET  /metrics                       held-out test-set model performance (corrected time-based evaluation)
-    GET  /metrics/report                full evaluation report (methodology, splits, baselines, first-fraud metrics)
+    GET  /metrics                       evaluation metrics of the loaded model set, labelled with it
+    GET  /metrics/report                full evaluation report of the loaded model set
+    GET  /model-info                    metadata of the loaded model set (version, data, features, thresholds)
     POST /report/pdf                    downloadable PDF explanation report for one prediction
     GET  /health                        basic health check
 """
@@ -39,6 +40,8 @@ from .schemas import (
     FraudRingsResponse, BatchPredictionResponse,
 )
 from .inference_pipeline import get_pipeline
+from .db.migrations import ensure_schema
+from .model_metadata import candidate_evaluation
 from .models.evaluate import EvaluationReportMissing, evaluate_all, load_report
 from .report import build_pdf_report
 
@@ -70,6 +73,10 @@ def _restore_history_from_db(pipeline) -> int:
 async def lifespan(app: FastAPI):
     # create DB tables if they don't exist
     Base.metadata.create_all(bind=engine)
+    # add columns introduced after the table was first created (model-set provenance)
+    added = ensure_schema(engine)
+    if added:
+        print(f"[startup] Added database column(s): {', '.join(added)} (existing rows keep NULL).")
     # forces the (potentially slow) model-loading step to happen once at
     # startup rather than on the first incoming request
     pipeline = get_pipeline()
@@ -127,6 +134,8 @@ def _persist_transaction(db: Session, result: dict):
         similarity_pct=result["similarity_pct"],
         deviation_pct=result["deviation_pct"],
         alert_level=result["alert_level"],
+        model_set=result["model_set"],
+        model_version=result["model_version"],
     )
     db.add(db_txn)
 
@@ -216,30 +225,87 @@ def get_fraud_rings(min_customers: int = 2):
     return FraudRingsResponse(count=len(rings), rings=rings)
 
 
+@app.get("/model-info")
+def get_model_info():
+    """Metadata of the loaded model set: name and version (content checksums),
+    training dataset, feature version, whether an LSTM is used, what the scores
+    mean (not calibrated probabilities) and the alert/threshold configuration."""
+    return get_pipeline().model_metadata
+
+
+def _model_context(pipeline) -> dict:
+    meta = pipeline.model_metadata
+    return {
+        "model_set": meta["model_set"],
+        "model_version": meta["model_version"],
+        "model_metadata": meta,
+        "alerting": meta["thresholds"],
+    }
+
+
 @app.get("/metrics")
 def get_metrics(refresh: bool = False):
-    """Held-out test-set performance of the LSTM and DNN from the corrected
-    evaluation: time-based split, leakage-safe out-of-fold stacking, decision
-    threshold chosen on the validation period. Same fields as before (precision,
-    recall, f1_score, auc_roc, confusion_matrix, test_set_size, fraud_rate_pct,
-    threshold) plus pr_auc, alerts_per_1000, recall_at_fpr and episode metrics.
-    Served from the saved report (python -m app.evaluation.run);
-    ?refresh=true re-reads the report file."""
-    try:
-        return evaluate_all(force_refresh=refresh)
-    except EvaluationReportMissing as e:
-        raise HTTPException(status_code=503, detail=str(e))
+    """Evaluation metrics for the LOADED model set, labelled with it.
+
+    production: the held-out time-split metrics of the corrected v1 evaluation
+    (the same lstm_risk_predictor / dnn_fraud_classifier entries as before,
+    served from models/evaluation/evaluation_report.json; ?refresh=true re-reads
+    it). They evaluate evaluation copies of the production architecture on v1,
+    as "evaluation" says.
+
+    candidate model sets: the v1 report does not evaluate them, so
+    lstm_risk_predictor / dnn_fraud_classifier are null, and the candidate's own
+    v2 test-period metrics from models/candidates/v2/comparison.json are given
+    separately under candidate_evaluation (only if that file describes exactly
+    the loaded weights). Scores are not calibrated probabilities."""
+    pipeline = get_pipeline()
+    context = _model_context(pipeline)
+    evaluation = dict(pipeline.model_metadata["evaluation"])
+    if pipeline.model_set.manifest is None:
+        try:
+            metrics = evaluate_all(force_refresh=refresh)
+            report = load_report()
+        except EvaluationReportMissing as e:
+            raise HTTPException(status_code=503, detail=str(e))
+        evaluation.update({"applies_to_loaded_model_set": True, "report_version": report.get("report_version"),
+                           "report_dataset": report.get("dataset")})
+        return {**metrics, **context, "evaluation": evaluation}
+    candidate = candidate_evaluation(pipeline.model_set)
+    evaluation["available"] = candidate["available"]
+    return {
+        "lstm_risk_predictor": None,
+        "dnn_fraud_classifier": None,
+        "v1_metrics_withheld": "the v1 evaluation report evaluates the production architecture on v1, "
+                               "not this model set",
+        **context,
+        "evaluation": evaluation,
+        "candidate_evaluation": candidate,
+    }
 
 
 @app.get("/metrics/report")
 def get_metrics_report(refresh: bool = False):
-    """The complete evaluation report: methodology, saved split definitions,
-    primary (time-based) and secondary (customer-grouped) results, baselines,
-    first-fraud / episode metrics, and the legacy random-split numbers."""
-    try:
-        return load_report(force_refresh=refresh)
-    except EvaluationReportMissing as e:
-        raise HTTPException(status_code=503, detail=str(e))
+    """The complete evaluation report for the loaded model set.
+
+    production: the v1 evaluation report (methodology, saved split definitions,
+    primary and secondary results, baselines, first-fraud / episode metrics,
+    legacy random-split numbers), plus model_set / model_version keys.
+    candidate model sets: no v1 report; the candidate's comparison.json slice
+    (candidate_evaluation) and the model metadata."""
+    pipeline = get_pipeline()
+    context = _model_context(pipeline)
+    if pipeline.model_set.manifest is None:
+        try:
+            report = load_report(force_refresh=refresh)
+        except EvaluationReportMissing as e:
+            raise HTTPException(status_code=503, detail=str(e))
+        return {**report, **context}
+    return {
+        **context,
+        "v1_report_withheld": "the v1 evaluation report evaluates the production architecture on v1, "
+                              "not this model set",
+        "candidate_evaluation": candidate_evaluation(pipeline.model_set),
+    }
 
 
 _DECIMAL_RE = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?")
@@ -377,12 +443,31 @@ def _score_batch_csv(contents: bytes, db: Session) -> BatchPredictionResponse:
     return BatchPredictionResponse(count=len(results), summary=summary, results=results)
 
 
+def _provenance(transaction_id: str, db: Session) -> dict:
+    """Which model set scored this transaction, from its stored row (4C-2f-2).
+    Never inferred from the currently loaded model set."""
+    row = db.get(db_models.Transaction, transaction_id)
+    if row is None:
+        return {"recorded": False, "model_set": None, "model_version": None,
+                "reason": "transaction not found in the database"}
+    if row.model_set is None:
+        return {"recorded": False, "model_set": None, "model_version": None,
+                "reason": "scored before model-set provenance was recorded"}
+    provenance = {"recorded": True, "model_set": row.model_set, "model_version": row.model_version}
+    pipeline = get_pipeline()
+    if row.model_version == pipeline.model_version:
+        provenance["metadata"] = pipeline.model_metadata
+    return provenance
+
+
 @app.post("/report/pdf")
-def get_pdf_report(prediction: PredictionResponse):
+def get_pdf_report(prediction: PredictionResponse, db: Session = Depends(get_db)):
     """Generate a downloadable PDF explaining a single prediction result --
     takes exactly what POST /predict returns, so the frontend can request
-    a report for whatever is currently on screen."""
-    pdf_bytes = build_pdf_report(prediction.model_dump())
+    a report for whatever is currently on screen. The model set named in the
+    report (and its risk-score wording) is the one recorded with the
+    transaction in the database, not the currently loaded one."""
+    pdf_bytes = build_pdf_report(prediction.model_dump(), _provenance(prediction.transaction_id, db))
     filename = f"fraud_report_{prediction.transaction_id}.pdf"
     return StreamingResponse(
         io.BytesIO(pdf_bytes),

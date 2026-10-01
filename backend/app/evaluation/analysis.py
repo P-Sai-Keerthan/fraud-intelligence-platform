@@ -105,9 +105,9 @@ def build_table(data, scores: pd.DataFrame) -> pd.DataFrame:
     return table.drop(columns=["is_fraud_frame"])
 
 
-def thresholds(table: pd.DataFrame) -> dict:
+def thresholds(table: pd.DataFrame, models=None) -> dict:
     val = table[table["split"] == "validation"]
-    return {m: select_threshold(val["is_fraud"], val[m]) for m in MAJOR}
+    return {m: select_threshold(val["is_fraud"], val[m]) for m in (models or MAJOR)}
 
 
 def analyse(data, report: dict, scores: pd.DataFrame, v1_report: dict | None = None,
@@ -194,20 +194,20 @@ def v1_vs_v2(v1, v2):
     return {"v1": col(v1), "v2": col(v2)}
 
 
-def lstm_ablation(test):
-    a, b = test["alert_dnn_fraud_classifier"], test["alert_dnn_without_risk_score"]
+def lstm_ablation(test, with_lstm: str = "dnn_fraud_classifier", without_lstm: str = "dnn_without_risk_score"):
+    a, b = test[f"alert_{with_lstm}"], test[f"alert_{without_lstm}"]
     y = test["is_fraud"] == 1
     per = {}
-    for m in ("dnn_fraud_classifier", "dnn_without_risk_score"):
+    for m in (with_lstm, without_lstm):
         s = _prf(y.to_numpy(), test[f"alert_{m}"].to_numpy())
         per[m] = {"pr_auc": average_precision_score(y, test[m]), "auc_roc": roc_auc_score(y, test[m]),
                   **{k: s[k] for k in ("precision", "recall", "f1", "fpr", "alerts_per_1000", "tp", "fp")}}
-    diff = {k: per["dnn_fraud_classifier"][k] - per["dnn_without_risk_score"][k] for k in per["dnn_fraud_classifier"]}
+    diff = {k: per[with_lstm][k] - per[without_lstm][k] for k in per[with_lstm]}
     fr = test[y]
-    ep_a = fr.groupby("fraud_episode_id")["alert_dnn_fraud_classifier"].any()
-    ep_b = fr.groupby("fraud_episode_id")["alert_dnn_without_risk_score"].any()
+    ep_a = fr.groupby("fraud_episode_id")[f"alert_{with_lstm}"].any()
+    ep_b = fr.groupby("fraud_episode_id")[f"alert_{without_lstm}"].any()
     first = fr[fr["fraud_stage"] == "first"]
-    corr = float(np.corrcoef(test["dnn_fraud_classifier"], test["dnn_without_risk_score"])[0, 1])
+    corr = float(np.corrcoef(test[with_lstm], test[without_lstm])[0, 1])
     return {
         "per_model": per, "difference_with_minus_without": diff,
         "fraud_caught_only_with_lstm": int((y & a & ~b).sum()),
@@ -218,8 +218,8 @@ def lstm_ablation(test):
         "false_positives_both": int((~y & a & b).sum()),
         "episodes_detected_with": int(ep_a.sum()), "episodes_detected_without": int(ep_b.sum()),
         "episodes_only_with_lstm": int((ep_a & ~ep_b).sum()), "episodes_only_without_lstm": int((~ep_a & ep_b).sum()),
-        "first_frauds_only_with_lstm": int((first["alert_dnn_fraud_classifier"] & ~first["alert_dnn_without_risk_score"]).sum()),
-        "first_frauds_only_without_lstm": int((~first["alert_dnn_fraud_classifier"] & first["alert_dnn_without_risk_score"]).sum()),
+        "first_frauds_only_with_lstm": int((first[f"alert_{with_lstm}"] & ~first[f"alert_{without_lstm}"]).sum()),
+        "first_frauds_only_without_lstm": int((~first[f"alert_{with_lstm}"] & first[f"alert_{without_lstm}"]).sum()),
         "score_correlation_test": corr,
     }
 
@@ -258,10 +258,10 @@ def _summarise_episodes(eps):
     }
 
 
-def first_fraud(test):
+def first_fraud(test, models=None):
     fr = test[test["is_fraud"] == 1]
     out = {}
-    for m in MAJOR:
+    for m in (models or MAJOR):
         eps = _episode_detail(fr, m)
         out[m] = {**_summarise_episodes(eps), "per_episode": eps}
     return out
@@ -315,7 +315,7 @@ def warning_period(table, data, thr):
     return out
 
 
-def fraud_types(table):
+def fraud_types(table, models=None):
     out = {"test": {}, "validation_and_test_supplementary": {}}
     for scope, df in (("test", table[table["split"] == "test"]),
                       ("validation_and_test_supplementary", table[table["split"] != "train"])):
@@ -323,7 +323,7 @@ def fraud_types(table):
         for t in sorted(fr["fraud_type"].unique()):
             rows = fr[fr["fraud_type"] == t]
             entry = {"episodes": int(rows["fraud_episode_id"].nunique()), "fraud_transactions": int(len(rows))}
-            for m in MAJOR:
+            for m in (models or MAJOR):
                 eps = _episode_detail(rows, m)
                 summ = _summarise_episodes(eps)
                 entry[m] = {"recall": _r(rows[f"alert_{m}"].mean()), "caught": int(rows[f"alert_{m}"].sum()),
@@ -337,7 +337,7 @@ def fraud_types(table):
     return out
 
 
-def legit_false_positives(test):
+def legit_false_positives(test, models=None):
     legit = test[test["is_fraud"] == 0].copy()
     legit["contexts"] = legit["legit_context"].str.split("|")
     ex = legit.explode("contexts")
@@ -345,7 +345,7 @@ def legit_false_positives(test):
     for ctx, g in [("(all legitimate)", legit), ("(no unusual context)", legit[legit["legit_context"] == "none"])] + \
             [(c, ex[ex["contexts"] == c]) for c in sorted(set(ex["contexts"]) - {"none"})]:
         r = {"context": ctx, "legitimate_rows": int(len(g))}
-        for m in MAJOR:
+        for m in (models or MAJOR):
             flagged = int(g[f"alert_{m}"].sum())
             r[f"{m}.flagged"] = flagged
             r[f"{m}.fpr"] = _r(flagged / len(g), 5) if len(g) else None
@@ -353,7 +353,8 @@ def legit_false_positives(test):
     return rows
 
 
-def rings(table, data):
+def rings(table, data, models=None):
+    models = models or MAJOR
     from ..inference_pipeline import FraudIntelligencePipeline
     ep = data.grouping.episodes
     ring_rows = table[table["fraud_ring_id"] > 0]
@@ -365,7 +366,7 @@ def rings(table, data):
                  "out_of_sample": ("all models" if "train" not in splits else
                                    "LSTM only (out-of-fold); DNN, logistic regression and rule scores are in-sample"),
                  "thresholds_selected_on_these_rows": "validation" in splits}
-        for m in MAJOR:
+        for m in models:
             caught = g[f"alert_{m}"]
             entry[m] = {"fraud_caught": int(caught.sum()),
                         "victims_detected": int(g[caught]["customer_id"].nunique())}
@@ -377,7 +378,7 @@ def rings(table, data):
     shared_legit = set(dev_c[dev_c >= 2].index) - fraud_devices
     lt = test[(test["is_fraud"] == 0) & test["device_id"].isin(shared_legit)]
     shared = {"legitimate_test_rows_on_shared_devices": int(len(lt)),
-              **{f"{m}.flagged": int(lt[f"alert_{m}"].sum()) for m in MAJOR}}
+              **{f"{m}.flagged": int(lt[f"alert_{m}"].sum()) for m in models}}
 
     # the production ring detector, unchanged, run on the full v2 history
     class _Histories:                        # minimal stand-in carrying what detect_fraud_rings reads
@@ -437,12 +438,14 @@ def sanity(table, data, report):
     }
 
 
-def uncertainty(test, reps: int = BOOTSTRAP_REPS, seed: int = BOOTSTRAP_SEED):
+def uncertainty(test, reps: int = BOOTSTRAP_REPS, seed: int = BOOTSTRAP_SEED, models=None,
+                diff_pair=("dnn_fraud_classifier", "dnn_without_risk_score")):
+    models = models or MAJOR
     t = test.reset_index(drop=True)
     idx_by_c = list(t.groupby("customer_id").indices.values())      # resampling unit: a customer
     y_all = t["is_fraud"].to_numpy()
     rng = np.random.default_rng(seed)
-    stats = {m: {"precision": [], "recall": [], "f1": [], "pr_auc": []} for m in MAJOR}
+    stats = {m: {"precision": [], "recall": [], "f1": [], "pr_auc": []} for m in models}
     diff = []
     skipped = 0
     for _ in range(reps):
@@ -453,7 +456,7 @@ def uncertainty(test, reps: int = BOOTSTRAP_REPS, seed: int = BOOTSTRAP_SEED):
             skipped += 1
             continue
         ap = {}
-        for m in MAJOR:
+        for m in models:
             a = t[f"alert_{m}"].to_numpy()[idx]
             s = _prf(y, a)
             stats[m]["precision"].append(s["precision"])
@@ -461,7 +464,7 @@ def uncertainty(test, reps: int = BOOTSTRAP_REPS, seed: int = BOOTSTRAP_SEED):
             stats[m]["f1"].append(s["f1"])
             ap[m] = average_precision_score(y, t[m].to_numpy()[idx])
             stats[m]["pr_auc"].append(ap[m])
-        diff.append(ap["dnn_fraud_classifier"] - ap["dnn_without_risk_score"])
+        diff.append(ap[diff_pair[0]] - ap[diff_pair[1]])
 
     def ci(v):
         v = np.asarray([x for x in v if not math.isnan(x)])
@@ -470,7 +473,7 @@ def uncertainty(test, reps: int = BOOTSTRAP_REPS, seed: int = BOOTSTRAP_SEED):
     point = {}
     fr = t[t["is_fraud"] == 1]
     first = fr[fr["fraud_stage"] == "first"]
-    for m in MAJOR:
+    for m in models:
         s = _prf(y_all, t[f"alert_{m}"].to_numpy())
         k = int(first[f"alert_{m}"].sum())
         point[m] = {
@@ -487,7 +490,7 @@ def uncertainty(test, reps: int = BOOTSTRAP_REPS, seed: int = BOOTSTRAP_SEED):
         "resamples_without_fraud_skipped": skipped,
         "models": point,
         "pr_auc_difference_dnn_with_minus_without_lstm": {
-            "point": _r(average_precision_score(y_all, t["dnn_fraud_classifier"]) - average_precision_score(y_all, t["dnn_without_risk_score"])),
+            "point": _r(average_precision_score(y_all, t[diff_pair[0]]) - average_precision_score(y_all, t[diff_pair[1]])),
             "ci95": ci(diff),
             "share_of_resamples_above_zero": _r(np.mean(np.asarray(diff) > 0)),
         },
