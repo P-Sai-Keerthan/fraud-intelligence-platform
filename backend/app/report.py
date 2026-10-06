@@ -41,7 +41,7 @@ MODEL_SET_WORDING = {
         "Risk Score",
         "Trajectory risk from prior activity, before this transaction: the production LSTM's score for the "
         "customer's 10 previous transactions",
-        "Risk Score is the output of the production LSTM risk predictor and Fraud Probability the output of "
+        "Risk Score is the output of the production LSTM risk predictor and Fraud Score the output of "
         "the production DNN fraud classifier; reasons are derived from SHAP feature attribution on the DNN. "
         "For customers with fewer than 10 earlier transactions the LSTM is not used and Risk Score is the "
         "training-average value.",
@@ -50,16 +50,27 @@ MODEL_SET_WORDING = {
         "Risk Score",
         "LSTM behavioral-risk component: the v2 LSTM's score for the customer's 10 previous transactions, "
         "used as an input to the DNN",
-        "Risk Score is the LSTM behavioral-risk component and Fraud Probability the output of the DNN fraud "
+        "Risk Score is the LSTM behavioral-risk component and Fraud Score the output of the DNN fraud "
         "classifier of model set v2_dnn_lstm (trained on synthetic dataset v2); reasons are derived from SHAP "
         "feature attribution on the DNN. For customers with fewer than 10 earlier transactions the LSTM is not "
         "used and Risk Score is the training-average value.",
     ),
+    "v2_dnn_lstm_seed14": (
+        "Risk Score",
+        "LSTM behavioral-risk component: the v2 LSTM's score for the customer's 10 previous transactions, "
+        "used as an input to the DNN",
+        "Risk Score is the LSTM behavioral-risk component and Fraud Score the output of the DNN fraud "
+        "classifier of model set v2_dnn_lstm_seed14 (DNN + LSTM, training seed 14, trained on synthetic "
+        "dataset v2). This model set is an evaluation candidate and is NOT deployed; production is the default "
+        "model set. Reasons are derived from SHAP feature attribution on the DNN. For customers with fewer "
+        "than 10 earlier transactions the LSTM is not used and Risk Score is the training-average value; the "
+        "candidate's evaluated performance is not claimed for those customers.",
+    ),
     "v2_dnn_only": (
         "Risk Score (compatibility)",
-        "Same value as Fraud Probability: this model set has no sequence model, so the risk score field "
+        "Same value as Fraud Score: this model set has no sequence model, so the risk score field "
         "repeats the DNN fraud score for compatibility",
-        "Fraud Probability is the score of a DNN on 9 behavioural features (model set v2_dnn_only, trained on "
+        "Fraud Score is the score of a DNN on 9 behavioural features (model set v2_dnn_only, trained on "
         "synthetic dataset v2). This model set has no sequence model; Risk Score repeats the DNN fraud score "
         "for compatibility and is not a separate signal. Reasons are derived from SHAP feature attribution on "
         "the DNN.",
@@ -144,6 +155,10 @@ def build_pdf_report(prediction: dict, provenance: dict | None = None) -> bytes:
             model_rows.append(["Training data", f"synthetic dataset {meta['dataset']['version']}"])
             model_rows.append(["Model type", "LSTM risk score -> DNN" if meta["uses_lstm"]
                                else "DNN only (no sequence model)"])
+            if meta.get("training_seed") is not None:
+                model_rows.append(["Training seed", str(meta["training_seed"])])
+            if meta.get("status"):
+                model_rows.append(["Status", meta["status"]])
     else:
         model_rows = [["Model set", "not recorded"],
                       ["Reason", provenance.get("reason") or "-"]]
@@ -164,7 +179,7 @@ def build_pdf_report(prediction: dict, provenance: dict | None = None) -> bytes:
         ["Metric", "Value", "Meaning"],
         [Paragraph(f"<b>{risk_label}</b>", cell_style), f"{prediction.get('risk_score', 0):.1f} / 100",
          Paragraph(risk_meaning, cell_style)],
-        ["Fraud Probability", f"{prediction.get('fraud_probability', 0):.1f}%",
+        ["Fraud Score", f"{prediction.get('fraud_probability', 0):.1f} / 100",
          Paragraph(FRAUD_SCORE_MEANING, cell_style)],
         ["Behavioral Similarity", f"{prediction.get('similarity_pct', 0):.1f}%",
          Paragraph("How closely this matches the customer's normal behavior", cell_style)],

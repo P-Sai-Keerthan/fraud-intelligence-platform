@@ -28,6 +28,20 @@ The generator writes these files:
 
 The CSVs are not committed to git (`data/v2/.gitignore`). The same seed and settings reproduce them byte for byte, and `manifest.json` records their checksums.
 
+## New-customer fraud (optional, off by default)
+
+Generator version 2.1.0 adds two settings for the hold-out evaluation in Step 4C-3E. Both are 0 by default, and with both at 0 the generator is exactly version 2.0.1: same random draws, byte-identical files, and a manifest that still says 2.0.1.
+
+```bash
+python data/v2/generate.py --seed 201 --out <dir> --late-joiner-share 0.2 --new-customer-fraud-episodes 30
+```
+
+- `--late-joiner-share`: share of customers whose activity starts later in the period (day 14 to 140). They are chosen among customers with no other planned fraud.
+- `--new-customer-fraud-episodes`: number of fraud episodes that start after 0 to 9 of a late joiner's own transactions. The existing non-ring fraud types are reused.
+- Every other customer and every existing episode is exactly as without the extension.
+- With the extension on, `episodes.csv` gains `prior_transactions_at_first_fraud`, `customers.csv` gains `join_date`, and the manifest says 2.1.0 and records the settings. The transaction and feature files get no new column.
+- `data/v2/` itself is always generated with the default settings. Datasets with the extension are written elsewhere (`data/v2_holdout/new_customer/`, ignored by git).
+
 ## Fixed, reproducible inputs
 
 - **Dates:** 2026-01-12 to 2026-07-06, the same span as v1. They come from `GeneratorConfig.start_date` and `days`, never from the clock.

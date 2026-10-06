@@ -6,6 +6,12 @@ const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
 
 export const api = axios.create({ baseURL, timeout: 15000 })
 
+// Liveness of the backend (GET /health), used by the header status indicator.
+export async function getHealth() {
+  const { data } = await api.get('/health', { timeout: 5000 })
+  return data
+}
+
 export async function predictTransaction(payload) {
   const { data } = await api.post('/predict', payload)
   return data

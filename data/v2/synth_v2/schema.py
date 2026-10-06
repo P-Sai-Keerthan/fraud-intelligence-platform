@@ -51,6 +51,11 @@ EPISODE_COLUMNS = [
 ]
 LOGIN_FAILURE_COLUMNS = ["customer_id", "timestamp", "source"]
 
+# Written only when the new-customer extension (generator 2.1.0) is on. Ground truth
+# in episodes.csv / customers.csv; never part of the transaction or feature files.
+NEW_CUSTOMER_EPISODE_COLUMNS = ["prior_transactions_at_first_fraud"]
+NEW_CUSTOMER_CUSTOMER_COLUMNS = ["join_date"]
+
 FRAUD_STAGES = ("none", "first", "subsequent")
 LEGIT_CONTEXTS = (
     "travel_domestic", "travel_foreign", "device_upgrade", "borrowed_device", "household_device",

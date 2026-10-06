@@ -13,6 +13,14 @@ from dataclasses import asdict, dataclass, field, replace
 # one transaction, and the manifest no longer records the output directory.
 GENERATOR_VERSION = "2.0.1"
 
+# 2.1.0 (Step 4C-3E): optional new-customer fraud. OFF by default. With the
+# settings below at their defaults the generator makes the same draws as 2.0.1,
+# writes byte-identical files (manifest included) and keeps reporting 2.0.1.
+# A dataset generated with the extension on reports 2.1.0 and records the settings.
+NEW_CUSTOMER_GENERATOR_VERSION = "2.1.0"
+NEW_CUSTOMER_FIELDS = ("late_joiner_share", "new_customer_fraud_episodes", "late_join_days")
+NEW_CUSTOMER_MAX_PRIOR = 9          # a new-customer episode starts after 0..9 of the customer's own transactions
+
 # ---- fixed vocabulary (same values as v1) --------------------------------------
 
 MERCHANT_CATEGORIES = [
@@ -177,14 +185,31 @@ class GeneratorConfig:
     merchants_per_category: int = 40
     fraud_proxy_networks: int = 25
 
+    # new-customer fraud (2.1.0). Both 0 = off = exactly the 2.0.1 dataset.
+    late_joiner_share: float = 0.0           # share of customers (without other fraud) who join later in the period
+    new_customer_fraud_episodes: int = 0     # episodes whose first fraud comes within a late joiner's first 10 transactions
+    late_join_days: tuple = (14, 140)        # day on which a late joiner's activity starts
+
     segments: dict = field(default_factory=lambda: SEGMENTS)
     archetypes: dict = field(default_factory=lambda: ARCHETYPES)
 
     def with_overrides(self, **kw) -> "GeneratorConfig":
         return replace(self, **kw)
 
+    @property
+    def new_customer_extension(self) -> bool:
+        return self.late_joiner_share > 0 or self.new_customer_fraud_episodes > 0
+
+    @property
+    def generator_version(self) -> str:
+        return NEW_CUSTOMER_GENERATOR_VERSION if self.new_customer_extension else GENERATOR_VERSION
+
     def to_dict(self) -> dict:
-        return asdict(self)
+        d = asdict(self)
+        if not self.new_customer_extension:      # off: the recorded configuration is exactly the 2.0.1 one
+            for k in NEW_CUSTOMER_FIELDS:
+                d.pop(k)
+        return d
 
 
 DEFAULT_CONFIG = GeneratorConfig()

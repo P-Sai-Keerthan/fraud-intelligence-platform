@@ -1,0 +1,498 @@
+{
+  "protocol": "4C-3E.6 v1",
+  "fixed_inputs": {
+    "eligible_architectures": [
+      "v2_dnn_lstm",
+      "v2_dnn_only"
+    ],
+    "eligible_training_seeds": [
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "development_seeds": [
+      "301",
+      "302",
+      "303",
+      "304",
+      "305"
+    ],
+    "selection_metrics": [
+      "recall",
+      "legit_alerts_per_1000",
+      "critical_recall",
+      "first_fraud_recall",
+      "episode_detection_rate"
+    ],
+    "screens": {
+      "minimum_recall": 0.4,
+      "alert_screen_per_1000": 11.0,
+      "critical_recall_margin_below_median": 0.05,
+      "eligible_seeds_needed": 3
+    },
+    "final_holdout_seeds": [
+      401,
+      402,
+      403,
+      404,
+      405
+    ],
+    "final_new_customer_seeds": [
+      411,
+      412,
+      413,
+      414,
+      415
+    ],
+    "never_used_for_selection": [
+      42,
+      101,
+      102,
+      103,
+      104,
+      105,
+      201,
+      202,
+      203,
+      204,
+      205
+    ]
+  },
+  "stage_a_architecture": {
+    "rule": "existing pre-registered tie-break (4C-3E)",
+    "lead": "v2_dnn_lstm",
+    "all_conditions_hold": true,
+    "conditions": {
+      "recall_at_least_matches": {
+        "ci95": [
+          0.028683,
+          0.156585
+        ],
+        "holds": true
+      },
+      "alert_burden_at_least_matches": {
+        "ci95": [
+          -0.929229,
+          0.530995
+        ],
+        "holds": true
+      },
+      "critical_tier_not_worse": {
+        "ci95": [
+          -0.015361,
+          0.077321
+        ],
+        "holds": true
+      }
+    }
+  },
+  "development": {
+    "datasets": {
+      "301": {
+        "sha256": "59b481874e996899e136c9cc485021c17ce76762ccd379a5fd9be2dbcdfba734",
+        "transactions": 102596,
+        "generator_version": "2.0.1"
+      },
+      "302": {
+        "sha256": "b72dae9cafcd58958c4f4c26af7e73240ae1b80de8001880bc2461041a1bcdff",
+        "transactions": 105382,
+        "generator_version": "2.0.1"
+      },
+      "303": {
+        "sha256": "528368dd1eb68480da48132a0a9ddf71c4bcd0fdb6883c19d0c2fa7f0663b19f",
+        "transactions": 102229,
+        "generator_version": "2.0.1"
+      },
+      "304": {
+        "sha256": "5cc3ee9bcc72784b0f09f57b398c88fe44f3b382fde989b3dcf9e2e507e59a41",
+        "transactions": 101499,
+        "generator_version": "2.0.1"
+      },
+      "305": {
+        "sha256": "1ccd00adbd289de0492186dacb17132bf4c4f57caa2c2f304824462f5bb44a91",
+        "transactions": 103192,
+        "generator_version": "2.0.1"
+      }
+    },
+    "population": {
+      "rows": 489898,
+      "fraud_transactions": 2430,
+      "fraud_episodes": 550,
+      "datasets": 5
+    }
+  },
+  "stage_b_selection": {
+    "v2_dnn_lstm": {
+      "seeds": [
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "median": {
+        "recall": 0.548971,
+        "legit_alerts_per_1000": 9.073317,
+        "critical_recall": 0.20535,
+        "first_fraud_recall": 0.545455,
+        "episode_detection_rate": 0.694545
+      },
+      "standard_deviation": {
+        "recall": 0.055179,
+        "legit_alerts_per_1000": 0.752248,
+        "critical_recall": 0.02857,
+        "first_fraud_recall": 0.048559,
+        "episode_detection_rate": 0.022268
+      },
+      "per_seed": {
+        "11": {
+          "metrics": {
+            "recall": 0.490535,
+            "legit_alerts_per_1000": 8.809997,
+            "critical_recall": 0.231276,
+            "first_fraud_recall": 0.572727,
+            "episode_detection_rate": 0.672727
+          },
+          "screens": {
+            "recall_at_least_minimum": true,
+            "alert_burden_within_screen": true,
+            "critical_recall_not_an_outlier": true
+          },
+          "eligible": true,
+          "distance_parts": {
+            "recall": 1.059029,
+            "legit_alerts_per_1000": 0.350044,
+            "critical_recall": 0.907468,
+            "first_fraud_recall": 0.561621,
+            "episode_detection_rate": 0.979781
+          },
+          "distance": 3.857943,
+          "recall_distance_from_median": 0.058436
+        },
+        "12": {
+          "metrics": {
+            "recall": 0.549794,
+            "legit_alerts_per_1000": 10.653238,
+            "critical_recall": 0.20535,
+            "first_fraud_recall": 0.545455,
+            "episode_detection_rate": 0.694545
+          },
+          "screens": {
+            "recall_at_least_minimum": true,
+            "alert_burden_within_screen": true,
+            "critical_recall_not_an_outlier": true
+          },
+          "eligible": true,
+          "distance_parts": {
+            "recall": 0.014915,
+            "legit_alerts_per_1000": 2.100266,
+            "critical_recall": 0.0,
+            "first_fraud_recall": 0.0,
+            "episode_detection_rate": 0.0
+          },
+          "distance": 2.115181,
+          "recall_distance_from_median": 0.000823
+        },
+        "13": {
+          "metrics": {
+            "recall": 0.427984,
+            "legit_alerts_per_1000": 9.532597,
+            "critical_recall": 0.178189,
+            "first_fraud_recall": 0.46,
+            "episode_detection_rate": 0.652727
+          },
+          "screens": {
+            "recall_at_least_minimum": true,
+            "alert_burden_within_screen": true,
+            "critical_recall_not_an_outlier": true
+          },
+          "eligible": true,
+          "distance_parts": {
+            "recall": 2.192633,
+            "legit_alerts_per_1000": 0.610543,
+            "critical_recall": 0.950695,
+            "first_fraud_recall": 1.759804,
+            "episode_detection_rate": 1.87792
+          },
+          "distance": 7.391596,
+          "recall_distance_from_median": 0.120987
+        },
+        "14": {
+          "metrics": {
+            "recall": 0.555556,
+            "legit_alerts_per_1000": 8.93043,
+            "critical_recall": 0.21358,
+            "first_fraud_recall": 0.570909,
+            "episode_detection_rate": 0.705455
+          },
+          "screens": {
+            "recall_at_least_minimum": true,
+            "alert_burden_within_screen": true,
+            "critical_recall_not_an_outlier": true
+          },
+          "eligible": true,
+          "distance_parts": {
+            "recall": 0.119339,
+            "legit_alerts_per_1000": 0.189947,
+            "critical_recall": 0.288068,
+            "first_fraud_recall": 0.524183,
+            "episode_detection_rate": 0.489935
+          },
+          "distance": 1.611472,
+          "recall_distance_from_median": 0.006585
+        },
+        "15": {
+          "metrics": {
+            "recall": 0.548971,
+            "legit_alerts_per_1000": 9.073317,
+            "critical_recall": 0.159671,
+            "first_fraud_recall": 0.501818,
+            "episode_detection_rate": 0.701818
+          },
+          "screens": {
+            "recall_at_least_minimum": true,
+            "alert_burden_within_screen": true,
+            "critical_recall_not_an_outlier": true
+          },
+          "eligible": true,
+          "distance_parts": {
+            "recall": 0.0,
+            "legit_alerts_per_1000": 0.0,
+            "critical_recall": 1.598867,
+            "first_fraud_recall": 0.898631,
+            "episode_detection_rate": 0.326609
+          },
+          "distance": 2.824107,
+          "recall_distance_from_median": 0.0
+        }
+      },
+      "eligible_seeds": [
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "eligible_needed": 3,
+      "architecture_passes": true,
+      "selected_seed": 14,
+      "highest_recall_seed": 14,
+      "selected_is_highest_recall_seed": true,
+      "note": "the selected seed is the most typical eligible run; recall is never maximised"
+    },
+    "v2_dnn_only": {
+      "seeds": [
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "median": {
+        "recall": 0.43251,
+        "legit_alerts_per_1000": 9.746927,
+        "critical_recall": 0.188889,
+        "first_fraud_recall": 0.661818,
+        "episode_detection_rate": 0.698182
+      },
+      "standard_deviation": {
+        "recall": 0.055471,
+        "legit_alerts_per_1000": 0.387947,
+        "critical_recall": 0.048436,
+        "first_fraud_recall": 0.086632,
+        "episode_detection_rate": 0.082442
+      },
+      "per_seed": {
+        "11": {
+          "metrics": {
+            "recall": 0.514815,
+            "legit_alerts_per_1000": 10.318474,
+            "critical_recall": 0.151852,
+            "first_fraud_recall": 0.721818,
+            "episode_detection_rate": 0.770909
+          },
+          "screens": {
+            "recall_at_least_minimum": true,
+            "alert_burden_within_screen": true,
+            "critical_recall_not_an_outlier": true
+          },
+          "eligible": true,
+          "distance_parts": {
+            "recall": 1.483758,
+            "legit_alerts_per_1000": 1.473259,
+            "critical_recall": 0.76466,
+            "first_fraud_recall": 0.692583,
+            "episode_detection_rate": 0.88216
+          },
+          "distance": 5.29642,
+          "recall_distance_from_median": 0.082305
+        },
+        "12": {
+          "metrics": {
+            "recall": 0.361317,
+            "legit_alerts_per_1000": 9.232534,
+            "critical_recall": 0.094239,
+            "first_fraud_recall": 0.503636,
+            "episode_detection_rate": 0.547273
+          },
+          "screens": {
+            "recall_at_least_minimum": false,
+            "alert_burden_within_screen": true,
+            "critical_recall_not_an_outlier": false
+          },
+          "eligible": false,
+          "distance_parts": {
+            "recall": 1.283436,
+            "legit_alerts_per_1000": 1.325935,
+            "critical_recall": 1.954129,
+            "first_fraud_recall": 1.825902,
+            "episode_detection_rate": 1.830488
+          },
+          "distance": 8.21989,
+          "recall_distance_from_median": 0.071193
+        },
+        "13": {
+          "metrics": {
+            "recall": 0.414403,
+            "legit_alerts_per_1000": 9.679566,
+            "critical_recall": 0.199588,
+            "first_fraud_recall": 0.661818,
+            "episode_detection_rate": 0.701818
+          },
+          "screens": {
+            "recall_at_least_minimum": true,
+            "alert_burden_within_screen": true,
+            "critical_recall_not_an_outlier": true
+          },
+          "eligible": true,
+          "distance_parts": {
+            "recall": 0.326425,
+            "legit_alerts_per_1000": 0.173634,
+            "critical_recall": 0.22089,
+            "first_fraud_recall": 0.0,
+            "episode_detection_rate": 0.044104
+          },
+          "distance": 0.765053,
+          "recall_distance_from_median": 0.018107
+        },
+        "14": {
+          "metrics": {
+            "recall": 0.43251,
+            "legit_alerts_per_1000": 9.746927,
+            "critical_recall": 0.188889,
+            "first_fraud_recall": 0.665455,
+            "episode_detection_rate": 0.698182
+          },
+          "screens": {
+            "recall_at_least_minimum": true,
+            "alert_burden_within_screen": true,
+            "critical_recall_not_an_outlier": true
+          },
+          "eligible": true,
+          "distance_parts": {
+            "recall": 0.0,
+            "legit_alerts_per_1000": 0.0,
+            "critical_recall": 0.0,
+            "first_fraud_recall": 0.041982,
+            "episode_detection_rate": 0.0
+          },
+          "distance": 0.041982,
+          "recall_distance_from_median": 0.0
+        },
+        "15": {
+          "metrics": {
+            "recall": 0.444444,
+            "legit_alerts_per_1000": 9.832659,
+            "critical_recall": 0.215638,
+            "first_fraud_recall": 0.570909,
+            "episode_detection_rate": 0.654545
+          },
+          "screens": {
+            "recall_at_least_minimum": true,
+            "alert_burden_within_screen": true,
+            "critical_recall_not_an_outlier": true
+          },
+          "eligible": true,
+          "distance_parts": {
+            "recall": 0.215141,
+            "legit_alerts_per_1000": 0.220989,
+            "critical_recall": 0.552256,
+            "first_fraud_recall": 1.049367,
+            "episode_detection_rate": 0.529306
+          },
+          "distance": 2.567058,
+          "recall_distance_from_median": 0.011934
+        }
+      },
+      "eligible_seeds": [
+        11,
+        13,
+        14,
+        15
+      ],
+      "eligible_needed": 3,
+      "architecture_passes": true,
+      "selected_seed": 14,
+      "highest_recall_seed": 11,
+      "selected_is_highest_recall_seed": false,
+      "note": "the selected seed is the most typical eligible run; recall is never maximised"
+    }
+  },
+  "stage_b_outcome": {
+    "artifacts": [
+      "v2_dnn_lstm@14",
+      "v2_dnn_only@14"
+    ],
+    "primary_candidate": "v2_dnn_lstm@14",
+    "challenger": "v2_dnn_only@14",
+    "outcome": "v2_dnn_lstm seed 14 is the primary candidate; v2_dnn_only seed 14 is the required challenger"
+  },
+  "selected_artifacts": {
+    "v2_dnn_lstm@14": {
+      "architecture": "v2_dnn_lstm",
+      "training_seed": 14,
+      "weights_sha256": {
+        "dnn_weights_sha256": "32fc53979e06db730742423133e54bee2305f89a439cbd634ae03b76f8c94f0f",
+        "lstm_weights_sha256": "e4851c4c20e864b14f1f54a7051b0ad5dad5d0e4920270737ded6bad6db1a077"
+      },
+      "files_sha256": {
+        "dnn_fraud_model.keras": "c033fa8d4ed9888b135a308959ab7596c5db8824665121876cde0f2a28655351",
+        "dnn_feature_mean.npy": "2071d1baa335af2c06d26ec63cc6623e0e46e6626ee349f79face3bc0f01c681",
+        "dnn_feature_std.npy": "b472068a64760b13ab4f959b81309cf5df7abd1c56afbb8372d878aa515eadd8",
+        "shap_background.npy": "ef63280f701e04b5a25dfc47e41457782c1e3152474104560d6c71b3d9761a59",
+        "lstm_risk_model.keras": "5a327ccba85f86e90a927cf5c0a4cd2f1cc6d040f8ded2e47734705b0c1a7600",
+        "lstm_feature_mean.npy": "fbfc1a0afd79ad236b27932198a6a6a6c1d6ac4b2e61b335db1269b9be91e90c",
+        "lstm_feature_std.npy": "e3e7765d84d6b6d2f3ebc665c0798ef36d015cbf604acc53f00d8cd8aaff5a35"
+      },
+      "cutoffs": {
+        "critical": 0.9430845379829407,
+        "policy_b": 0.7928694486618042
+      }
+    },
+    "v2_dnn_only@14": {
+      "architecture": "v2_dnn_only",
+      "training_seed": 14,
+      "weights_sha256": {
+        "dnn_weights_sha256": "8b79fbf09a44548ec62d46f0d00ea53b5cc2ec86761f95281dfd0aaaebecf0c6"
+      },
+      "files_sha256": {
+        "dnn_fraud_model.keras": "65bbce0b6a64f1da0ab98f0d88d433f2d325a97475c95a6b8b5fe75d17e60bc3",
+        "dnn_feature_mean.npy": "2c16523aadb3be1a55a9cea8cea592726a3e9806f952414aa985d89eda3293c8",
+        "dnn_feature_std.npy": "a5af72814b69b48901c30b0a8604d6a43fb07cce8e121c46c3fba26232cf968f",
+        "shap_background.npy": "6a44a3c17fe6cdc10ab34e98644eee3bfcabc8091da6127f7d05a2974a006464"
+      },
+      "cutoffs": {
+        "critical": 0.9653760194778442,
+        "policy_b": 0.8424780368804932
+      }
+    }
+  },
+  "stage_c_final_holdout": "not generated, not scored",
+  "state": {
+    "model_set_default": "production",
+    "promotion": "none",
+    "models_trained": "none"
+  }
+}

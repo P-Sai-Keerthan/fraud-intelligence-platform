@@ -35,3 +35,6 @@ frontend/.env.local
 # backend/models/saved/*.keras
 # data/*.csv
 # data/*.npy
+
+# Step 4C-3E hold-out evaluation datasets: reproducible from the generator and a seed, never committed
+data/v2_holdout/

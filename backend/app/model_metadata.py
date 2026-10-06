@@ -30,6 +30,7 @@ from pathlib import Path
 
 from . import config
 from .features.feature_engineering import FEATURE_COLUMNS, build_point_features
+from .model_sets import MODEL_SETS, SEED14_FROZEN_CUTOFFS, architecture_name
 from .models.dnn_model import alert_level_from_probability  # noqa: F401  (the bands documented below)
 
 ALERT_BANDS = {
@@ -98,6 +99,27 @@ FRAUD_PROBABILITY_SEMANTICS = ("DNN output x 100, capped at 99.9. A fraud SCORE 
                                "not a calibrated probability.")
 
 
+STATUS_PRODUCTION = "PRODUCTION"
+STATUS_EVALUATION = "EVALUATION / NOT DEPLOYED"
+
+V2_HOLDOUT_DIR = config.BACKEND_DIR / "models" / "evaluation" / "v2_holdout"
+SELECTION_RECORD_PATH = V2_HOLDOUT_DIR / "selection_record.json"
+FINAL_HOLDOUT_REPORT_PATH = V2_HOLDOUT_DIR / "final_holdout_report.json"
+
+NEW_CUSTOMER_LIMITATION = (
+    "Customers with fewer than 10 earlier transactions: on the Stage C new-customer population this artifact "
+    "raised about 25.6 legitimate alerts per 1,000 transactions at the frozen Policy B cut-off under the "
+    "current cold-start behaviour, against 9.1 for customers with full history. Policy B performance is "
+    "therefore NOT claimed for cold-start customers, and no new-customer policy has been approved.")
+PROMOTION_BLOCKERS = (
+    "no approved new-customer (cold-start) policy",
+    "the frozen Policy B / Critical cut-offs are not applied by /predict, which keeps the legacy 25/50/80 bands; "
+    "the Stage C figures describe the frozen cut-offs, not the live bands",
+    "all evidence is on synthetic data (generator v2)",
+    "promotion is the owner's decision; none has been made and MODEL_SET stays production",
+)
+
+
 def model_version(ms) -> str:
     """A short, content-derived identifier of the loaded weights."""
     if ms.manifest is None:
@@ -111,12 +133,15 @@ def model_metadata(ms) -> dict:
     meta = {
         "model_set": ms.name,
         "model_version": model_version(ms),
+        "status": STATUS_PRODUCTION if ms.manifest is None else STATUS_EVALUATION,
+        "architecture": "DNN + LSTM" if ms.uses_lstm else "DNN only",
+        "training_seed": None if ms.manifest is None else ms.manifest.get("seed"),
         "directory": _rel(ms.directory),
         "uses_lstm": bool(ms.uses_lstm),
         "dnn_input_columns": list(ms.dnn_input_columns),
         "score_semantics": {
             "fraud_probability": FRAUD_PROBABILITY_SEMANTICS,
-            "risk_score": RISK_SCORE_SEMANTICS[ms.name],
+            "risk_score": RISK_SCORE_SEMANTICS[architecture_name(ms.name)],
             "calibrated_probabilities": False,
         },
         "thresholds": {
@@ -181,6 +206,35 @@ def model_metadata(ms) -> dict:
             "dataset_version": man["dataset"]["version"],
             "evaluates": "this candidate's saved weights on the v2 time-split test period (synthetic data)",
         }
+        spec = MODEL_SETS[ms.name]
+        if spec.pinned is not None:                            # the selected seed-14 artifact (4C-3F)
+            meta["model"]["files_sha256"] = dict(spec.pinned["files"])
+            meta["model"]["files_verified"] = "every file matched its pinned SHA-256 when the model set was loaded"
+            meta["selection"] = {
+                "artifact": spec.artifact,
+                "architecture_model_set": spec.architecture_of,
+                "training_seed": spec.training_seed,
+                "protocol": "4C-3E.6 (pre-registered): Stage B artifact selection, Stage C final hold-out",
+                "selection_record": _rel(SELECTION_RECORD_PATH),
+                "selection_record_sha256": _sha256(SELECTION_RECORD_PATH) if SELECTION_RECORD_PATH.exists() else None,
+                "outcome": "passed the Stage C gates; eligible for a controlled-promotion decision",
+                "presentation": "Validated candidate - not yet deployed",
+                "new_customer_limitation": NEW_CUSTOMER_LIMITATION,
+                "promotion_blockers": list(PROMOTION_BLOCKERS),
+            }
+            meta["thresholds"]["frozen_cutoffs"] = {
+                "policy_b": SEED14_FROZEN_CUTOFFS["policy_b"],
+                "critical": SEED14_FROZEN_CUTOFFS["critical"],
+                "scale": "DNN output, 0-1 (fraud score / 100)",
+                "source": "frozen at Stage B (selection_record.json) and used unchanged in Stage C",
+                "status": "recorded for provenance; NOT applied by /predict, which keeps the legacy fixed bands",
+            }
+            meta["evaluation"] = {
+                "source": _rel(FINAL_HOLDOUT_REPORT_PATH),
+                "dataset_version": man["dataset"]["version"],
+                "evaluates": "exactly these weights on the Stage C final hold-out (synthetic v2 data, seeds "
+                             "401-405, customers with at least 10 earlier transactions) at the frozen cut-offs",
+            }
     return meta
 
 
@@ -192,6 +246,9 @@ def candidate_evaluation(ms) -> dict:
     Only returned when comparison.json describes exactly the loaded weights."""
     path = ms.directory.parent / "comparison.json"
     key = CANDIDATE_KEYS.get(ms.name)
+    if MODEL_SETS[ms.name].pinned is not None:
+        return {"available": False, "reason": "comparison.json describes the seed-42 candidates; this artifact is "
+                                              "evaluated by the Stage C final hold-out (final_holdout_evaluation)"}
     if key is None:
         return {"available": False, "reason": "not a candidate model set"}
     if not path.exists():
@@ -215,4 +272,54 @@ def candidate_evaluation(ms) -> dict:
         "alert_bands_production_25_50_80": comp["alert_bands_production_25_50_80"][key],
         "episodes_test": {k: v for k, v in comp["episodes_test"][key].items() if k != "per_episode"},
         "limitations": comp["limitations"],
+    }
+
+
+_HOLDOUT_METRICS = ("recall", "precision", "legit_alerts_per_1000", "critical_recall", "critical_legit_alerts_per_1000",
+                    "first_fraud_recall", "episode_detection_rate", "pr_auc", "roc_auc")
+
+
+def final_holdout_evaluation(ms) -> dict:
+    """The loaded artifact's slice of final_holdout_report.json (Stage C), or why
+    it is unavailable. Only returned when the report scored exactly the loaded
+    weights. Values are copied from the report; nothing is recomputed."""
+    spec = MODEL_SETS[ms.name]
+    if spec.pinned is None:
+        return {"available": False, "reason": "the final hold-out evaluated one selected artifact; "
+                                              "this model set is not it"}
+    path = FINAL_HOLDOUT_REPORT_PATH
+    if not path.exists():
+        return {"available": False, "reason": f"{_rel(path)} not found"}
+    report = json.loads(path.read_text())
+    art = spec.artifact
+    recorded = (report.get("selected_artifacts") or {}).get(art) or {}
+    man = ms.manifest["model"]
+    if (recorded.get("weights_sha256") or {}) != {"dnn_weights_sha256": man["dnn_weights_sha256"],
+                                                  "lstm_weights_sha256": man.get("lstm_weights_sha256")}:
+        return {"available": False, "reason": "final_holdout_report.json was produced for different weights"}
+
+    def pick(models):
+        m = models[art]
+        return {"counts": m["counts"], "metrics": {k: m["metrics"][k] for k in _HOLDOUT_METRICS if k in m["metrics"]}}
+
+    primary, new = report["pooled"]["primary"], report["new_customer"]["current_behaviour"]
+    population = lambda p: {k: p[k] for k in ("rows", "fraud_transactions", "legitimate_transactions",
+                                              "fraud_episodes", "customers", "datasets")}
+    decision = report["decision"]
+    return {
+        "available": True,
+        "artifact": art,
+        "source": _rel(path),
+        "source_sha256": _sha256(path),
+        "step": report["step"],
+        "frozen_cutoffs_score_0_1": {k: v[art] for k, v in report["fixed_inputs"]["frozen_cutoffs_score_0_1"].items()},
+        "primary": {"population": decision["population"], **population(primary), **pick(primary["models"]),
+                    "production_recall": decision["gates"][art]["production_recall"]},
+        "gates": {"definition": report["fixed_inputs"]["gates"], "result": decision["gates"][art]},
+        "new_customer": {"note": report["new_customer"]["note"], **population(new), **pick(new["models"]),
+                         "limitation": NEW_CUSTOMER_LIMITATION},
+        "outcome": decision["outcome"],
+        "promotion": decision["promotion"],
+        "scores_note": "Scores are not calibrated probabilities. Alerts are counted at the frozen Policy B "
+                       "cut-off, which /predict does not apply.",
     }

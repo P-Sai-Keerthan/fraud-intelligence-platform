@@ -1,50 +1,51 @@
-const RISK_COLOR_STOPS = [
-  { max: 25, color: 'var(--risk-low)' },
-  { max: 50, color: 'var(--risk-medium)' },
-  { max: 80, color: 'var(--risk-high)' },
-  { max: 100, color: 'var(--risk-critical)' },
-]
+import { scoreColor } from '../severity'
 
-function colorForScore(score) {
-  const stop = RISK_COLOR_STOPS.find((s) => score <= s.max)
-  return (stop || RISK_COLOR_STOPS[RISK_COLOR_STOPS.length - 1]).color
-}
-
-export default function RiskGauge({ label, value, sublabel, decimals = 0 }) {
+// A thin progress ring with the value in the middle. `color` overrides the
+// score-based tint (the similarity ring uses the brand colour).
+export function ScoreRing({ value, color, size = 132, stroke = 9, children }) {
+  const hasValue = value != null
   const clamped = Math.max(0, Math.min(100, value ?? 0))
-  const radius = 54
+  const radius = (size - stroke) / 2 - 2
   const circumference = 2 * Math.PI * radius
   const offset = circumference * (1 - clamped / 100)
-  const color = colorForScore(clamped)
-
+  const tint = color || scoreColor(hasValue ? clamped : null)
   return (
-    <div className="flex flex-col items-center justify-center">
-      <div className="relative w-36 h-36">
-        <svg viewBox="0 0 130 130" className="w-full h-full -rotate-90">
-          <circle cx="65" cy="65" r={radius} fill="none" stroke="var(--border)" strokeWidth="10" />
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full -rotate-90" aria-hidden="true">
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--border)" strokeWidth={stroke} />
+        {hasValue && (
           <circle
-            cx="65" cy="65" r={radius} fill="none"
-            stroke={color} strokeWidth="10" strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
+            cx={size / 2} cy={size / 2} r={radius} fill="none"
+            stroke={tint} strokeWidth={stroke} strokeLinecap="round"
+            strokeDasharray={circumference} strokeDashoffset={offset}
             style={{ transition: 'stroke-dashoffset 0.6s ease, stroke 0.3s ease' }}
           />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span
-            className="text-3xl"
-            style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', fontWeight: 600 }}
-          >
-            {value != null ? clamped.toFixed(decimals) : '—'}
+        )}
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">{children}</div>
+    </div>
+  )
+}
+
+// Metric card body: label, ring with "value / 100", one-line meaning, fine print.
+export default function RiskGauge({ label, value, decimals = 0, caption, note, loading = false }) {
+  const hasValue = value != null
+  const clamped = Math.max(0, Math.min(100, value ?? 0))
+  const text = hasValue ? clamped.toFixed(decimals) : '—'
+  return (
+    <div className="flex flex-col items-center text-center h-full">
+      <div className="eyebrow self-start">{label}</div>
+      <div className="my-3" style={{ opacity: loading ? 0.45 : 1, transition: 'opacity 0.2s ease' }}>
+        <ScoreRing value={value}>
+          <span className="text-[30px] leading-none tnum" style={{ fontWeight: 600, color: 'var(--text-primary)' }}
+            aria-label={hasValue ? `${label}: ${text} out of 100` : `${label}: no value yet`}>
+            {text}
           </span>
-          {sublabel && (
-            <span className="text-[10px] mt-0.5" style={{ color: 'var(--text-faint)' }}>{sublabel}</span>
-          )}
-        </div>
+          <span className="mono text-[11px] mt-1" style={{ color: 'var(--text-faint)' }}>/ 100</span>
+        </ScoreRing>
       </div>
-      <span className="text-xs uppercase tracking-wide mt-3" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-        {label}
-      </span>
+      {caption && <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{caption}</p>}
+      {note && <p className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>{note}</p>}
     </div>
   )
 }

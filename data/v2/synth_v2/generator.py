@@ -27,7 +27,7 @@ come from the config (never from the clock).
 """
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
@@ -35,7 +35,7 @@ import pandas as pd
 from . import schema
 from .config import (
     DEFAULT_CONFIG, DOMESTIC_CITIES, FOREIGN_CITIES, FOREIGN_CITIES_TRAVEL, FOREIGN_CITIES_V1,
-    MERCHANT_CATEGORIES, GeneratorConfig,
+    MERCHANT_CATEGORIES, NEW_CUSTOMER_MAX_PRIOR, GeneratorConfig,
 )
 
 DAY = 86_400
@@ -44,6 +44,7 @@ MINUTE = 60
 
 # random-stream domains
 _PLAN, _CUSTOMER, _EPISODE, _RING, _LOGINS, _HOUSEHOLD, _SCHEDULE = range(1, 8)
+_NEW_CUSTOMER = 8      # the optional new-customer extension draws only from this domain
 
 
 def _rng(cfg: GeneratorConfig, domain: int, *keys: int) -> np.random.Generator:
@@ -122,6 +123,7 @@ class Customer:
     carrier_network: str
     vpn_use: float
     trips: list                            # [(start, end, city, "travel_domestic"/"travel_foreign")]
+    join_time: int = 0                     # late joiners (new-customer extension): no activity before this
 
     def primary_at(self, t: int) -> str:
         if self.upgrade_time is not None and t >= self.upgrade_time:
@@ -143,6 +145,7 @@ class Episode:
     ring_key: int                          # -1 = not a ring episode
     first_time: int                        # planned start of the fraud (seconds from start)
     precursor_start: int | None
+    exact_time: bool = False               # new-customer episodes: the first fraud is at first_time exactly
 
 
 @dataclass
@@ -170,6 +173,7 @@ class Plan:
     ids: _IdRegistry
     day_of_month: list
     day_of_week: list
+    late_joiners: list = field(default_factory=list)     # customer idxs, in the order they receive new-customer fraud
 
 
 def _hour_weights(rng, peaks, width_bounds, floor_bounds):
@@ -324,9 +328,67 @@ def build_plan(cfg: GeneratorConfig = DEFAULT_CONFIG) -> Plan:
 
     _assign_foreign_destinations(cfg, customers, horizon)
     episodes, rings = _plan_fraud(cfg, customers, merchants, ids)
+    late_joiners = _plan_late_joiners(cfg, customers, episodes) if cfg.new_customer_extension else []
     days = pd.date_range(cfg.start_date, periods=cfg.days, freq="D")
     return Plan(cfg, customers, episodes, rings, merchants, city_carriers, city_public, proxy_networks, ids,
-                day_of_month=days.day.tolist(), day_of_week=days.dayofweek.tolist())
+                day_of_month=days.day.tolist(), day_of_week=days.dayofweek.tolist(), late_joiners=late_joiners)
+
+
+# ---- new-customer extension (off by default) ---------------------------------------------
+
+def _plan_late_joiners(cfg, customers, episodes) -> list:
+    """Picks the late joiners among customers with no other planned fraud and
+    gives each a join time. Uses its own random streams, so every other
+    customer and every existing episode is exactly as without the extension."""
+    victims = {e.customer_idx for e in episodes}
+    eligible = [c for c in customers if c.idx not in victims]
+    n = int(round(cfg.late_joiner_share * cfg.n_customers))
+    if n > len(eligible):
+        raise ValueError(f"late_joiner_share asks for {n} late joiners but only {len(eligible)} customers have no fraud planned")
+    if cfg.new_customer_fraud_episodes > n:
+        raise ValueError(f"{cfg.new_customer_fraud_episodes} new-customer fraud episodes need at least as many late "
+                         f"joiners; late_joiner_share gives {n}")
+    lo, hi = cfg.late_join_days
+    if not 0 < lo <= hi < cfg.days:
+        raise ValueError("late_join_days must lie inside the generated period")
+    order = _rng(cfg, _NEW_CUSTOMER).permutation(len(eligible))[:n]
+    chosen = [eligible[int(k)] for k in order]
+    for c in chosen:
+        c.join_time = _randint(_rng(cfg, _NEW_CUSTOMER, 1, c.idx), cfg.late_join_days) * DAY
+    return [c.idx for c in chosen]
+
+
+def _plan_new_customer_fraud(plan: Plan, rows: list) -> list:
+    """Episodes whose first fraud comes after 0..NEW_CUSTOMER_MAX_PRIOR of a late
+    joiner's own transactions. Planned after the legitimate activity exists, so
+    the number of earlier transactions is controlled. The existing non-ring
+    archetypes are reused, with their episode shares."""
+    cfg = plan.cfg
+    n = cfg.new_customer_fraud_episodes
+    if not n:
+        return []
+    times = {}
+    for row in rows:
+        times.setdefault(row["customer_idx"], []).append(row["t"])
+    quota = _quota(n, {a: v["share"] for a, v in cfg.archetypes.items() if a != "ring"})
+    labels = [a for a in cfg.archetypes if a != "ring" for _ in range(quota[a])]
+    _rng(cfg, _NEW_CUSTOMER, 2).shuffle(labels)
+    episodes, key = [], len(plan.episodes)
+    for archetype, idx in zip(labels, plan.late_joiners[:n]):
+        r = _rng(cfg, _NEW_CUSTOMER, 3, idx)
+        t = sorted(times.get(idx, []))
+        k = min(int(r.integers(0, NEW_CUSTOMER_MAX_PRIOR + 1)), max(len(t) - 1, 0))
+        if not t:
+            first = plan.customers[idx].join_time + int(r.integers(HOUR, DAY))
+        elif k == 0:
+            first = max(t[0] - int(r.integers(MINUTE, 6 * HOUR)), 0)       # the fraud is the customer's first transaction
+        elif t[k] - t[k - 1] >= 2:
+            first = int(r.integers(t[k - 1] + 1, t[k]))                    # strictly between the k-th and the next
+        else:
+            first = t[k - 1] + 1
+        episodes.append(Episode(key, idx, archetype, -1, first, None, exact_time=True))
+        key += 1
+    return episodes
 
 
 def _ring_sizes(rng, total, lo, hi, min_rings):
@@ -504,6 +566,8 @@ def _legit_transactions(plan: Plan, c: Customer, logins: list) -> list:
 
     horizon = cfg.days * DAY
     for d in range(cfg.days):
+        if d * DAY < c.join_time:
+            continue                    # a late joiner has no activity before joining (join_time is 0 otherwise)
         rate = c.weekly_rate / 7.0
         if plan.day_of_week[d] >= 5:
             rate *= 1.15
@@ -527,11 +591,13 @@ def _legit_transactions(plan: Plan, c: Customer, logins: list) -> list:
 
     # a trip always shows up in the data: at least one payment while away
     for t_start, t_end, _, _ in c.trips:
+        if t_start < c.join_time:
+            continue
         if not any(t_start <= row["t"] < t_end for row in rows):
             day = t_start // DAY + 1
             make(day * DAY + int(r.choice(24, p=c.hour_weights)) * HOUR + int(r.integers(0, HOUR)), [])
 
-    if c.borrow:
+    if c.borrow and c.borrow[0] >= c.join_time:
         t0, dev, k = c.borrow
         for j in range(k):
             make(t0 + j * int(r.integers(10 * MINUTE, 2 * HOUR)), ["borrowed_device"], device=dev)
@@ -583,8 +649,8 @@ def _fraud_transactions(plan: Plan, ep: Episode, logins: list) -> list:
             network = c.home_network if r.random() < 0.5 else c.carrier_network
 
     # ---- times
-    if ring is not None:
-        first = ep.first_time            # the ring's coordinated wave decides the time
+    if ring is not None or ep.exact_time:
+        first = ep.first_time            # the ring's coordinated wave (or the new-customer plan) decides the time
     else:
         session_off = r.random() < a["p_off_hours"]
         first = (ep.first_time // DAY) * DAY + _pick_hour(r, c, session_off) * HOUR + int(r.integers(0, HOUR))
@@ -680,10 +746,13 @@ class GeneratedData:
 
 
 def generate(cfg: GeneratorConfig = DEFAULT_CONFIG) -> GeneratedData:
+    """With the new-customer settings at 0 (the default) this is the 2.0.1 generator."""
     plan = build_plan(cfg)
     logins, rows = [], []
     for c in plan.customers:
         rows += _legit_transactions(plan, c, logins)
+    if cfg.new_customer_fraud_episodes:
+        plan.episodes = plan.episodes + _plan_new_customer_fraud(plan, rows)
     for ep in plan.episodes:
         rows += _fraud_transactions(plan, ep, logins)
     return _finalize(plan, rows, logins)
@@ -732,6 +801,10 @@ def _finalize(plan: Plan, rows: list, logins: list) -> GeneratedData:
     eps = {e.key: e for e in plan.episodes}
     order = sorted(firsts.index, key=lambda k: (firsts[k], eps[k].customer_idx))
     episode_id = {k: i + 1 for i, k in enumerate(order)}
+    extension = cfg.new_customer_extension
+    if extension:                                   # earlier transactions of the customer at each episode's first fraud
+        n_prior = df.groupby("customer_idx").cumcount()
+        prior_at_first = n_prior[df["is_fraud"] == 1].groupby(df["episode_key"]).min()
     ring_order = sorted(plan.rings, key=lambda rg: (rg.wave_start, rg.key))
     ring_id = {rg.key: i + 1 for i, rg in enumerate(ring_order)}
 
@@ -757,6 +830,8 @@ def _finalize(plan: Plan, rows: list, logins: list) -> GeneratedData:
             last_fraud_time=str(start + pd.Timedelta(seconds=int(lasts[k]))),
             n_fraud_transactions=int(counts[k]),
         ))
+        if extension:
+            ep_rows[-1][schema.NEW_CUSTOMER_EPISODE_COLUMNS[0]] = int(prior_at_first[k])
     df["is_precursor"] = precursor
 
     ctx = df["legit_context"].tolist()
@@ -781,8 +856,10 @@ def _finalize(plan: Plan, rows: list, logins: list) -> GeneratedData:
         has_foreign_trip=int(any(k == "travel_foreign" for *_, k in c.trips)),
         n_domestic_trips=sum(k == "travel_domestic" for *_, k in c.trips),
     ) for c in plan.customers], columns=schema.CUSTOMER_COLUMNS)
+    if extension:
+        customers[schema.NEW_CUSTOMER_CUSTOMER_COLUMNS[0]] = [str(start + pd.Timedelta(seconds=c.join_time)) for c in plan.customers]
 
-    episodes = pd.DataFrame(ep_rows, columns=schema.EPISODE_COLUMNS)
+    episodes = pd.DataFrame(ep_rows, columns=schema.EPISODE_COLUMNS + (schema.NEW_CUSTOMER_EPISODE_COLUMNS if extension else []))
     login_failures = pd.DataFrame({
         "customer_id": [f"CUST_{k:04d}" for k in lg["customer_idx"]],
         "timestamp": (start + pd.to_timedelta(lg["t"], unit="s")).dt.strftime("%Y-%m-%d %H:%M:%S").to_numpy(),

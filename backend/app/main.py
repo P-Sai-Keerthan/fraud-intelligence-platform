@@ -41,7 +41,7 @@ from .schemas import (
 )
 from .inference_pipeline import get_pipeline
 from .db.migrations import ensure_schema
-from .model_metadata import candidate_evaluation
+from .model_metadata import candidate_evaluation, final_holdout_evaluation
 from .models.evaluate import EvaluationReportMissing, evaluate_all, load_report
 from .report import build_pdf_report
 
@@ -280,6 +280,7 @@ def get_metrics(refresh: bool = False):
         **context,
         "evaluation": evaluation,
         "candidate_evaluation": candidate,
+        "final_holdout_evaluation": final_holdout_evaluation(pipeline.model_set),
     }
 
 
@@ -305,6 +306,7 @@ def get_metrics_report(refresh: bool = False):
         "v1_report_withheld": "the v1 evaluation report evaluates the production architecture on v1, "
                               "not this model set",
         "candidate_evaluation": candidate_evaluation(pipeline.model_set),
+        "final_holdout_evaluation": final_holdout_evaluation(pipeline.model_set),
     }
 
 

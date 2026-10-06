@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Header from './components/Header'
 import CustomerSelector from './components/CustomerSelector'
 import TransactionForm from './components/TransactionForm'
@@ -7,35 +7,63 @@ import AlertBanner from './components/AlertBanner'
 import ShapReasonsChart from './components/ShapReasonsChart'
 import FraudEvolutionTimeline from './components/FraudEvolutionTimeline'
 import SimilarityMeter from './components/SimilarityMeter'
+import BehavioralAnalysis from './components/BehavioralAnalysis'
 import ModelPerformance from './components/ModelPerformance'
 import FraudRings from './components/FraudRings'
 import BatchScoring from './components/BatchScoring'
-import { predictTransaction, getCustomerHistory, getCustomerProfile, listCustomers, downloadReportPdf, getModelInfo } from './api'
-import { scoreWording, modelSetLabel } from './modelWording'
+import { Badge, Card, ErrorState, Icon } from './components/ui'
+import {
+  predictTransaction, getCustomerHistory, getCustomerProfile, listCustomers, downloadReportPdf, getModelInfo, getHealth,
+} from './api'
+import { scoreWording } from './modelWording'
 
 const TABS = [
-  { key: 'live', label: 'Live Scan' },
-  { key: 'batch', label: 'Batch Scoring' },
-  { key: 'rings', label: 'Fraud Rings' },
-  { key: 'metrics', label: 'Model Performance' },
+  { key: 'live', label: 'Live Scan', icon: 'scan' },
+  { key: 'batch', label: 'Batch Scoring', icon: 'layers' },
+  { key: 'rings', label: 'Fraud Rings', icon: 'network' },
+  { key: 'metrics', label: 'Model Performance', icon: 'activity' },
 ]
 
+const HEALTH_POLL_MS = 30000
+
 function TabBar({ active, onChange }) {
+  const refs = useRef({})
+  const onKeyDown = (e) => {
+    const i = TABS.findIndex((t) => t.key === active)
+    let next = null
+    if (e.key === 'ArrowRight') next = TABS[(i + 1) % TABS.length]
+    if (e.key === 'ArrowLeft') next = TABS[(i - 1 + TABS.length) % TABS.length]
+    if (e.key === 'Home') next = TABS[0]
+    if (e.key === 'End') next = TABS[TABS.length - 1]
+    if (next) {
+      e.preventDefault()
+      onChange(next.key)
+      refs.current[next.key]?.focus()
+    }
+  }
   return (
-    <div className="flex gap-1 mb-6 border-b" style={{ borderColor: 'var(--border)' }}>
+    <div
+      role="tablist" aria-label="Sections" onKeyDown={onKeyDown}
+      className="inline-flex max-w-full overflow-x-auto p-1 rounded-xl border gap-1"
+      style={{ borderColor: 'var(--border)', background: 'rgba(10, 16, 27, 0.8)' }}
+    >
       {TABS.map((tab) => {
         const isActive = active === tab.key
         return (
           <button
-            key={tab.key}
+            key={tab.key} role="tab" type="button" id={`tab-${tab.key}`}
+            aria-selected={isActive} aria-controls={`panel-${tab.key}`} tabIndex={isActive ? 0 : -1}
+            ref={(el) => { refs.current[tab.key] = el }}
             onClick={() => onChange(tab.key)}
-            className="px-4 py-2.5 text-sm transition-colors relative -mb-px"
+            className="display flex items-center gap-2 px-4 h-9 rounded-lg text-[13px] whitespace-nowrap transition-colors"
             style={{
-              color: isActive ? 'var(--brand)' : 'var(--text-muted)',
-              fontFamily: 'var(--font-display)',
-              borderBottom: isActive ? '2px solid var(--brand)' : '2px solid transparent',
+              fontWeight: 600,
+              color: isActive ? 'var(--text-primary)' : 'var(--text-muted)',
+              background: isActive ? 'linear-gradient(180deg, rgba(56,189,248,0.18), rgba(56,189,248,0.08))' : 'transparent',
+              boxShadow: isActive ? 'inset 0 0 0 1px rgba(56,189,248,0.38)' : 'none',
             }}
           >
+            <Icon name={tab.icon} size={15} style={{ color: isActive ? 'var(--brand)' : 'var(--text-faint)' }} />
             {tab.label}
           </button>
         )
@@ -44,23 +72,11 @@ function TabBar({ active, onChange }) {
   )
 }
 
-const cardStyle = {
-  background: 'var(--surface)',
-  borderColor: 'var(--border)',
-}
-
-function Card({ title, children, className = '' }) {
+function PageHeading({ title, children }) {
   return (
-    <div className={`rounded-xl border p-5 ${className}`} style={cardStyle}>
-      {title && (
-        <h3
-          className="text-sm mb-4 uppercase tracking-wide"
-          style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
-        >
-          {title}
-        </h3>
-      )}
-      {children}
+    <div className="mb-5">
+      <h2 className="display text-xl" style={{ fontWeight: 600 }}>{title}</h2>
+      {children && <p className="text-[13px] mt-1 max-w-3xl" style={{ color: 'var(--text-muted)' }}>{children}</p>}
     </div>
   )
 }
@@ -68,8 +84,10 @@ function Card({ title, children, className = '' }) {
 export default function App() {
   const [activeTab, setActiveTab] = useState('live')
   const [customers, setCustomers] = useState([])
+  const [customersLoading, setCustomersLoading] = useState(true)
   const [selectedCustomer, setSelectedCustomer] = useState('')
   const [profile, setProfile] = useState(null)
+  const [profileLoading, setProfileLoading] = useState(false)
   const [profileError, setProfileError] = useState('')
   const [prediction, setPrediction] = useState(null)
   const [timeline, setTimeline] = useState([])
@@ -79,13 +97,29 @@ export default function App() {
   const [reportLoading, setReportLoading] = useState(false)
   const [reportError, setReportError] = useState('')
   const [modelInfo, setModelInfo] = useState(null)
+  const [health, setHealth] = useState('checking')
   const wording = scoreWording(modelInfo)
+
+  // backend liveness for the header (GET /health), re-checked periodically
+  useEffect(() => {
+    let cancelled = false
+    const check = () => {
+      getHealth()
+        .then((d) => { if (!cancelled) setHealth(d?.status === 'ok' ? 'online' : 'offline') })
+        .catch(() => { if (!cancelled) setHealth('offline') })
+    }
+    check()
+    const id = setInterval(check, HEALTH_POLL_MS)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [])
 
   useEffect(() => {
     getModelInfo().then(setModelInfo).catch(() => setModelInfo(null))
   }, [])
 
-  useEffect(() => {
+  const loadCustomers = useCallback(() => {
+    setCustomersLoading(true)
+    setCustomersError('')
     listCustomers(500)
       .then((data) => setCustomers(data.customer_ids))
       .catch(() =>
@@ -93,7 +127,10 @@ export default function App() {
           'Could not reach the backend at /api. Make sure the FastAPI server is running (see README).'
         )
       )
+      .finally(() => setCustomersLoading(false))
   }, [])
+
+  useEffect(() => { loadCustomers() }, [loadCustomers])
 
   const refreshHistory = useCallback(async (customerId) => {
     try {
@@ -107,6 +144,8 @@ export default function App() {
   useEffect(() => {
     if (selectedCustomer) {
       setPrediction(null)
+      setError('')
+      setTimeline([])
       refreshHistory(selectedCustomer)
     }
   }, [selectedCustomer, refreshHistory])
@@ -118,6 +157,7 @@ export default function App() {
     setProfileError('')
     if (!selectedCustomer) return
     let cancelled = false
+    setProfileLoading(true)
     getCustomerProfile(selectedCustomer)
       .then((data) => { if (!cancelled) setProfile(data) })
       .catch(() => {
@@ -125,6 +165,7 @@ export default function App() {
           setProfileError("Could not load this customer's usual device and city. Enter them manually.")
         }
       })
+      .finally(() => { if (!cancelled) setProfileLoading(false) })
     return () => { cancelled = true }
   }, [selectedCustomer])
 
@@ -136,6 +177,8 @@ export default function App() {
       setPrediction(result)
       setReportError('')
       await refreshHistory(payload.customer_id)
+      // the history count in the profile grows with every scan
+      getCustomerProfile(payload.customer_id).then(setProfile).catch(() => {})
     } catch (err) {
       setError(
         err?.response?.data?.detail
@@ -161,109 +204,119 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
-      <Header selectedCustomer={selectedCustomer} />
+    <div className="min-h-screen flex flex-col">
+      <Header health={health} modelInfo={modelInfo} />
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        <TabBar active={activeTab} onChange={setActiveTab} />
+      <main className="flex-1 w-full max-w-[1480px] mx-auto px-5 lg:px-8 py-6">
+        <div className="mb-6">
+          <TabBar active={activeTab} onChange={setActiveTab} />
+        </div>
 
         {activeTab === 'live' && (
-          <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
-            {/* left column: controls */}
-            <div className="space-y-6">
-              <Card title="Select Customer">
-                <CustomerSelector customers={customers} value={selectedCustomer} onChange={setSelectedCustomer} />
-                {customersError && (
-                  <p className="text-xs mt-2" style={{ color: 'var(--risk-critical)' }}>{customersError}</p>
-                )}
+          <div id="panel-live" role="tabpanel" aria-labelledby="tab-live"
+            className="grid grid-cols-1 lg:grid-cols-[340px_minmax(0,1fr)] xl:grid-cols-[372px_minmax(0,1fr)] gap-5 items-start">
+            {/* left column: who and what is being scanned */}
+            <div className="space-y-5 sticky-tall">
+              <Card title="Customer Profile" eyebrow="Investigation" icon="user">
+                <CustomerSelector
+                  customers={customers} value={selectedCustomer} onChange={setSelectedCustomer}
+                  profile={profile} profileLoading={profileLoading} timeline={selectedCustomer ? timeline : null}
+                  loadingCustomers={customersLoading}
+                />
+                {customersError && <ErrorState className="mt-3" onRetry={loadCustomers}>{customersError}</ErrorState>}
+                {profileError && <ErrorState className="mt-3">{profileError}</ErrorState>}
               </Card>
 
-              <Card title="Scan a Transaction">
+              <Card title="Transaction Context" eyebrow="Input" icon="file">
                 <TransactionForm customerId={selectedCustomer} profile={profile} onSubmit={handleSubmit} loading={loading} />
-                {profileError && (
-                  <p className="text-xs mt-3" style={{ color: 'var(--risk-critical)' }}>{profileError}</p>
-                )}
-                {!selectedCustomer && (
-                  <p className="text-xs mt-3" style={{ color: 'var(--text-faint)' }}>
-                    Select a customer above to enable scanning.
-                  </p>
-                )}
-                {error && <p className="text-xs mt-3" style={{ color: 'var(--risk-critical)' }}>{error}</p>}
+                {error && <ErrorState className="mt-3">{error}</ErrorState>}
               </Card>
             </div>
 
-            {/* right column: results dashboard */}
-            <div className="space-y-6">
-              {prediction && (
-                <div className="flex items-center gap-3">
-                  <div className="flex-1"><AlertBanner level={prediction.alert_level} /></div>
-                  <button
-                    onClick={handleDownloadReport}
-                    disabled={reportLoading}
-                    className="text-xs px-4 py-2.5 rounded-lg border shrink-0 transition-colors hover:border-[var(--brand)] disabled:opacity-40"
-                    style={{ borderColor: 'var(--border)', color: 'var(--text-primary)', background: 'var(--surface)', fontFamily: 'var(--font-display)' }}
-                  >
-                    {reportLoading ? 'Generating…' : 'Download Report'}
-                  </button>
-                </div>
-              )}
-              {reportError && <p className="text-xs" style={{ color: 'var(--risk-critical)' }}>{reportError}</p>}
+            {/* right column: verdict, scores, explanation */}
+            <div className="space-y-5 min-w-0">
+              <AlertBanner
+                prediction={prediction} modelInfo={modelInfo} loading={loading}
+                onDownload={handleDownloadReport} reportLoading={reportLoading}
+              />
+              {reportError && <ErrorState>{reportError}</ErrorState>}
 
-              <p className="text-[10px]" style={{ color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
-                Loaded {modelSetLabel(modelInfo)}
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                 <Card>
-                  <RiskGauge label={wording.riskLabel} value={prediction?.risk_score} sublabel="/ 100" />
-                  <p className="text-[10px] text-center mt-2" style={{ color: 'var(--text-faint)' }}>
-                    {wording.riskCaption}
-                  </p>
+                  <RiskGauge
+                    label={wording.riskLabel} value={prediction?.risk_score} loading={loading}
+                    caption={wording.riskShort} note={<span title={wording.riskCaption}>Before this transaction</span>}
+                  />
                 </Card>
                 <Card>
-                  <RiskGauge label="Fraud Probability" value={prediction?.fraud_probability} sublabel="%" decimals={1} />
-                  <p className="text-[10px] text-center mt-2" style={{ color: 'var(--text-faint)' }}>
-                    {wording.fraudCaption}
-                  </p>
+                  <RiskGauge
+                    label="Fraud Score" value={prediction?.fraud_probability} decimals={1} loading={loading}
+                    caption="Model score, not a calibrated probability." note={<span title={wording.fraudCaption}>For this transaction</span>}
+                  />
                 </Card>
                 <Card>
-                  <div className="h-full flex flex-col justify-center">
-                    <SimilarityMeter
-                      similarityPct={prediction?.similarity_pct}
-                      deviationPct={prediction?.deviation_pct}
-                    />
-                  </div>
+                  <SimilarityMeter similarityPct={prediction?.similarity_pct} deviationPct={prediction?.deviation_pct} loading={loading} />
                 </Card>
               </div>
 
-              <Card title="Explainable AI &middot; Why This Score">
-                <ShapReasonsChart reasons={prediction?.reasons} />
+              <Card
+                title="Why was this transaction flagged?" eyebrow="Explainable AI" icon="search"
+                actions={<Badge tone="brand" icon="cpu">SHAP / Explainable AI</Badge>}
+              >
+                <ShapReasonsChart reasons={prediction?.reasons} hasPrediction={!!prediction} />
               </Card>
 
-              <Card title="Fraud Evolution Timeline">
-                <FraudEvolutionTimeline timeline={timeline} riskName={wording.timelineRisk} />
-              </Card>
+              <div className="grid grid-cols-1 2xl:grid-cols-2 gap-5">
+                <Card title="Behavioral Analysis" eyebrow="Baseline vs. transaction" icon="user">
+                  <BehavioralAnalysis profile={selectedCustomer ? profile : null} prediction={prediction} />
+                </Card>
+                <Card title="Fraud Evolution Timeline" eyebrow="Score history" icon="activity">
+                  <FraudEvolutionTimeline timeline={timeline} riskName={wording.timelineRisk} />
+                </Card>
+              </div>
             </div>
           </div>
         )}
 
         {activeTab === 'batch' && (
-          <Card title="Batch CSV Upload &amp; Bulk Scoring">
+          <div id="panel-batch" role="tabpanel" aria-labelledby="tab-batch">
+            <PageHeading title="Batch Scoring">
+              Score a CSV of transactions in one pass and triage the results by alert level.
+            </PageHeading>
             <BatchScoring riskColumn={wording.riskColumn} />
-          </Card>
+          </div>
         )}
 
         {activeTab === 'rings' && (
-          <Card title="Fraud Ring Detection">
+          <div id="panel-rings" role="tabpanel" aria-labelledby="tab-rings">
+            <PageHeading title="Fraud Ring Investigation">
+              Customers linked by a shared device. A legitimate customer&apos;s devices belong to them alone, so a device
+              used by several accounts points to coordinated activity.
+            </PageHeading>
             <FraudRings />
-          </Card>
+          </div>
         )}
 
         {activeTab === 'metrics' && (
-          <Card title="Model Performance">
-            <ModelPerformance />
-          </Card>
+          <div id="panel-metrics" role="tabpanel" aria-labelledby="tab-metrics">
+            <PageHeading title="Model Performance">
+              Evaluation of the loaded model set, and the technical details of what is running.
+            </PageHeading>
+            <ModelPerformance modelInfo={modelInfo} />
+          </div>
         )}
       </main>
+
+      <footer className="border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+        <div className="max-w-[1480px] mx-auto px-5 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-2">
+          <span className="mono text-[10.5px]" style={{ color: 'var(--text-faint)' }}>
+            Fraud Intelligence Platform &middot; scores are model outputs, not calibrated probabilities
+          </span>
+          <span className="mono text-[10.5px]" style={{ color: 'var(--text-faint)' }}>
+            {modelInfo ? `${modelInfo.model_set} · ${modelInfo.model_version}` : 'model set unknown'}
+          </span>
+        </div>
+      </footer>
     </div>
   )
 }

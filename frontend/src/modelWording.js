@@ -11,6 +11,7 @@
 const WORDING = {
   production: {
     riskLabel: 'Risk Score',
+    riskShort: 'Trajectory risk from customer behavior',
     riskCaption: "Trajectory risk from this customer's prior activity (LSTM), before this transaction",
     fraudCaption: "This transaction's fraud score (model output, not a calibrated probability) -- can be high even if prior trajectory was clean",
     riskColumn: 'Risk Score',
@@ -18,6 +19,16 @@ const WORDING = {
   },
   v2_dnn_lstm: {
     riskLabel: 'Risk Score',
+    riskShort: 'Behavioral risk from previous transactions',
+    riskCaption: "LSTM behavioral-risk component from this customer's previous transactions, before this transaction",
+    fraudCaption: "This transaction's fraud score (model output, not a calibrated probability) -- can be high even if prior behavior was clean",
+    riskColumn: 'Risk Score',
+    timelineRisk: 'Risk Score (LSTM)',
+  },
+  // the selected v2_dnn_lstm artifact, training seed 14 (evaluation only, not deployed)
+  v2_dnn_lstm_seed14: {
+    riskLabel: 'Risk Score',
+    riskShort: 'Behavioral risk from previous transactions',
     riskCaption: "LSTM behavioral-risk component from this customer's previous transactions, before this transaction",
     fraudCaption: "This transaction's fraud score (model output, not a calibrated probability) -- can be high even if prior behavior was clean",
     riskColumn: 'Risk Score',
@@ -25,6 +36,7 @@ const WORDING = {
   },
   v2_dnn_only: {
     riskLabel: 'Risk Score (= fraud score)',
+    riskShort: 'Repeats the fraud score (no sequence model)',
     riskCaption: 'This model set has no sequence model: Risk Score repeats the DNN fraud score for compatibility',
     fraudCaption: "This transaction's DNN fraud score (model output, not a calibrated probability)",
     riskColumn: 'Risk Score (= fraud score)',
@@ -34,6 +46,7 @@ const WORDING = {
 
 const NEUTRAL = {
   riskLabel: 'Risk Score',
+  riskShort: 'Model risk output',
   riskCaption: 'Model risk output (model set unknown)',
   fraudCaption: "This transaction's fraud score (model output, not a calibrated probability)",
   riskColumn: 'Risk Score',

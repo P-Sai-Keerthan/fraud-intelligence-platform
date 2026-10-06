@@ -9,7 +9,6 @@ import numpy as np
 import pandas as pd
 
 from . import schema
-from .config import GENERATOR_VERSION
 from .generator import GeneratedData
 
 FILES = {
@@ -36,7 +35,7 @@ def _jsonable(x):
 
 def summary(data: GeneratedData) -> dict:
     tx, ep = data.transactions, data.episodes
-    return {
+    out = {
         "customers": int(tx["customer_id"].nunique()),
         "transactions": int(len(tx)),
         "fraud_transactions": int(tx["is_fraud"].sum()),
@@ -50,6 +49,13 @@ def summary(data: GeneratedData) -> dict:
         "first_timestamp": str(tx["timestamp"].min()),
         "last_timestamp": str(tx["timestamp"].max()),
     }
+    if data.config.new_customer_extension:
+        prior = ep[schema.NEW_CUSTOMER_EPISODE_COLUMNS[0]]
+        out["late_joiners"] = int((data.customers["join_date"] > data.customers["join_date"].min()).sum())
+        out["new_customer_fraud_episodes"] = int((prior < 10).sum())
+        out["new_customer_fraud_episodes_by_prior_transactions"] = {
+            str(k): int(v) for k, v in prior[prior < 10].value_counts().sort_index().items()}
+    return out
 
 
 def write_dataset(data: GeneratedData, out_dir, features: pd.DataFrame | None = None, command: str = "") -> dict:
@@ -71,7 +77,7 @@ def write_dataset(data: GeneratedData, out_dir, features: pd.DataFrame | None = 
         files[FILES[key]] = {"rows": int(len(frame)), "columns": list(frame.columns), "sha256": _sha256(path)}
     manifest = {
         "generator": "data/v2/synth_v2",
-        "generator_version": GENERATOR_VERSION,
+        "generator_version": data.config.generator_version,
         "command": command,
         "seed": data.config.seed,
         "config": _jsonable(data.config.to_dict()),
