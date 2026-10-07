@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Header from './components/Header'
 import CustomerSelector from './components/CustomerSelector'
 import TransactionForm from './components/TransactionForm'
@@ -9,8 +9,11 @@ import FraudEvolutionTimeline from './components/FraudEvolutionTimeline'
 import SimilarityMeter from './components/SimilarityMeter'
 import ModelPerformance from './components/ModelPerformance'
 import FraudRings from './components/FraudRings'
+import BehavioralContext from './components/BehavioralContext'
 import BatchScoring from './components/BatchScoring'
-import { predictTransaction, getCustomerHistory, listCustomers, downloadReportPdf } from './api'
+import {
+  predictTransaction, getCustomerHistory, getCustomerProfile, listCustomers, downloadReportPdf, formatApiError,
+} from './api'
 
 const TABS = [
   { key: 'live', label: 'Live Scan' },
@@ -75,6 +78,9 @@ export default function App() {
   const [customersError, setCustomersError] = useState('')
   const [reportLoading, setReportLoading] = useState(false)
   const [reportError, setReportError] = useState('')
+  const [profile, setProfile] = useState(null)
+  const [scanContext, setScanContext] = useState(null)
+  const selectedRef = useRef('')
 
   useEffect(() => {
     listCustomers(500)
@@ -89,33 +95,45 @@ export default function App() {
   const refreshHistory = useCallback(async (customerId) => {
     try {
       const data = await getCustomerHistory(customerId)
-      setTimeline(data.timeline)
+      if (selectedRef.current === customerId) setTimeline(data.timeline)
     } catch {
-      setTimeline([]) // 404 means no scored transactions yet - that's fine
+      if (selectedRef.current === customerId) setTimeline([]) // 404 means no scored transactions yet - that's fine
+    }
+  }, [])
+
+  const refreshProfile = useCallback(async (customerId) => {
+    try {
+      const data = await getCustomerProfile(customerId)
+      if (selectedRef.current === customerId) setProfile(data)
+    } catch {
+      if (selectedRef.current === customerId) setProfile(null)
     }
   }, [])
 
   useEffect(() => {
+    selectedRef.current = selectedCustomer
+    setPrediction(null)
+    setScanContext(null)
+    setProfile(null)
     if (selectedCustomer) {
-      setPrediction(null)
       refreshHistory(selectedCustomer)
+      refreshProfile(selectedCustomer)
     }
-  }, [selectedCustomer, refreshHistory])
+  }, [selectedCustomer, refreshHistory, refreshProfile])
 
   const handleSubmit = async (payload) => {
+    const baseline = profile // the customer's behavior BEFORE this scan (for "What changed?")
     setLoading(true)
     setError('')
     try {
       const result = await predictTransaction(payload)
+      if (selectedRef.current !== payload.customer_id) return // user switched customer while scanning
       setPrediction(result)
+      setScanContext(baseline ? { baseline, prediction: result } : null)
       setReportError('')
-      await refreshHistory(payload.customer_id)
+      await Promise.all([refreshHistory(payload.customer_id), refreshProfile(payload.customer_id)])
     } catch (err) {
-      setError(
-        err?.response?.data?.detail
-          ? JSON.stringify(err.response.data.detail)
-          : 'Prediction request failed. Is the backend running?'
-      )
+      setError(formatApiError(err, 'Prediction request failed. Is the backend running?'))
     } finally {
       setLoading(false)
     }
@@ -153,7 +171,7 @@ export default function App() {
               </Card>
 
               <Card title="Scan a Transaction">
-                <TransactionForm customerId={selectedCustomer} onSubmit={handleSubmit} loading={loading} />
+                <TransactionForm customerId={selectedCustomer} profile={profile} onSubmit={handleSubmit} loading={loading} />
                 {!selectedCustomer && (
                   <p className="text-xs mt-3" style={{ color: 'var(--text-faint)' }}>
                     Select a customer above to enable scanning.
@@ -182,15 +200,15 @@ export default function App() {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 <Card>
-                  <RiskGauge label="Risk Score" value={prediction?.risk_score} sublabel="/ 100" />
+                  <RiskGauge label="Temporal Risk" value={prediction?.risk_score} sublabel="/ 100" />
                   <p className="text-[10px] text-center mt-2" style={{ color: 'var(--text-faint)' }}>
-                    Trajectory risk from this customer's prior activity, before this transaction
+                    LSTM score from this customer's previous transactions (before this one). A model score, not a probability.
                   </p>
                 </Card>
                 <Card>
-                  <RiskGauge label="Fraud Probability" value={prediction?.fraud_probability} sublabel="%" decimals={1} />
+                  <RiskGauge label="Fraud Risk Score" value={prediction?.fraud_probability} sublabel="/ 100" decimals={1} />
                   <p className="text-[10px] text-center mt-2" style={{ color: 'var(--text-faint)' }}>
-                    This specific transaction's fraud likelihood -- can be high even if prior trajectory was clean
+                    DNN score for this transaction. Not a calibrated probability; it reflects combinations of signals, not any single one.
                   </p>
                 </Card>
                 <Card>
@@ -203,12 +221,24 @@ export default function App() {
                 </Card>
               </div>
 
-              <Card title="Explainable AI &middot; Why This Score">
-                <ShapReasonsChart reasons={prediction?.reasons} />
+              <Card title="Behavioral Context &middot; What Changed?">
+                <BehavioralContext profile={profile} context={scanContext} />
               </Card>
 
-              <Card title="Fraud Evolution Timeline">
+              <Card title="Explainable AI &middot; Why This Score">
+                <ShapReasonsChart reasons={prediction?.reasons} />
+                <p className="text-[10px] mt-3" style={{ color: 'var(--text-faint)' }}>
+                  Bars show how much each factor raised the model's score (SHAP). A factor is only named as a
+                  condition (e.g. "New Device") when this transaction actually shows it. SHAP explains the model,
+                  not the cause of fraud.
+                </p>
+              </Card>
+
+              <Card title="Fraud Risk Timeline">
                 <FraudEvolutionTimeline timeline={timeline} />
+                <p className="text-[10px] mt-3" style={{ color: 'var(--text-faint)' }}>
+                  Scores of the transactions scanned for this customer, ordered by transaction time.
+                </p>
               </Card>
             </div>
           </div>

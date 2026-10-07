@@ -2,9 +2,12 @@
 DNN Real-Time Fraud Detector
 ==============================
 Takes CURRENT transaction's behavioral features + the LSTM-derived Risk
-Score as an extra input, and outputs a Fraud Probability (0-100%) for this
-single transaction. This is the "detect fraud right now" half of the
-system (the LSTM covers "predict fraud before it happens").
+Score as an extra input, and outputs a Fraud Risk Score (0-100) for this
+single transaction. This is the "score this transaction now" half of the
+system (the LSTM supplies the temporal risk from recent history).
+
+The output is a model score, not a calibrated probability (the model is
+class-weighted and no calibration has been applied or validated).
 
 Input feature vector = FEATURE_COLUMNS (from feature_engineering.py) + risk_score
 """

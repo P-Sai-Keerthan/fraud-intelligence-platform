@@ -5,14 +5,16 @@ const METRIC_LABELS = [
   { key: 'precision', label: 'Precision' },
   { key: 'recall', label: 'Recall' },
   { key: 'f1_score', label: 'F1 Score' },
-  { key: 'auc_roc', label: 'AUC-ROC' },
+  { key: 'auc_roc', label: 'ROC-AUC' },
+  { key: 'pr_auc', label: 'PR-AUC' },
+  { key: 'false_positive_rate', label: 'False Positive Rate', percent: true },
 ]
 
-function StatTile({ label, value }) {
+function StatTile({ label, value, percent }) {
   return (
     <div className="rounded-lg border p-3 text-center" style={{ borderColor: 'var(--border)', background: 'var(--surface-raised)' }}>
       <div className="text-2xl" style={{ fontFamily: 'var(--font-mono)', color: 'var(--brand)', fontWeight: 600 }}>
-        {value != null ? value.toFixed(3) : '—'}
+        {value == null ? '—' : percent ? `${(value * 100).toFixed(2)}%` : value.toFixed(3)}
       </div>
       <div className="text-[10px] uppercase tracking-wide mt-1" style={{ color: 'var(--text-muted)' }}>{label}</div>
     </div>
@@ -56,9 +58,9 @@ function ModelBlock({ title, subtitle, data }) {
       </h4>
       <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>{subtitle}</p>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-        {METRIC_LABELS.map(({ key, label }) => (
-          <StatTile key={key} label={label} value={data[key]} />
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+        {METRIC_LABELS.map(({ key, label, percent }) => (
+          <StatTile key={key} label={label} value={data[key]} percent={percent} />
         ))}
       </div>
 
@@ -91,18 +93,27 @@ export default function ModelPerformance() {
 
   return (
     <div className="space-y-5">
-      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-        Computed against an 80/20 stratified held-out test split -- the same split used at training time,
-        so these numbers reflect genuine generalization, not re-fit performance.
-      </p>
+      <div
+        className="rounded-lg border p-3 text-xs space-y-1.5"
+        style={{ borderColor: 'var(--risk-medium)', background: 'var(--risk-medium-dim)', color: 'var(--text-muted)' }}
+      >
+        <p style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Synthetic dataset &mdash; read these numbers with care</p>
+        <p>{metrics?.evaluation_context?.dataset || 'Synthetic behavioral dataset; no real banking data.'}</p>
+        <p>{metrics?.evaluation_context?.split || 'Random stratified 80/20 hold-out.'}</p>
+        <p>
+          {metrics?.evaluation_context?.interpretation ||
+            'Strong results on this synthetic data are not evidence of real-world fraud-detection performance.'}
+        </p>
+        <p>The model outputs are risk scores, not calibrated probabilities. Threshold 0.5 is used for precision, recall, F1 and FPR.</p>
+      </div>
       <ModelBlock
-        title="LSTM Risk Predictor"
-        subtitle="Predicts whether the transaction after a 10-step behavioral window will be fraudulent -- the leading trajectory signal."
+        title="LSTM Temporal Risk Model"
+        subtitle="Uses a customer's recent 10-transaction sequence to estimate temporal fraud risk for the next transaction. In this dataset most fraud sequences already contain earlier fraud, so it is not evidence of predicting the first fraudulent event."
         data={metrics?.lstm_risk_predictor}
       />
       <ModelBlock
-        title="DNN Fraud Classifier"
-        subtitle="Classifies each transaction using its own features plus the LSTM risk score -- the real-time detection signal."
+        title="DNN Fraud Risk Model"
+        subtitle="Scores each transaction from its own behavioral features plus the LSTM temporal risk score."
         data={metrics?.dnn_fraud_classifier}
       />
     </div>

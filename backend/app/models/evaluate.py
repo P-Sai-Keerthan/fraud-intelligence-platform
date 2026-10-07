@@ -19,7 +19,9 @@ full test set through both models takes a few seconds.
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
+from sklearn.metrics import (
+    precision_score, recall_score, f1_score, roc_auc_score, average_precision_score, confusion_matrix,
+)
 from tensorflow import keras
 
 from ..config import (
@@ -37,11 +39,15 @@ THRESHOLD = 0.5
 def _metrics_at_threshold(y_true, y_prob, threshold=THRESHOLD):
     y_pred = (y_prob >= threshold).astype(int)
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
+    has_both_classes = len(np.unique(y_true)) > 1
     return {
         "precision": round(float(precision_score(y_true, y_pred, zero_division=0)), 4),
         "recall": round(float(recall_score(y_true, y_pred, zero_division=0)), 4),
         "f1_score": round(float(f1_score(y_true, y_pred, zero_division=0)), 4),
-        "auc_roc": round(float(roc_auc_score(y_true, y_prob)), 4) if len(np.unique(y_true)) > 1 else None,
+        "auc_roc": round(float(roc_auc_score(y_true, y_prob)), 4) if has_both_classes else None,
+        # computed from the same held-out predictions (not hard-coded):
+        "pr_auc": round(float(average_precision_score(y_true, y_prob)), 4) if has_both_classes else None,
+        "false_positive_rate": round(float(fp / (fp + tn)), 4) if (fp + tn) > 0 else None,
         "confusion_matrix": {
             "true_negative": int(tn), "false_positive": int(fp),
             "false_negative": int(fn), "true_positive": int(tp),
@@ -99,6 +105,20 @@ def _evaluate_dnn(feat_df, X_seq, meta):
     return _metrics_at_threshold(y_test, y_prob)
 
 
+# Plain-language framing shipped WITH the numbers so they cannot be quoted
+# without their caveats. These describe how the metrics were produced; they are
+# not metric values.
+EVALUATION_CONTEXT = {
+    "dataset": "Synthetic behavioral dataset (data/generate_synthetic_data.py); no real banking data.",
+    "split": "Random stratified 80/20 hold-out over sequence/transaction rows; the same customers appear in train and test.",
+    "scores_are_calibrated_probabilities": False,
+    "interpretation": (
+        "Strong results on this synthetic data (generated with strongly separable fraud patterns) show the "
+        "pipeline works end-to-end on the supplied dataset. They are not evidence of real-world banking "
+        "fraud performance, generalization, or calibration."
+    ),
+}
+
 _cache = None
 
 
@@ -109,6 +129,7 @@ def evaluate_all(force_refresh: bool = False) -> dict:
         _cache = {
             "lstm_risk_predictor": _evaluate_lstm(X_seq, y_seq),
             "dnn_fraud_classifier": _evaluate_dnn(feat_df, X_seq, meta),
+            "evaluation_context": EVALUATION_CONTEXT,
         }
     return _cache
 

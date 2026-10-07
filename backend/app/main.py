@@ -6,9 +6,10 @@ Run with (from the backend/ directory):
 
 Endpoints:
     POST /predict                     score a single transaction
-    POST /predict/batch                score a CSV of transactions at once
+    POST /predict/batch                score a CSV of transactions at once (all-or-nothing, max rows enforced)
     GET  /customers                    list known customer IDs (for demo/testing)
     GET  /customer/{customer_id}/history   fraud evolution timeline for a customer
+    GET  /customer/{customer_id}/profile   behavioral context derived from the customer's own history
     GET  /fraud-rings                   customers linked by a shared device/identifier
     GET  /metrics                       held-out test-set model performance (precision/recall/F1/AUC-ROC)
     POST /report/pdf                    downloadable PDF explanation report for one prediction
@@ -17,10 +18,12 @@ Endpoints:
 
 import io
 
-import pandas as pd
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Path, Request
+from fastapi.concurrency import run_in_threadpool
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
@@ -28,9 +31,11 @@ from .db.database import engine, get_db, Base
 from .db import models as db_models
 from .schemas import (
     TransactionInput, PredictionResponse, ExplanationReason,
-    CustomerHistoryResponse, TimelinePoint,
+    CustomerHistoryResponse, TimelinePoint, CustomerProfileResponse,
     FraudRingsResponse, BatchPredictionResponse,
 )
+from .batch import parse_batch_csv, BatchError
+from .config import BATCH_MAX_BYTES, MAX_ID_LENGTH
 from .inference_pipeline import get_pipeline
 from .models.evaluate import evaluate_all
 from .report import build_pdf_report
@@ -52,6 +57,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request: Request, exc: RequestValidationError):
+    """Same {"detail": [...]} shape FastAPI uses by default, but WITHOUT echoing
+    the offending input back: NaN/Infinity can't be JSON-encoded (that used to
+    turn a bad request into a 500) and a huge string shouldn't be reflected."""
+    detail = [
+        {"type": err.get("type"), "loc": list(err.get("loc", [])), "msg": err.get("msg")}
+        for err in exc.errors()
+    ]
+    return JSONResponse(status_code=422, content={"detail": detail})
 
 
 @app.on_event("startup")
@@ -96,9 +113,18 @@ def _persist_transaction(db: Session, result: dict):
 @app.post("/predict", response_model=PredictionResponse)
 def predict_transaction(txn: TransactionInput, db: Session = Depends(get_db)):
     pipeline = get_pipeline()
-    result = pipeline.score_transaction(txn.model_dump())
-    _persist_transaction(db, result)
-    db.commit()
+
+    def persist(result: dict):
+        # runs BEFORE the in-memory history is updated: if the DB write fails the
+        # customer history is left exactly as it was
+        _persist_transaction(db, result)
+        db.commit()
+
+    try:
+        result = pipeline.score_transaction(txn.model_dump(), persist=persist)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=503, detail="Could not record the transaction; no state was changed.")
 
     return PredictionResponse(
         transaction_id=result["transaction_id"],
@@ -151,6 +177,17 @@ def get_customer_history(customer_id: str, limit: int = 100, db: Session = Depen
     return CustomerHistoryResponse(customer_id=customer_id, n_transactions=len(timeline), timeline=timeline)
 
 
+@app.get("/customer/{customer_id}/profile", response_model=CustomerProfileResponse)
+def get_customer_profile(customer_id: str = Path(..., min_length=1, max_length=MAX_ID_LENGTH)):
+    """Behavioral context computed ONLY from the customer's existing history
+    (typical amount, usual device/location/hours, ...) plus a genuinely typical
+    transaction built from those values. Read-only: never affects a prediction."""
+    profile = get_pipeline().customer_profile(customer_id)
+    if profile is None:
+        raise HTTPException(status_code=404, detail=f"Unknown customer '{customer_id}'.")
+    return profile
+
+
 @app.get("/fraud-rings", response_model=FraudRingsResponse)
 def get_fraud_rings(min_customers: int = 2):
     """Customers who share a device (or other identifier) that a single
@@ -174,40 +211,36 @@ def get_metrics(refresh: bool = False):
 async def predict_batch(file: UploadFile = File(...), db: Session = Depends(get_db)):
     """Score every row of an uploaded CSV in one call. Required columns:
     customer_id, amount, merchant_category. Optional: device_id, location,
-    failed_logins_24h."""
+    failed_logins_24h, timestamp.
+
+    All-or-nothing: every row is validated first (same rules as POST /predict);
+    if any row is invalid, or the file is larger than the limits, a 4xx is
+    returned and NOTHING is scored. The blocking model inference runs in a
+    worker thread so the API stays responsive (e.g. /health) during a batch."""
     pipeline = get_pipeline()
-    contents = await file.read()
+    contents = await file.read(BATCH_MAX_BYTES + 1)
+    if len(contents) > BATCH_MAX_BYTES:
+        raise HTTPException(status_code=413, detail=f"File too large (maximum {BATCH_MAX_BYTES // 1000} KB).")
+
     try:
-        df = pd.read_csv(io.BytesIO(contents))
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Could not parse CSV: {e}")
+        txns, _ = await run_in_threadpool(parse_batch_csv, contents, pipeline)
+    except BatchError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
 
-    required_cols = {"customer_id", "amount", "merchant_category"}
-    missing = required_cols - set(df.columns)
-    if missing:
-        raise HTTPException(status_code=400, detail=f"CSV is missing required columns: {sorted(missing)}")
+    def persist_all(results: list):
+        for r in results:
+            _persist_transaction(db, r)
+        db.commit()
 
-    results = []
+    try:
+        results_full = await run_in_threadpool(pipeline.score_batch, txns, persist_all)
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=503, detail="Could not record the transactions; no state was changed.")
+
     summary = {"Low Risk": 0, "Medium Risk": 0, "High Risk": 0, "Critical Risk": 0}
-    for _, row in df.iterrows():
-        customer_id = str(row["customer_id"])
-        device_id = str(row["device_id"]) if "device_id" in df.columns and pd.notna(row.get("device_id")) else ""
-        location = str(row["location"]) if "location" in df.columns and pd.notna(row.get("location")) else ""
-        txn = {
-            "customer_id": customer_id,
-            "amount": float(row["amount"]),
-            "merchant_category": str(row["merchant_category"]),
-            # an omitted device/location isn't itself suspicious -- fall back
-            # to this customer's presumed home device/city, same convention
-            # the dashboard's manual scan form uses, so a minimal CSV
-            # (just customer_id/amount/category) doesn't get misread as
-            # "every row uses a brand-new device in a foreign city"
-            "device_id": device_id or f"DEV_{customer_id}_A",
-            "location": location or "Hyderabad",
-            "failed_logins_24h": int(row["failed_logins_24h"]) if "failed_logins_24h" in df.columns and pd.notna(row.get("failed_logins_24h")) else 0,
-        }
-        result = pipeline.score_transaction(txn)
-        _persist_transaction(db, result)
+    results = []
+    for result in results_full:
         summary[result["alert_level"]] = summary.get(result["alert_level"], 0) + 1
         results.append({
             "transaction_id": result["transaction_id"],
@@ -217,8 +250,6 @@ async def predict_batch(file: UploadFile = File(...), db: Session = Depends(get_
             "fraud_probability": result["fraud_probability"],
             "alert_level": result["alert_level"],
         })
-
-    db.commit()
     return BatchPredictionResponse(count=len(results), summary=summary, results=results)
 
 

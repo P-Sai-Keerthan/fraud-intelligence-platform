@@ -29,8 +29,10 @@ system into a paper.
    - Describe the Behavioral Fraud DNA feature set (Section 6 of the main
      README has the full list) and why each feature was chosen.
    - Describe the two-stage architecture: LSTM (temporal risk) feeding
-     into DNN (point classification) — this handoff is your main
-     architectural novelty claim.
+     into DNN (point classification). Treat this as an engineering design
+     choice, not a proven contribution: on the synthetic data, replacing the
+     LSTM score with its mean did not change the DNN's recall or AUC, so any
+     novelty claim needs an ablation on harder / real data first.
    - Describe the SHAP integration and how raw SHAP values are mapped to
      human-readable reasons.
    - Include an architecture diagram (LSTM -> risk_score -> DNN input ->
@@ -47,9 +49,12 @@ system into a paper.
      ratio you observed, e.g. ~1:100).
 
 6. **Results**
-   - Report **Precision, Recall, F1-score, and AUC-ROC** for both the LSTM
-     (predicting the next transaction's fraud label from trajectory) and
-     the DNN (classifying the current transaction).
+   - Report **Precision, Recall, F1-score, ROC-AUC, PR-AUC and FPR** for both
+     the LSTM (estimating the next transaction's fraud label from the recent
+     sequence) and the DNN (scoring the current transaction). State that the
+     scores are not calibrated probabilities, and that results on the
+     synthetic dataset are near-perfect because its fraud patterns are highly
+     separable.
    - Include a confusion matrix for the DNN at your chosen alert threshold.
    - Include 2-3 concrete SHAP explanation examples (screenshot or table)
      showing a fraud case and a normal case side by side — this is often

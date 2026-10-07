@@ -16,13 +16,33 @@ export async function getCustomerHistory(customerId) {
   return data
 }
 
+export async function getCustomerProfile(customerId) {
+  const { data } = await api.get(`/customer/${encodeURIComponent(customerId)}/profile`)
+  return data
+}
+
+// Turns a FastAPI error body into one readable sentence (422 detail is a list of
+// {loc, msg}; 4xx from the batch endpoint is already a string).
+export function formatApiError(err, fallback) {
+  const detail = err?.response?.data?.detail
+  if (!detail) return fallback
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail)) {
+    return detail
+      .map((d) => `${(d.loc || []).filter((p) => p !== 'body').join('.') || 'request'}: ${d.msg}`)
+      .join('; ')
+  }
+  return fallback
+}
+
 export async function listCustomers(limit = 100) {
   const { data } = await api.get(`/customers?limit=${limit}`)
   return data
 }
 
 export async function getMetrics() {
-  const { data } = await api.get('/metrics')
+  // the first call re-scores the held-out test set (4-10 s on CPU), so allow more than the 15 s default
+  const { data } = await api.get('/metrics', { timeout: 60000 })
   return data
 }
 
@@ -34,8 +54,10 @@ export async function getFraudRings() {
 export async function predictBatch(file) {
   const formData = new FormData()
   formData.append('file', file)
+  // batch scoring takes ~0.6 s per row (up to 50 rows), so allow far more than the 15 s default
   const { data } = await api.post('/predict/batch', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000,
   })
   return data
 }

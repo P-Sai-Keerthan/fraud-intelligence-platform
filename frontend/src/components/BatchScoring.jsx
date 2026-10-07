@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { predictBatch } from '../api'
+import { predictBatch, formatApiError } from '../api'
 
 const SUMMARY_ORDER = [
   { key: 'Critical Risk', color: 'var(--risk-critical)', dim: 'var(--risk-critical-dim)' },
@@ -30,11 +30,7 @@ export default function BatchScoring() {
       const data = await predictBatch(file)
       setResult(data)
     } catch (err) {
-      setError(
-        err?.response?.data?.detail
-          ? String(err.response.data.detail)
-          : 'Batch scoring failed. Is the backend running?'
-      )
+      setError(formatApiError(err, 'Batch scoring failed. Is the backend running?'))
     } finally {
       setLoading(false)
     }
@@ -53,8 +49,9 @@ export default function BatchScoring() {
   return (
     <div className="space-y-5">
       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-        Upload a CSV of transactions to score them all at once. Required columns: customer_id, amount,
-        merchant_category. Optional: device_id, location, failed_logins_24h.{' '}
+        Upload a CSV of up to 50 transactions to score them all at once. Required columns: customer_id, amount,
+        merchant_category. Optional: device_id, location, failed_logins_24h. A blank device or location uses that
+        customer's own usual one. Every row is checked first: if any row is invalid, nothing is scored.{' '}
         <button onClick={downloadSample} className="underline" style={{ color: 'var(--brand)' }}>
           Download a sample CSV
         </button>
@@ -79,7 +76,13 @@ export default function BatchScoring() {
         </button>
       </div>
 
-      {error && <p className="text-xs" style={{ color: 'var(--risk-critical)' }}>{error}</p>}
+      {error && (
+        <ul className="text-xs space-y-1" style={{ color: 'var(--risk-critical)' }}>
+          {error.split(' | ').map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      )}
 
       {result && (
         <div className="space-y-4">

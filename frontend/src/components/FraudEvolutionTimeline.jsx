@@ -4,7 +4,7 @@ export default function FraudEvolutionTimeline({ timeline }) {
   if (!timeline || timeline.length === 0) {
     return (
       <div className="flex items-center justify-center h-48 text-sm" style={{ color: 'var(--text-faint)' }}>
-        Scan a transaction to start building this customer's risk timeline.
+        Scan a transaction to start this customer's risk timeline.
       </div>
     )
   }
@@ -13,7 +13,8 @@ export default function FraudEvolutionTimeline({ timeline }) {
     index: i + 1,
     risk_score: t.risk_score,
     fraud_probability: t.fraud_probability,
-    time: new Date(t.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    // date + time, so scans made at a customer's usual hour on different days stay distinguishable
+    time: new Date(t.timestamp).toLocaleString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
   }))
 
   return (
@@ -35,12 +36,12 @@ export default function FraudEvolutionTimeline({ timeline }) {
           labelStyle={{ color: 'var(--text-primary)' }}
         />
         <Line
-          type="monotone" dataKey="risk_score" name="Risk Score"
+          type="monotone" dataKey="risk_score" name="Temporal Risk (LSTM)"
           stroke="var(--brand)" strokeWidth={2} dot={{ r: 3, fill: 'var(--brand)' }}
           activeDot={{ r: 5 }}
         />
         <Line
-          type="monotone" dataKey="fraud_probability" name="Fraud Probability %"
+          type="monotone" dataKey="fraud_probability" name="Fraud Risk Score (DNN)"
           stroke="var(--risk-critical)" strokeWidth={2} strokeDasharray="4 3" dot={{ r: 3, fill: 'var(--risk-critical)' }}
         />
       </LineChart>

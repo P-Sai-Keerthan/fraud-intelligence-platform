@@ -1,15 +1,22 @@
 """
 LSTM Behavioral Risk Predictor
 ================================
-Takes a sequence of a customer's past N transactions' behavioral features
-and predicts a Risk Score (0-100) representing how likely this customer's
-CURRENT trajectory is heading toward fraud -- i.e. prediction BEFORE the
-fraud transaction itself happens.
+Takes a sequence of a customer's previous N transactions' behavioral features
+and outputs a Risk Score (0-100): a temporal risk estimate for the transaction
+that follows that window, computed ONLY from transactions that precede it.
 
-We train it as a binary classifier on "is the NEXT transaction after this
-window fraudulent" and then scale the predicted probability to 0-100 as the
-Risk Score. This is a clean, defensible approach for a paper: risk score is
-literally a calibrated probability * 100.
+It is trained as a binary classifier on "is the NEXT transaction after this
+window fraudulent", and the model output (0-1) is scaled to 0-100 as the Risk
+Score.
+
+WHAT THIS DOES AND DOES NOT SHOW (see README "Known limitations"):
+  * The score is a model output, NOT a calibrated probability: class-weighted
+    training inflates it (mean score ~13.6 vs a ~0.9% fraud base rate on the
+    synthetic data) and no calibration step has been applied or validated.
+  * In the synthetic data, fraud arrives in bursts, and most fraud-positive
+    windows already contain earlier fraud. The LSTM therefore detects temporal
+    patterns associated with fraudulent behavior; it has NOT been shown to
+    predict the first fraudulent event of a burst.
 """
 
 import numpy as np
