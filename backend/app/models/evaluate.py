@@ -16,6 +16,8 @@ Results are cached in-process after the first call, since re-scoring the
 full test set through both models takes a few seconds.
 """
 
+import threading
+
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -120,17 +122,28 @@ EVALUATION_CONTEXT = {
 }
 
 _cache = None
+# the full evaluation re-scores the whole test set (4-10 s of CPU): never let several
+# requests (e.g. the dev server's double fetch, or ?refresh=true spam) all do it at once
+_eval_lock = threading.Lock()
+_generation = 0   # bumped after every completed evaluation
 
 
 def evaluate_all(force_refresh: bool = False) -> dict:
-    global _cache
-    if _cache is None or force_refresh:
-        feat_df, X_seq, y_seq, meta = _load_sequences()
-        _cache = {
-            "lstm_risk_predictor": _evaluate_lstm(X_seq, y_seq),
-            "dnn_fraud_classifier": _evaluate_dnn(feat_df, X_seq, meta),
-            "evaluation_context": EVALUATION_CONTEXT,
-        }
+    global _cache, _generation
+    if _cache is not None and not force_refresh:
+        return _cache
+    seen_generation = _generation
+    with _eval_lock:
+        # a request that waited on the lock re-uses what the winner just computed
+        # (even a forced refresh: _generation changed while it was waiting)
+        if _cache is None or (force_refresh and _generation == seen_generation):
+            feat_df, X_seq, y_seq, meta = _load_sequences()
+            _cache = {
+                "lstm_risk_predictor": _evaluate_lstm(X_seq, y_seq),
+                "dnn_fraud_classifier": _evaluate_dnn(feat_df, X_seq, meta),
+                "evaluation_context": EVALUATION_CONTEXT,
+            }
+            _generation += 1
     return _cache
 
 

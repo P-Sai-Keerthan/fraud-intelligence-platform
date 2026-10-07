@@ -1,0 +1,344 @@
+[1mdiff --git a/backend/app/main.py b/backend/app/main.py[m
+[1mindex af70646..6e2948e 100644[m
+[1m--- a/backend/app/main.py[m
+[1m+++ b/backend/app/main.py[m
+[36m@@ -11,14 +11,15 @@[m [mEndpoints:[m
+     GET  /customer/{customer_id}/history   fraud evolution timeline for a customer[m
+     GET  /customer/{customer_id}/profile   behavioral context derived from the customer's own history[m
+     GET  /fraud-rings                   customers linked by a shared device/identifier[m
+[31m-    GET  /metrics                       held-out test-set model performance (precision/recall/F1/AUC-ROC)[m
+[31m-    POST /report/pdf                    downloadable PDF explanation report for one prediction[m
+[32m+[m[32m    GET  /metrics                       held-out test-set model performance (precision/recall/F1/ROC-AUC/PR-AUC/FPR)[m
+[32m+[m[32m    POST /report/pdf                    PDF report for one prediction, built from the SERVER's record (body: {"transaction_id": ...})[m
+     GET  /health                        basic health check[m
+ """[m
+ [m
+ import io[m
+[32m+[m[32mimport threading[m
+ [m
+[31m-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Path, Request[m
+[32m+[m[32mfrom fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Path, Query, Request[m
+ from fastapi.concurrency import run_in_threadpool[m
+ from fastapi.exceptions import RequestValidationError[m
+ from fastapi.middleware.cors import CORSMiddleware[m
+[36m@@ -32,10 +33,13 @@[m [mfrom .db import models as db_models[m
+ from .schemas import ([m
+     TransactionInput, PredictionResponse, ExplanationReason,[m
+     CustomerHistoryResponse, TimelinePoint, CustomerProfileResponse,[m
+[31m-    FraudRingsResponse, BatchPredictionResponse,[m
+[32m+[m[32m    FraudRingsResponse, BatchPredictionResponse, ReportRequest,[m
+ )[m
+ from .batch import parse_batch_csv, BatchError[m
+[31m-from .config import BATCH_MAX_BYTES, MAX_ID_LENGTH[m
+[32m+[m[32mfrom .config import ([m
+[32m+[m[32m    BATCH_MAX_BYTES, MAX_ID_LENGTH, MAX_JSON_BODY_BYTES, MAX_REPORT_BODY_BYTES, MAX_BATCH_BODY_BYTES,[m
+[32m+[m[32m)[m
+[32m+[m[32mfrom .security import BodySizeLimitMiddleware, cors_settings, enforce_rate_limit, rate_limit[m
+ from .inference_pipeline import get_pipeline[m
+ from .models.evaluate import evaluate_all[m
+ from .report import build_pdf_report[m
+[36m@@ -49,15 +53,25 @@[m [mapp = FastAPI([m
+     version="1.0.0",[m
+ )[m
+ [m
+[31m-# allow the React dashboard (running on a different port during development) to call this API[m
+[32m+[m[32m# Request-body ceilings, enforced before any parsing (added first => runs inside CORS,[m
+[32m+[m[32m# so even the 413 response carries the CORS headers the dashboard needs to read it).[m
+ app.add_middleware([m
+[31m-    CORSMiddleware,[m
+[31m-    allow_origins=["*"],  # tighten this to your actual frontend origin before deploying publicly[m
+[31m-    allow_credentials=True,[m
+[31m-    allow_methods=["*"],[m
+[31m-    allow_headers=["*"],[m
+[32m+[m[32m    BodySizeLimitMiddleware,[m
+[32m+[m[32m    limits={[m
+[32m+[m[32m        "/predict": MAX_JSON_BODY_BYTES,[m
+[32m+[m[32m        "/report/pdf": MAX_REPORT_BODY_BYTES,[m
+[32m+[m[32m        "/predict/batch": MAX_BATCH_BODY_BYTES,[m
+[32m+[m[32m    },[m
+[32m+[m[32m    default_limit=MAX_JSON_BODY_BYTES,[m
+ )[m
+ [m
+[32m+[m[32m# CORS: an explicit allow-list of frontend origins (config.CORS_ORIGINS / the CORS_ORIGINS[m
+[32m+[m[32m# environment variable) -- never "*" together with credentials. See security.cors_settings.[m
+[32m+[m[32mapp.add_middleware(CORSMiddleware, **cors_settings())[m
+[32m+[m
+[32m+[m[32m# only one batch may run at a time: it is the one request type that can occupy the CPU for tens of seconds[m
+[32m+[m[32m_batch_gate = threading.BoundedSemaphore(1)[m
+[32m+[m
+ [m
+ @app.exception_handler(RequestValidationError)[m
+ async def validation_error_handler(request: Request, exc: RequestValidationError):[m
+[36m@@ -84,7 +98,7 @@[m [mdef health_check():[m
+ [m
+ [m
+ @app.get("/customers")[m
+[31m-def list_customers(limit: int = 50):[m
+[32m+[m[32mdef list_customers(limit: int = Query(50, ge=1, le=1000)):[m
+     pipeline = get_pipeline()[m
+     ids = pipeline.known_customer_ids()[m
+     return {"count": len(ids), "customer_ids": ids[:limit]}[m
+[36m@@ -110,7 +124,7 @@[m [mdef _persist_transaction(db: Session, result: dict):[m
+     db.add(db_txn)[m
+ [m
+ [m
+[31m-@app.post("/predict", response_model=PredictionResponse)[m
+[32m+[m[32m@app.post("/predict", response_model=PredictionResponse, dependencies=[Depends(rate_limit("predict"))])[m
+ def predict_transaction(txn: TransactionInput, db: Session = Depends(get_db)):[m
+     pipeline = get_pipeline()[m
+ [m
+[36m@@ -140,12 +154,18 @@[m [mdef predict_transaction(txn: TransactionInput, db: Session = Depends(get_db)):[m
+         alert_level=result["alert_level"],[m
+         similarity_pct=result["similarity_pct"],[m
+         deviation_pct=result["deviation_pct"],[m
+[32m+[m[32m        history_status=result["history_status"],[m
+[32m+[m[32m        history_transactions=result["history_transactions"],[m
+         reasons=[ExplanationReason(**r) for r in result["reasons"]],[m
+     )[m
+ [m
+ [m
+ @app.get("/customer/{customer_id}/history", response_model=CustomerHistoryResponse)[m
+[31m-def get_customer_history(customer_id: str, limit: int = 100, db: Session = Depends(get_db)):[m
+[32m+[m[32mdef get_customer_history([m
+[32m+[m[32m    customer_id: str = Path(..., min_length=1, max_length=MAX_ID_LENGTH),[m
+[32m+[m[32m    limit: int = Query(100, ge=1, le=1000),[m
+[32m+[m[32m    db: Session = Depends(get_db),[m
+[32m+[m[32m):[m
+     rows = ([m
+         db.query(db_models.Transaction)[m
+         .filter(db_models.Transaction.customer_id == customer_id)[m
+[36m@@ -188,8 +208,8 @@[m [mdef get_customer_profile(customer_id: str = Path(..., min_length=1, max_length=M[m
+     return profile[m
+ [m
+ [m
+[31m-@app.get("/fraud-rings", response_model=FraudRingsResponse)[m
+[31m-def get_fraud_rings(min_customers: int = 2):[m
+[32m+[m[32m@app.get("/fraud-rings", response_model=FraudRingsResponse, dependencies=[Depends(rate_limit("rings"))])[m
+[32m+[m[32mdef get_fraud_rings(min_customers: int = Query(2, ge=2, le=1000)):[m
+     """Customers who share a device (or other identifier) that a single[m
+     legitimate customer would never plausibly share with another -- a[m
+     strong signal of an organized fraud ring rather than one customer[m
+[36m@@ -200,14 +220,17 @@[m [mdef get_fraud_rings(min_customers: int = 2):[m
+ [m
+ [m
+ @app.get("/metrics")[m
+[31m-def get_metrics(refresh: bool = False):[m
+[32m+[m[32mdef get_metrics(request: Request, refresh: bool = False):[m
+     """Held-out test-set performance for both trained models (precision,[m
+     recall, F1, AUC-ROC, confusion matrix) -- computed once and cached,[m
+[31m-    pass ?refresh=true to force recomputation."""[m
+[32m+[m[32m    pass ?refresh=true to force recomputation (rate-limited: it re-scores the whole test set)."""[m
+[32m+[m[32m    enforce_rate_limit(request, "metrics")[m
+[32m+[m[32m    if refresh:[m
+[32m+[m[32m        enforce_rate_limit(request, "metrics_refresh")[m
+     return evaluate_all(force_refresh=refresh)[m
+ [m
+ [m
+[31m-@app.post("/predict/batch", response_model=BatchPredictionResponse)[m
+[32m+[m[32m@app.post("/predict/batch", response_model=BatchPredictionResponse, dependencies=[Depends(rate_limit("batch"))])[m
+ async def predict_batch(file: UploadFile = File(...), db: Session = Depends(get_db)):[m
+     """Score every row of an uploaded CSV in one call. Required columns:[m
+     customer_id, amount, merchant_category. Optional: device_id, location,[m
+[36m@@ -232,11 +255,20 @@[m [masync def predict_batch(file: UploadFile = File(...), db: Session = Depends(get_[m
+             _persist_transaction(db, r)[m
+         db.commit()[m
+ [m
+[32m+[m[32m    # a batch is the only request that can occupy the CPU for tens of seconds: allow one at a time[m
+[32m+[m[32m    if not _batch_gate.acquire(blocking=False):[m
+[32m+[m[32m        raise HTTPException([m
+[32m+[m[32m            status_code=429,[m
+[32m+[m[32m            detail="Another batch is already being scored; try again when it finishes.",[m
+[32m+[m[32m            headers={"Retry-After": "10"},[m
+[32m+[m[32m        )[m
+     try:[m
+         results_full = await run_in_threadpool(pipeline.score_batch, txns, persist_all)[m
+     except SQLAlchemyError:[m
+         db.rollback()[m
+         raise HTTPException(status_code=503, detail="Could not record the transactions; no state was changed.")[m
+[32m+[m[32m    finally:[m
+[32m+[m[32m        _batch_gate.release()[m
+ [m
+     summary = {"Low Risk": 0, "Medium Risk": 0, "High Risk": 0, "Critical Risk": 0}[m
+     results = [][m
+[36m@@ -253,13 +285,21 @@[m [masync def predict_batch(file: UploadFile = File(...), db: Session = Depends(get_[m
+     return BatchPredictionResponse(count=len(results), summary=summary, results=results)[m
+ [m
+ [m
+[31m-@app.post("/report/pdf")[m
+[31m-def get_pdf_report(prediction: PredictionResponse):[m
+[31m-    """Generate a downloadable PDF explaining a single prediction result --[m
+[31m-    takes exactly what POST /predict returns, so the frontend can request[m
+[31m-    a report for whatever is currently on screen."""[m
+[31m-    pdf_bytes = build_pdf_report(prediction.model_dump())[m
+[31m-    filename = f"fraud_report_{prediction.transaction_id}.pdf"[m
+[32m+[m[32m@app.post("/report/pdf", dependencies=[Depends(rate_limit("report"))])[m
+[32m+[m[32mdef get_pdf_report(req: ReportRequest):[m
+[32m+[m[32m    """Generate a downloadable PDF explaining a single prediction. The request[m
+[32m+[m[32m    carries ONLY the transaction id returned by POST /predict; every value in the[m
+[32m+[m[32m    report (scores, alert level, explanation, ...) comes from the server's own[m
+[32m+[m[32m    record of that prediction, never from the browser. The filename is derived[m
+[32m+[m[32m    from the validated id, so it can't be tampered with either."""[m
+[32m+[m[32m    result = get_pipeline().get_recent_result(req.transaction_id)[m
+[32m+[m[32m    if result is None:[m
+[32m+[m[32m        raise HTTPException([m
+[32m+[m[32m            status_code=404,[m
+[32m+[m[32m            detail="No such prediction is available on the server (it may predate a restart); scan the transaction again.",[m
+[32m+[m[32m        )[m
+[32m+[m[32m    pdf_bytes = build_pdf_report(result)[m
+[32m+[m[32m    filename = f"fraud_report_{req.transaction_id}.pdf"[m
+     return StreamingResponse([m
+         io.BytesIO(pdf_bytes),[m
+         media_type="application/pdf",[m
+[1mdiff --git a/backend/app/report.py b/backend/app/report.py[m
+[1mindex 800763e..be656e9 100644[m
+[1m--- a/backend/app/report.py[m
+[1m+++ b/backend/app/report.py[m
+[36m@@ -1,12 +1,23 @@[m
+ """[m
+ PDF Explanation Report[m
+ =========================[m
+[31m-Renders a single prediction result (the same shape /predict returns) into a[m
+[31m-formatted, downloadable PDF -- a presentable, hand-off-able artifact[m
+[31m-explaining why a transaction was scored the way it was.[m
+[32m+[m[32mRenders a single prediction result into a formatted, downloadable PDF -- a[m
+[32m+[m[32mpresentable, hand-off-able artifact explaining why a transaction was scored[m
+[32m+[m[32mthe way it was.[m
+[32m+[m
+[32m+[m[32mSECURITY: the `prediction` dict passed in is the SERVER'S OWN record of the[m
+[32m+[m[32mprediction (looked up by transaction id in main.py), never browser-supplied[m
+[32m+[m[32mcontent. Every value that reaches a ReportLab Paragraph is also XML-escaped, so[m
+[32m+[m[32mno field (device id, location, ...) can become <img>/<a>/<font> markup.[m
+[32m+[m
+[32m+[m[32mThis matters: ReportLab's <img src="..."> in a Paragraph happily embeds ANY[m
+[32m+[m[32mimage file readable by the server process (verified: a plain filesystem path was[m
+[32m+[m[32membedded into the PDF). ReportLab's own trustedSchemes/trustedHosts settings were[m
+[32m+[m[32mtested and do NOT stop that, so escaping is the control that is relied on here.[m
+ """[m
+ [m
+ import io[m
+[32m+[m[32mfrom xml.sax.saxutils import escape[m
+ [m
+ from reportlab.lib import colors[m
+ from reportlab.lib.pagesizes import LETTER[m
+[36m@@ -16,6 +27,23 @@[m [mfrom reportlab.platypus import ([m
+     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,[m
+ )[m
+ [m
+[32m+[m[32mMAX_FIELD_CHARS = 120   # a field longer than this is truncated in the printed report[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef _text(value, default="-") -> str:[m
+[32m+[m[32m    """Plain-text-safe rendering of any value for a Paragraph: truncated and XML-escaped."""[m
+[32m+[m[32m    if value is None:[m
+[32m+[m[32m        return default[m
+[32m+[m[32m    s = str(value)[m
+[32m+[m[32m    if len(s) > MAX_FIELD_CHARS:[m
+[32m+[m[32m        s = s[:MAX_FIELD_CHARS] + "..."[m
+[32m+[m[32m    return escape(s)[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef _score(value, fmt="{:.1f}", suffix="") -> str:[m
+[32m+[m[32m    return fmt.format(value) + suffix if isinstance(value, (int, float)) else "not available"[m
+[32m+[m
+[32m+[m
+ ALERT_COLORS = {[m
+     "Low Risk": colors.HexColor("#1a9b6b"),[m
+     "Medium Risk": colors.HexColor("#c98a10"),[m
+[36m@@ -39,6 +67,7 @@[m [mdef build_pdf_report(prediction: dict) -> bytes:[m
+ [m
+     alert_level = prediction.get("alert_level", "Unknown")[m
+     alert_color = ALERT_COLORS.get(alert_level, colors.grey)[m
+[32m+[m[32m    alert_text = _text(alert_level)[m
+ [m
+     story = [][m
+     story.append(Paragraph("Fraud Intelligence Report", title_style))[m
+[36m@@ -48,7 +77,7 @@[m [mdef build_pdf_report(prediction: dict) -> bytes:[m
+     alert_para_style = ParagraphStyle([m
+         "AlertBannerText", parent=styles["Heading2"], textColor=colors.white, alignment=1,[m
+     )[m
+[31m-    alert_table = Table([[Paragraph(alert_level, alert_para_style)]], colWidths=[6 * inch])[m
+[32m+[m[32m    alert_table = Table([[Paragraph(alert_text, alert_para_style)]], colWidths=[6 * inch])[m
+     alert_table.setStyle(TableStyle([[m
+         ("BACKGROUND", (0, 0), (-1, -1), alert_color),[m
+         ("TOPPADDING", (0, 0), (-1, -1), 8),[m
+[36m@@ -59,14 +88,14 @@[m [mdef build_pdf_report(prediction: dict) -> bytes:[m
+ [m
+     story.append(Paragraph("Transaction Details", h2_style))[m
+     txn_rows = [[m
+[31m-        ["Transaction ID", prediction.get("transaction_id", "-")],[m
+[31m-        ["Customer ID", prediction.get("customer_id", "-")],[m
+[31m-        ["Timestamp", str(prediction.get("timestamp", "-"))],[m
+[31m-        ["Amount", f"Rs. {prediction.get('amount', 0):,.2f}"],[m
+[31m-        ["Merchant Category", str(prediction.get("merchant_category", "-")).replace("_", " ")],[m
+[31m-        ["Device ID", prediction.get("device_id", "-")],[m
+[31m-        ["Location", prediction.get("location", "-")],[m
+[31m-        ["Failed Logins (24h)", str(prediction.get("failed_logins_24h", 0))],[m
+[32m+[m[32m        ["Transaction ID", _text(prediction.get("transaction_id"))],[m
+[32m+[m[32m        ["Customer ID", _text(prediction.get("customer_id"))],[m
+[32m+[m[32m        ["Timestamp", _text(prediction.get("timestamp"))],[m
+[32m+[m[32m        ["Amount", f"Rs. {float(prediction.get('amount') or 0):,.2f}"],[m
+[32m+[m[32m        ["Merchant Category", _text(str(prediction.get("merchant_category", "-")).replace("_", " "))],[m
+[32m+[m[32m        ["Device ID", _text(prediction.get("device_id"))],[m
+[32m+[m[32m        ["Location", _text(prediction.get("location"))],[m
+[32m+[m[32m        ["Failed Logins (24h)", _text(prediction.get("failed_logins_24h", 0))],[m
+     ][m
+     txn_table = Table(txn_rows, colWidths=[2.2 * inch, 3.8 * inch])[m
+     txn_table.setStyle(TableStyle([[m
+[36m@@ -82,13 +111,13 @@[m [mdef build_pdf_report(prediction: dict) -> bytes:[m
+     story.append(Paragraph("Risk Assessment", h2_style))[m
+     risk_rows = [[m
+         ["Metric", "Value", "Meaning"],[m
+[31m-        ["Temporal Risk (LSTM)", f"{prediction.get('risk_score', 0):.1f} / 100",[m
+[32m+[m[32m        ["Temporal Risk (LSTM)", _score(prediction.get("risk_score"), suffix=" / 100"),[m
+          "Model score from the customer's previous transactions (before this one)"],[m
+[31m-        ["Fraud Risk Score (DNN)", f"{prediction.get('fraud_probability', 0):.1f} / 100",[m
+[32m+[m[32m        ["Fraud Risk Score (DNN)", _score(prediction.get("fraud_probability"), suffix=" / 100"),[m
+          "Model score for this transaction; not a calibrated probability"],[m
+[31m-        ["Behavioral Similarity", f"{prediction.get('similarity_pct', 0):.1f}%",[m
+[32m+[m[32m        ["Behavioral Similarity", _score(prediction.get("similarity_pct"), suffix="%"),[m
+          "How closely this matches the customer's normal behavior"],[m
+[31m-        ["Deviation", f"{prediction.get('deviation_pct', 0):.1f}%",[m
+[32m+[m[32m        ["Deviation", _score(prediction.get("deviation_pct"), suffix="%"),[m
+          "How far this deviates from the customer's own historical norm"],[m
+     ][m
+     risk_table = Table(risk_rows, colWidths=[1.5 * inch, 1.1 * inch, 3.4 * inch])[m
+[36m@@ -106,12 +135,22 @@[m [mdef build_pdf_report(prediction: dict) -> bytes:[m
+     ]))[m
+     story.append(risk_table)[m
+ [m
+[32m+[m[32m    history_status = prediction.get("history_status", "established")[m
+[32m+[m[32m    if history_status != "established":[m
+[32m+[m[32m        story.append(Spacer(1, 0.08 * inch))[m
+[32m+[m[32m        story.append(Paragraph([m
+[32m+[m[32m            f"<b>Limited behavioral history</b> ({_text(prediction.get('history_transactions', 0))} prior transactions). "[m
+[32m+[m[32m            "Temporal risk and behavioral similarity need at least 10 prior transactions and are not available; "[m
+[32m+[m[32m            "this score uses only the transaction-level signals that exist.",[m
+[32m+[m[32m            body_style,[m
+[32m+[m[32m        ))[m
+[32m+[m
+     story.append(Paragraph("Explainable AI — Why This Score", h2_style))[m
+     reasons = prediction.get("reasons") or [][m
+     if reasons:[m
+         reason_rows = [["Factor", "SHAP Contribution"]][m
+         for r in reasons:[m
+[31m-            reason_rows.append([r.get("display_name", r.get("feature", "-")), f"{r.get('shap_value', 0):+.3f}"])[m
+[32m+[m[32m            reason_rows.append([_text(r.get("display_name", r.get("feature", "-"))), f"{float(r.get('shap_value') or 0):+.3f}"])[m
+         reason_table = Table(reason_rows, colWidths=[3.6 * inch, 2.4 * inch])[m
+         reason_table.setStyle(TableStyle([[m
+             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#eef3f3")),[m
+[1mdiff --git a/backend/app/schemas.py b/backend/app/schemas.py[m
+[1mindex 10ef91c..57a8709 100644[m
+[1m--- a/backend/app/schemas.py[m
+[1m+++ b/backend/app/schemas.py[m
+[36m@@ -62,12 +62,22 @@[m [mclass PredictionResponse(BaseModel):[m
+     location: str[m
+     failed_logins_24h: int[m
+ [m
+[31m-    risk_score: float = Field(..., description="0-100 temporal risk score from the LSTM, computed from the customer's previous transactions (a model score, not a calibrated probability)")[m
+[32m+[m[32m    risk_score: Optional[float] = Field(None, description="0-100 temporal risk score from the LSTM, computed from the customer's previous transactions (a model score, not a calibrated probability). null when the customer has fewer prior transactions than the LSTM window (see history_status).")[m
+     fraud_probability: float = Field(..., description="0-100 model fraud risk score from the DNN (field name kept for API compatibility; NOT a calibrated probability)")[m
+     alert_level: str = Field(..., description="Low Risk / Medium Risk / High Risk / Critical Risk")[m
+ [m
+[31m-    similarity_pct: float = Field(..., description="0-100, how closely this matches the customer's normal behavior")[m
+[31m-    deviation_pct: float[m
+[32m+[m[32m    similarity_pct: Optional[float] = Field(None, description="0-100, how closely this 

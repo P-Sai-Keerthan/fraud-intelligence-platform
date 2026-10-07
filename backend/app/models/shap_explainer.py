@@ -85,9 +85,14 @@ class FraudExplainer:
         # dense model, GradientExplainer is much faster and accurate enough.
         self.explainer = shap.GradientExplainer(model, background_data)
 
-    def explain(self, x_normalized: np.ndarray, raw_values: np.ndarray = None, top_k: int = 4):
+    def explain(self, x_normalized: np.ndarray, raw_values: np.ndarray = None, top_k: int = 4,
+                skip_features: frozenset = frozenset()):
         """
         x_normalized: single normalized feature vector, shape (1, n_features)
+        skip_features: features whose value was NOT available for this customer
+                      (neutral-imputed, e.g. history-based features for a brand-new
+                      customer). They are never offered as reasons, because the
+                      model input there carries no real information.
         raw_values:   the same vector BEFORE normalization (DNN_INPUT_COLUMNS
                       order). Used to check each factor's actual state so a
                       label is never shown for a feature that is not in a
@@ -108,7 +113,7 @@ class FraudExplainer:
 
         positives = []
         for idx, (feat_name, shap_val) in enumerate(zip(DNN_INPUT_COLUMNS, values)):
-            if shap_val > 0:
+            if shap_val > 0 and feat_name not in skip_features:
                 positives.append((idx, feat_name, float(shap_val)))
         # sort by how much they pushed TOWARD fraud (positive SHAP value = more fraud-like)
         positives.sort(key=lambda p: p[2], reverse=True)

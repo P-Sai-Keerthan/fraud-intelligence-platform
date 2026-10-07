@@ -1,4 +1,4 @@
-export default function SimilarityMeter({ similarityPct, deviationPct }) {
+export default function SimilarityMeter({ similarityPct, deviationPct, unavailable = false }) {
   const hasData = similarityPct != null
   return (
     <div>
@@ -19,6 +19,11 @@ export default function SimilarityMeter({ similarityPct, deviationPct }) {
           }}
         />
       </div>
+      {unavailable && (
+        <p className="text-xs mt-1.5" style={{ color: 'var(--text-faint)' }}>
+          Not available: a behavioral baseline needs at least 10 prior transactions for this customer.
+        </p>
+      )}
       {hasData && (
         <p className="text-xs mt-1.5" style={{ color: 'var(--text-faint)' }}>
           {deviationPct.toFixed(1)}% deviation from this customer's normal behavior

@@ -22,7 +22,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from .config import MAX_FUTURE_TIMESTAMP_DAYS
+from .config import ESTABLISHED_HISTORY_MIN, MAX_FUTURE_TIMESTAMP_DAYS
 
 # Same 5% rule feature_engineering.py uses for hour_is_unusual / category_is_unusual,
 # so "preferred hours" here agree with the model's own definition of "usual".
@@ -31,6 +31,19 @@ TOP_N = 3
 MAX_KNOWN_LISTED = 200   # cap on the full device/location lists returned
 MIN_HISTORY_FOR_TYPICAL = 5
 TYPICAL_MINUTE = 30
+
+
+def history_status_for(n_prior: int) -> str:
+    """Single definition of the cold-start tiers, shared by the pipeline and the profile.
+      none        no prior transactions
+      limited     fewer prior transactions than the LSTM window
+      established >= ESTABLISHED_HISTORY_MIN prior transactions
+    """
+    if n_prior <= 0:
+        return "none"
+    if n_prior < ESTABLISHED_HISTORY_MIN:
+        return "limited"
+    return "established"
 
 
 def _count_share(series: pd.Series, top_n: Optional[int] = TOP_N, min_share: float = 0.0):
@@ -68,7 +81,7 @@ def _typical_timestamp(typical_hour: int, latest: datetime, now: datetime) -> Op
 def build_customer_profile(customer_id: str, history: Optional[pd.DataFrame], now: Optional[datetime] = None) -> dict:
     now = now or datetime.now()
     empty = {
-        "customer_id": customer_id, "n_transactions": 0,
+        "customer_id": customer_id, "n_transactions": 0, "history_status": "none",
         "first_transaction_at": None, "last_transaction_at": None,
         "typical_amount": None, "amount_p25": None, "amount_p75": None,
         "primary_device": None, "devices": [], "known_devices": [],
@@ -105,6 +118,7 @@ def build_customer_profile(customer_id: str, history: Optional[pd.DataFrame], no
     profile = dict(empty)
     profile.update({
         "n_transactions": n,
+        "history_status": history_status_for(n),
         "first_transaction_at": first_ts.isoformat(timespec="seconds"),
         "last_transaction_at": last_ts.isoformat(timespec="seconds"),
         "typical_amount": typical_amount,

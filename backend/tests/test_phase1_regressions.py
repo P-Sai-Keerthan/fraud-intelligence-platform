@@ -315,5 +315,6 @@ def test_core_endpoints_and_pdf(client, take_customers):
     pred = client.post("/predict", json=scenario_payload(p)).json()
     assert {"transaction_id", "risk_score", "fraud_probability", "alert_level", "similarity_pct", "deviation_pct", "reasons"} <= set(pred)
     assert client.get(f"/customer/{cid}/history").json()["n_transactions"] >= 1
-    pdf = client.post("/report/pdf", json=pred)
+    # Phase 2: the report request carries only the transaction id (everything printed comes from the server's record)
+    pdf = client.post("/report/pdf", json={"transaction_id": pred["transaction_id"]})
     assert pdf.status_code == 200 and pdf.content[:5] == b"%PDF-"

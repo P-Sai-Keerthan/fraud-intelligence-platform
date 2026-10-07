@@ -62,12 +62,22 @@ class PredictionResponse(BaseModel):
     location: str
     failed_logins_24h: int
 
-    risk_score: float = Field(..., description="0-100 temporal risk score from the LSTM, computed from the customer's previous transactions (a model score, not a calibrated probability)")
+    risk_score: Optional[float] = Field(None, description="0-100 temporal risk score from the LSTM, computed from the customer's previous transactions (a model score, not a calibrated probability). null when the customer has fewer prior transactions than the LSTM window (see history_status).")
     fraud_probability: float = Field(..., description="0-100 model fraud risk score from the DNN (field name kept for API compatibility; NOT a calibrated probability)")
     alert_level: str = Field(..., description="Low Risk / Medium Risk / High Risk / Critical Risk")
 
-    similarity_pct: float = Field(..., description="0-100, how closely this matches the customer's normal behavior")
-    deviation_pct: float
+    similarity_pct: Optional[float] = Field(None, description="0-100, how closely this matches the customer's normal behavior. null when the customer has too little history for a meaningful baseline (see history_status).")
+    deviation_pct: Optional[float] = None
+
+    history_status: str = Field(
+        "established",
+        description=(
+            "How much behavioral history backed this prediction: 'none' (no prior transactions: history-based "
+            "features, temporal risk and similarity are unavailable), 'limited' (fewer prior transactions than the "
+            "LSTM window: temporal risk and similarity unavailable) or 'established' (everything available)."
+        ),
+    )
+    history_transactions: int = Field(0, description="Number of prior transactions this customer had before this one")
 
     reasons: List[ExplanationReason] = Field(default_factory=list, description="Top SHAP-derived reasons, empty if transaction looks normal")
 
@@ -88,7 +98,7 @@ class BatchPredictionResult(BaseModel):
     transaction_id: str
     customer_id: str
     amount: float
-    risk_score: float
+    risk_score: Optional[float] = None
     fraud_probability: float
     alert_level: str
 
@@ -102,7 +112,7 @@ class BatchPredictionResponse(BaseModel):
 class TimelinePoint(BaseModel):
     transaction_id: str
     timestamp: datetime
-    risk_score: float
+    risk_score: Optional[float] = None
     fraud_probability: float
     alert_level: str
 
@@ -135,6 +145,7 @@ class CustomerProfileResponse(BaseModel):
     history. Read-only; does not affect any prediction."""
     customer_id: str
     n_transactions: int
+    history_status: str = Field("none", description="'none' / 'limited' / 'established' (see PredictionResponse.history_status)")
     first_transaction_at: Optional[str] = None
     last_transaction_at: Optional[str] = None
     typical_amount: Optional[float] = Field(None, description="Median amount (robust to outliers)")
@@ -152,3 +163,13 @@ class CustomerProfileResponse(BaseModel):
     hour_distribution: List[float] = Field(default_factory=list, description="24 values: share of history per hour of day")
     transactions_per_week: Optional[float] = None
     typical_scenario: Optional[TypicalScenario] = None
+
+
+class ReportRequest(BaseModel):
+    """POST /report/pdf takes ONLY a transaction id. Every value printed in the
+    report (score, alert level, explanation, ...) comes from the server's own
+    record of that prediction, never from the browser. Extra fields are
+    rejected so a tampered body can't smuggle content into the report."""
+    model_config = ConfigDict(extra="forbid")
+
+    transaction_id: str = Field(..., pattern=r"^TXN_[0-9A-F]{10}$", description="id returned by POST /predict")

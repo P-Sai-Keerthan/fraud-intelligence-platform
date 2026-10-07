@@ -145,8 +145,8 @@ export default function App() {
     setReportError('')
     try {
       await downloadReportPdf(prediction)
-    } catch {
-      setReportError('Could not generate the report. Is the backend running?')
+    } catch (err) {
+      setReportError(formatApiError(err, 'Could not generate the report. Is the backend running?'))
     } finally {
       setReportLoading(false)
     }
@@ -197,12 +197,26 @@ export default function App() {
                 </div>
               )}
               {reportError && <p className="text-xs" style={{ color: 'var(--risk-critical)' }}>{reportError}</p>}
+              {prediction && prediction.history_status && prediction.history_status !== 'established' && (
+                <p
+                  className="text-xs rounded-lg border px-3 py-2"
+                  style={{ borderColor: 'var(--risk-medium)', background: 'var(--risk-medium-dim)', color: 'var(--text-muted)' }}
+                >
+                  <strong style={{ color: 'var(--text-primary)' }}>Limited behavioral history</strong>
+                  {' '}({prediction.history_transactions} prior transaction{prediction.history_transactions === 1 ? '' : 's'}).
+                  Temporal risk and behavioral similarity need at least 10 prior transactions and are not available.
+                  This score uses only the transaction-level signals that exist, so treat it as a limited-confidence
+                  result, not as a behavioral assessment.
+                </p>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 <Card>
                   <RiskGauge label="Temporal Risk" value={prediction?.risk_score} sublabel="/ 100" />
                   <p className="text-[10px] text-center mt-2" style={{ color: 'var(--text-faint)' }}>
-                    LSTM score from this customer's previous transactions (before this one). A model score, not a probability.
+                    {prediction && prediction.risk_score == null
+                      ? 'Not available: the LSTM needs at least 10 prior transactions for this customer.'
+                      : "LSTM score from this customer's previous transactions (before this one). A model score, not a probability."}
                   </p>
                 </Card>
                 <Card>
@@ -216,6 +230,7 @@ export default function App() {
                     <SimilarityMeter
                       similarityPct={prediction?.similarity_pct}
                       deviationPct={prediction?.deviation_pct}
+                      unavailable={Boolean(prediction) && prediction.similarity_pct == null}
                     />
                   </div>
                 </Card>

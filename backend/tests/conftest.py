@@ -10,15 +10,23 @@ first start takes ~1 minute (TensorFlow import + model load). They use a
 throw-away SQLite file, never the developer's backend/fraud_platform.db.
 """
 import os
+import socket
 import sys
 import tempfile
+import threading
+import time
 from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-# must be set BEFORE app.db.database is imported
+# must be set BEFORE the app modules are imported. The suite fires hundreds of requests from one
+# client IP in a couple of minutes, so the default per-IP budgets are lifted here; the rate-limit
+# test re-enables a tiny budget for one bucket explicitly.
+for _name in ("PREDICT", "BATCH", "REPORT", "METRICS", "METRICS_REFRESH", "RINGS"):
+    os.environ.setdefault(f"RATE_LIMIT_{_name}_PER_MIN", "1000000")
+
 _TMP_DB_DIR = tempfile.mkdtemp(prefix="fraud_tests_")
 os.environ["DATABASE_URL"] = "sqlite:///" + str(Path(_TMP_DB_DIR) / "test.db").replace("\\", "/")
 
@@ -63,3 +71,26 @@ def take_customers(clean_customers):
         return clean_customers[start:start + n]
 
     return _take
+
+
+@pytest.fixture(scope="session")
+def live_server(client):
+    """The real app on a real socket (uvicorn in a background thread) for the
+    concurrency tests, which need genuinely simultaneous requests."""
+    import uvicorn
+    from app.main import app
+
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+    server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning"))
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+    deadline = time.time() + 60
+    while not server.started and time.time() < deadline:
+        time.sleep(0.1)
+    assert server.started, "live test server did not start"
+    yield f"http://127.0.0.1:{port}"
+    server.should_exit = True
+    thread.join(timeout=10)

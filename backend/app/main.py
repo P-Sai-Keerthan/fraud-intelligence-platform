@@ -11,14 +11,15 @@ Endpoints:
     GET  /customer/{customer_id}/history   fraud evolution timeline for a customer
     GET  /customer/{customer_id}/profile   behavioral context derived from the customer's own history
     GET  /fraud-rings                   customers linked by a shared device/identifier
-    GET  /metrics                       held-out test-set model performance (precision/recall/F1/AUC-ROC)
-    POST /report/pdf                    downloadable PDF explanation report for one prediction
+    GET  /metrics                       held-out test-set model performance (precision/recall/F1/ROC-AUC/PR-AUC/FPR)
+    POST /report/pdf                    PDF report for one prediction, built from the SERVER's record (body: {"transaction_id": ...})
     GET  /health                        basic health check
 """
 
 import io
+import threading
 
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Path, Request
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Path, Query, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,10 +33,13 @@ from .db import models as db_models
 from .schemas import (
     TransactionInput, PredictionResponse, ExplanationReason,
     CustomerHistoryResponse, TimelinePoint, CustomerProfileResponse,
-    FraudRingsResponse, BatchPredictionResponse,
+    FraudRingsResponse, BatchPredictionResponse, ReportRequest,
 )
 from .batch import parse_batch_csv, BatchError
-from .config import BATCH_MAX_BYTES, MAX_ID_LENGTH
+from .config import (
+    BATCH_MAX_BYTES, MAX_ID_LENGTH, MAX_JSON_BODY_BYTES, MAX_REPORT_BODY_BYTES, MAX_BATCH_BODY_BYTES,
+)
+from .security import BodySizeLimitMiddleware, cors_settings, enforce_rate_limit, rate_limit
 from .inference_pipeline import get_pipeline
 from .models.evaluate import evaluate_all
 from .report import build_pdf_report
@@ -49,14 +53,24 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# allow the React dashboard (running on a different port during development) to call this API
+# Request-body ceilings, enforced before any parsing (added first => runs inside CORS,
+# so even the 413 response carries the CORS headers the dashboard needs to read it).
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # tighten this to your actual frontend origin before deploying publicly
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    BodySizeLimitMiddleware,
+    limits={
+        "/predict": MAX_JSON_BODY_BYTES,
+        "/report/pdf": MAX_REPORT_BODY_BYTES,
+        "/predict/batch": MAX_BATCH_BODY_BYTES,
+    },
+    default_limit=MAX_JSON_BODY_BYTES,
 )
+
+# CORS: an explicit allow-list of frontend origins (config.CORS_ORIGINS / the CORS_ORIGINS
+# environment variable) -- never "*" together with credentials. See security.cors_settings.
+app.add_middleware(CORSMiddleware, **cors_settings())
+
+# only one batch may run at a time: it is the one request type that can occupy the CPU for tens of seconds
+_batch_gate = threading.BoundedSemaphore(1)
 
 
 @app.exception_handler(RequestValidationError)
@@ -84,7 +98,7 @@ def health_check():
 
 
 @app.get("/customers")
-def list_customers(limit: int = 50):
+def list_customers(limit: int = Query(50, ge=1, le=1000)):
     pipeline = get_pipeline()
     ids = pipeline.known_customer_ids()
     return {"count": len(ids), "customer_ids": ids[:limit]}
@@ -110,7 +124,7 @@ def _persist_transaction(db: Session, result: dict):
     db.add(db_txn)
 
 
-@app.post("/predict", response_model=PredictionResponse)
+@app.post("/predict", response_model=PredictionResponse, dependencies=[Depends(rate_limit("predict"))])
 def predict_transaction(txn: TransactionInput, db: Session = Depends(get_db)):
     pipeline = get_pipeline()
 
@@ -140,12 +154,18 @@ def predict_transaction(txn: TransactionInput, db: Session = Depends(get_db)):
         alert_level=result["alert_level"],
         similarity_pct=result["similarity_pct"],
         deviation_pct=result["deviation_pct"],
+        history_status=result["history_status"],
+        history_transactions=result["history_transactions"],
         reasons=[ExplanationReason(**r) for r in result["reasons"]],
     )
 
 
 @app.get("/customer/{customer_id}/history", response_model=CustomerHistoryResponse)
-def get_customer_history(customer_id: str, limit: int = 100, db: Session = Depends(get_db)):
+def get_customer_history(
+    customer_id: str = Path(..., min_length=1, max_length=MAX_ID_LENGTH),
+    limit: int = Query(100, ge=1, le=1000),
+    db: Session = Depends(get_db),
+):
     rows = (
         db.query(db_models.Transaction)
         .filter(db_models.Transaction.customer_id == customer_id)
@@ -188,8 +208,8 @@ def get_customer_profile(customer_id: str = Path(..., min_length=1, max_length=M
     return profile
 
 
-@app.get("/fraud-rings", response_model=FraudRingsResponse)
-def get_fraud_rings(min_customers: int = 2):
+@app.get("/fraud-rings", response_model=FraudRingsResponse, dependencies=[Depends(rate_limit("rings"))])
+def get_fraud_rings(min_customers: int = Query(2, ge=2, le=1000)):
     """Customers who share a device (or other identifier) that a single
     legitimate customer would never plausibly share with another -- a
     strong signal of an organized fraud ring rather than one customer
@@ -200,14 +220,17 @@ def get_fraud_rings(min_customers: int = 2):
 
 
 @app.get("/metrics")
-def get_metrics(refresh: bool = False):
+def get_metrics(request: Request, refresh: bool = False):
     """Held-out test-set performance for both trained models (precision,
     recall, F1, AUC-ROC, confusion matrix) -- computed once and cached,
-    pass ?refresh=true to force recomputation."""
+    pass ?refresh=true to force recomputation (rate-limited: it re-scores the whole test set)."""
+    enforce_rate_limit(request, "metrics")
+    if refresh:
+        enforce_rate_limit(request, "metrics_refresh")
     return evaluate_all(force_refresh=refresh)
 
 
-@app.post("/predict/batch", response_model=BatchPredictionResponse)
+@app.post("/predict/batch", response_model=BatchPredictionResponse, dependencies=[Depends(rate_limit("batch"))])
 async def predict_batch(file: UploadFile = File(...), db: Session = Depends(get_db)):
     """Score every row of an uploaded CSV in one call. Required columns:
     customer_id, amount, merchant_category. Optional: device_id, location,
@@ -232,11 +255,20 @@ async def predict_batch(file: UploadFile = File(...), db: Session = Depends(get_
             _persist_transaction(db, r)
         db.commit()
 
+    # a batch is the only request that can occupy the CPU for tens of seconds: allow one at a time
+    if not _batch_gate.acquire(blocking=False):
+        raise HTTPException(
+            status_code=429,
+            detail="Another batch is already being scored; try again when it finishes.",
+            headers={"Retry-After": "10"},
+        )
     try:
         results_full = await run_in_threadpool(pipeline.score_batch, txns, persist_all)
     except SQLAlchemyError:
         db.rollback()
         raise HTTPException(status_code=503, detail="Could not record the transactions; no state was changed.")
+    finally:
+        _batch_gate.release()
 
     summary = {"Low Risk": 0, "Medium Risk": 0, "High Risk": 0, "Critical Risk": 0}
     results = []
@@ -253,13 +285,21 @@ async def predict_batch(file: UploadFile = File(...), db: Session = Depends(get_
     return BatchPredictionResponse(count=len(results), summary=summary, results=results)
 
 
-@app.post("/report/pdf")
-def get_pdf_report(prediction: PredictionResponse):
-    """Generate a downloadable PDF explaining a single prediction result --
-    takes exactly what POST /predict returns, so the frontend can request
-    a report for whatever is currently on screen."""
-    pdf_bytes = build_pdf_report(prediction.model_dump())
-    filename = f"fraud_report_{prediction.transaction_id}.pdf"
+@app.post("/report/pdf", dependencies=[Depends(rate_limit("report"))])
+def get_pdf_report(req: ReportRequest):
+    """Generate a downloadable PDF explaining a single prediction. The request
+    carries ONLY the transaction id returned by POST /predict; every value in the
+    report (scores, alert level, explanation, ...) comes from the server's own
+    record of that prediction, never from the browser. The filename is derived
+    from the validated id, so it can't be tampered with either."""
+    result = get_pipeline().get_recent_result(req.transaction_id)
+    if result is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No such prediction is available on the server (it may predate a restart); scan the transaction again.",
+        )
+    pdf_bytes = build_pdf_report(result)
+    filename = f"fraud_report_{req.transaction_id}.pdf"
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",

@@ -16,6 +16,10 @@ frontend/dist/
 frontend/.env
 frontend/.env.local
 
+# Environment files: the backend reads real environment variables only; backend/.env.example documents them
+.env
+backend/.env
+
 # OS / editor
 .DS_Store
 .vscode/

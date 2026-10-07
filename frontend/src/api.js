@@ -63,7 +63,21 @@ export async function predictBatch(file) {
 }
 
 export async function downloadReportPdf(prediction) {
-  const response = await api.post('/report/pdf', prediction, { responseType: 'blob' })
+  // only the id is sent: every value printed in the report comes from the server's own record of the prediction
+  let response
+  try {
+    response = await api.post('/report/pdf', { transaction_id: prediction.transaction_id }, { responseType: 'blob' })
+  } catch (err) {
+    // with responseType 'blob' an error body arrives as a Blob; decode it so formatApiError can read the message
+    if (err?.response?.data instanceof Blob) {
+      try {
+        err.response.data = JSON.parse(await err.response.data.text())
+      } catch {
+        // leave the body as is; the caller falls back to a generic message
+      }
+    }
+    throw err
+  }
   const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
   const link = document.createElement('a')
   link.href = url

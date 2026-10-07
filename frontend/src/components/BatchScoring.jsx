@@ -8,6 +8,8 @@ const SUMMARY_ORDER = [
   { key: 'Low Risk', color: 'var(--risk-low)', dim: 'var(--risk-low-dim)' },
 ]
 
+const MAX_UPLOAD_BYTES = 1_000_000 // keep in sync with BATCH_MAX_BYTES in backend/app/config.py
+
 const SAMPLE_CSV = `customer_id,amount,merchant_category,device_id,location,failed_logins_24h
 CUST_0001,1500,grocery,,,0
 CUST_0002,92000,electronics,DEV_UNKNOWN_1234,Lagos,5
@@ -23,6 +25,11 @@ export default function BatchScoring() {
 
   const handleUpload = async () => {
     if (!file) return
+    if (file.size > MAX_UPLOAD_BYTES) {
+      // same ceiling the server enforces; checking here gives a clear message instead of a dropped upload
+      setError('File too large: the maximum is 1 MB (and 50 rows per upload).')
+      return
+    }
     setLoading(true)
     setError('')
     setResult(null)
@@ -115,7 +122,7 @@ export default function BatchScoring() {
                     <tr key={r.transaction_id} style={{ borderTop: '1px solid var(--border-subtle)' }}>
                       <td className="px-3 py-2" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{r.customer_id}</td>
                       <td className="px-3 py-2 text-right" style={{ color: 'var(--text-muted)' }}>₹{r.amount.toLocaleString()}</td>
-                      <td className="px-3 py-2 text-right" style={{ color: 'var(--text-muted)' }}>{r.risk_score.toFixed(1)}</td>
+                      <td className="px-3 py-2 text-right" style={{ color: 'var(--text-muted)' }}>{r.risk_score != null ? r.risk_score.toFixed(1) : '—'}</td>
                       <td className="px-3 py-2 text-right" style={{ color: 'var(--text-muted)' }}>{r.fraud_probability.toFixed(1)}%</td>
                       <td className="px-3 py-2" style={{ color: level?.color }}>{r.alert_level}</td>
                     </tr>

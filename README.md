@@ -37,6 +37,7 @@ fraud-intelligence-platform/
 │       ├── main.py                      # FastAPI app (run this to start the API)
 │       ├── inference_pipeline.py        # orchestrates LSTM -> DNN -> SHAP -> similarity
 │       ├── schemas.py                   # request/response models + input validation rules
+│       ├── security.py                  # CORS allow-list, request-body size limit, in-process rate limiter
 │       ├── batch.py                     # batch-CSV parsing (validate every row before scoring)
 │       ├── profile.py                   # behavioral context + typical-purchase values from a customer's own history
 │       ├── features/feature_engineering.py   # Behavioral Fraud DNA feature builder
@@ -45,6 +46,7 @@ fraud-intelligence-platform/
 │       │   ├── dnn_model.py              # DNN fraud classifier
 │       │   ├── shap_explainer.py          # Explainable AI (SHAP) wrapper + feature-state label checks
 │       │   ├── evaluate.py                # held-out metrics served by GET /metrics
+│       │   ├── skew_check.py              # measures the training/inference feature skew (python -m app.models.skew_check)
 │       │   └── similarity.py              # Behavioral Similarity Score
 │       └── db/                          # SQLAlchemy models + session (SQLite by default)
 │   └── tests/                           # Phase 1 regression tests (pytest)
@@ -279,6 +281,30 @@ models, and API all work off that one schema.
   state changes, but a *valid* extreme transaction still enters the history.
 - The evaluation uses a random 80/20 split of overlapping sequences; no
   customer-disjoint or time-based evaluation is part of the app.
+- **Training/inference feature skew (known, measured, not changed).** The shipped
+  models were trained on `data/transactions_with_features.csv`, generated *before*
+  the `amount_zscore` fix now in `feature_engineering.py` (std floored at 10% of the
+  average, z-score clipped to +/-10; `amount_pct_of_avg` clipped to 1000). The CSV
+  still holds z-scores from -1,585 to +1,163, so `amount_zscore` differs between
+  the training file and what live inference computes on 43,441 of 93,913 rows.
+  Additionally the DNN input is clipped to +/-6 sigma at inference (and in the
+  metrics), but was not clipped in training. Measured effect on the held-out
+  metrics (`python -m app.models.skew_check`): LSTM precision 0.7042 -> 0.7042,
+  ROC-AUC 0.9624 -> 0.9627; DNN precision 0.8367 -> 0.8410 (one fewer false
+  positive), recall 1.000 -> 1.000. The shipped model is deliberately preserved:
+  correcting this properly means regenerating the features and retraining, and an
+  inference-side "undo the fix" would bring back the unbounded z-scores the fix
+  removed. Retraining on regenerated features is the real fix and is future work.
+- **Cold-start scores have limited sensitivity.** The DNN leans on history-based
+  features. For a customer with no history those inputs are unavailable (see the
+  cold-start policy below), so the score rests on foreign-location / failed-login
+  signals only. A "Low Risk" label for a brand-new customer therefore means "no
+  behavioral evidence of risk", not "safe".
+- **Demo-level API protection only.** There is no authentication, and the rate
+  limiter is in-process and per-IP. Production would additionally need: real
+  authentication/authorisation, TLS, a distributed rate limiter shared across
+  workers, per-user quotas, audit logging, secrets management, and a reverse
+  proxy/WAF. Do not expose this API to an untrusted network as-is.
 - Behavioral features are recomputed from a customer's full history on
   every request (`O(n)` per prediction). Fine at demo scale; a production
   system would maintain incrementally-updated rolling statistics instead.
@@ -313,7 +339,8 @@ template and suggested related-work citations.
 - `POST /predict/batch` accepts up to 50 rows / 1 MB. Every row is validated first;
   if any row is invalid, nothing is scored (`422` listing the bad rows); too many
   rows returns `413`. Blank `device_id`/`location` use the customer's usual ones.
-  Inference runs in a worker thread so `/health` stays responsive.
+  Inference runs in a worker thread so `/health` stays responsive, and only one
+  batch runs at a time (a second returns `429` with `Retry-After`).
 - If saving to the database fails, the request returns `503` and the in-memory
   history is left unchanged.
 
@@ -348,3 +375,63 @@ the internal relative imports to resolve correctly.
 **TensorFlow prints CUDA/GPU warnings** — these are harmless. There's no
 GPU available, so it falls back to CPU, which is fine for this project's
 scale.
+
+---
+
+## 6c. Cold start, security and concurrency behaviour (Phase 2)
+
+### Cold-start policy (customers with little or no history)
+
+The LSTM was trained only on full 10-transaction windows of real history, and a
+behavioral baseline needs enough transactions for a meaningful mean/std. The system
+never manufactures history (it used to feed the LSTM an all-zero or padded window and
+compare against a baseline of zeros). The tier is reported as `history_status` in the
+`/predict` response and in `/customer/{id}/profile`:
+
+| `history_status` | Prior transactions | What is computed |
+|---|---|---|
+| `none` | 0 (also: an unknown `customer_id`) | History-based inputs (amount z-score, unusual hour/category, new device/location, amount vs average) and the LSTM do not exist, so each is fed to the DNN at its **training mean** ("no information"). The fraud risk score rests only on genuinely available signals (foreign location, failed logins). `risk_score`, `similarity_pct`, `deviation_pct` are `null`; reasons never name a history-based factor. |
+| `limited` | 1-9 | Features come from the real (short) history. `risk_score` (LSTM) and similarity are `null`: the LSTM is never run on a padded window. |
+| `established` | 10 or more | Everything, exactly as before. Verified unchanged: 200 established-customer results scored by the previous code and the current code were identical in LSTM risk, DNN score, similarity, deviation and alert level. |
+
+`response.history_transactions` is the number of prior transactions used. The dashboard
+shows a "Limited behavioral history" notice and "Not available" instead of a number.
+Unknown customers are still scorable (new customers must be), but they are only
+registered after a **valid** request succeeds; an invalid request creates nothing.
+This is the one deliberate change to the response schema: `risk_score`,
+`similarity_pct`, `deviation_pct` (and the same field on batch results / timeline points)
+may now be `null`, and `history_status` / `history_transactions` were added.
+
+### Security configuration (all via real environment variables; `.env` files are not read)
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `CORS_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | Comma-separated browser origins allowed to call the API cross-origin. A lone `*` is honoured but credentials are **never** enabled. The Vite dev server proxies `/api`, so local development needs no CORS at all. |
+| `RATE_LIMIT_ENABLED` | `1` | `0` disables the limiter. |
+| `RATE_LIMIT_PREDICT_PER_MIN` etc. | 120 / batch 6 / report 60 / metrics 30 / metrics refresh 6 / rings 60 | Per-client-IP budgets for the expensive endpoints (`PREDICT`, `BATCH`, `REPORT`, `METRICS`, `METRICS_REFRESH`, `RINGS`). `429` + `Retry-After` when exceeded. |
+
+Other protections: request bodies are capped before parsing (16 KB JSON, 4 KB for the
+report, ~1 MB for a batch upload; `413`), string/number bounds from Phase 1, bounded
+query parameters (`limit`, `min_customers`), one batch at a time, and a lock so
+`/metrics` is never computed by several requests at once.
+
+### PDF report security
+
+`POST /report/pdf` takes **only** `{"transaction_id": "TXN_..."}` (anything else is
+rejected with `422`). The report is built from the server's own record of that
+prediction (kept in memory for the most recent 1,000 predictions; a restarted server
+returns `404`, so scan again), and the download filename is derived from the validated id.
+Every value placed in the PDF is also XML-escaped. This matters because ReportLab's
+`<img src="...">` markup embeds **any image file the server can read**; ReportLab's own
+`trustedSchemes`/`trustedHosts` settings were tested and do not prevent that.
+
+### Concurrency and chronological consistency
+
+Each customer has its own lock (same-customer requests stay sequential, so no update is
+lost); a batch holds only the locks of the customers it contains; and a short-lived
+inference lock serialises just the Keras/SHAP calls, so an unrelated `/predict` waits for
+at most one transaction's inference rather than a whole batch. A transaction is scored
+against the history that precedes its own timestamp, and the "first time this
+device/location was seen" flags of the entire history are re-derived chronologically on
+every insert, so a back-dated transaction cannot leave later rows with stale flags.
+Two rows with exactly identical timestamps are an untested edge case (their relative order is not guaranteed).

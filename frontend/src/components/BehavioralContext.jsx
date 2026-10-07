@@ -163,8 +163,15 @@ export default function BehavioralContext({ profile, context }) {
         )}
       </div>
 
+      {profile.history_status && profile.history_status !== 'established' && (
+        <p className="md:col-span-2 text-xs" style={{ color: 'var(--risk-medium)' }}>
+          Limited history ({profile.n_transactions} transaction{profile.n_transactions === 1 ? '' : 's'}): these
+          statistics are not yet a reliable behavioral baseline (at least 10 transactions are needed).
+        </p>
+      )}
+
       <p className="md:col-span-2 text-[10px]" style={{ color: 'var(--text-faint)' }}>
-        Compared with this customer's own history{baseline ? ` (${baseline.n_transactions.toLocaleString()} transactions before this scan)` : ''}.
+        Compared with this customer's own history{baseline ? ` (${baseline.n_transactions.toLocaleString()} transaction${baseline.n_transactions === 1 ? '' : 's'} before this scan)` : ''}.
         This describes differences from past behavior; it does not change the model's scores.
       </p>
     </div>
