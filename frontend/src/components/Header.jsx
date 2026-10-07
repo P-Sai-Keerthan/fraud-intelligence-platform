@@ -6,6 +6,8 @@ export default function Header({ selectedCustomer }) {
       <svg
         className="absolute inset-0 w-[140%] h-full opacity-[0.07] pointer-events-none"
         style={{ animation: 'helix-drift 18s linear infinite' }}
+        aria-hidden="true"
+        focusable="false"
         viewBox="0 0 800 160"
         preserveAspectRatio="none"
       >

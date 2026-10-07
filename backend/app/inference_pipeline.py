@@ -168,9 +168,6 @@ class FraudIntelligencePipeline:
         with self._state_lock:
             return sorted(self.customer_histories.keys())
 
-    def has_customer(self, customer_id: str) -> bool:
-        return customer_id in self.customer_histories
-
     def customer_profile(self, customer_id: str) -> Optional[dict]:
         """Behavioral context from the stored history; None if the customer is unknown."""
         history = self.customer_histories.get(customer_id)

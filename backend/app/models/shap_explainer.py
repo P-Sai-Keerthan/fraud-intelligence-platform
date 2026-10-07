@@ -5,16 +5,16 @@ Wraps the trained DNN in a SHAP explainer and converts raw SHAP values into
 human-readable reasons like "New Device", "Foreign Location", etc.
 """
 
+import warnings
+
 import numpy as np
 import shap
 
 from .dnn_model import DNN_INPUT_COLUMNS
 from ..config import DNN_MODEL_PATH, SHAP_BACKGROUND_PATH, DNN_FEATURE_MEAN_PATH, DNN_FEATURE_STD_PATH
 
-# Human-readable label + the condition under which a feature "fires" as a reason.
-# threshold_direction: "above" means high raw value = suspicious, "below" means
-# low raw value = suspicious (only used for informational display, SHAP already
-# tells us direction and magnitude of contribution).
+# Descriptive label shown when a feature is both pushing the score up (positive SHAP value)
+# AND is actually in its fraud-like state (see FEATURE_IS_FRAUD_LIKE below).
 FEATURE_DISPLAY_NAMES = {
     "amount_zscore": "Unusual Transaction Amount",
     "hour_is_unusual": "Unusual Transaction Time",
@@ -106,7 +106,18 @@ class FraudExplainer:
             dropped; if that leaves nothing, the top few are returned with
             neutral wording ("Device (previously used)") instead of an alarming one.
         """
-        shap_values = self.explainer.shap_values(x_normalized)
+        # shap's GradientExplainer calls the Keras-3 model with a one-element LIST of tensors, while the model's
+        # input structure is a single tensor, so Keras warns "The structure of `inputs` doesn't match the
+        # expected structure" on every call. The warning is cosmetic (checked: the SHAP values are bit-identical
+        # with it silenced; the app's own predict() calls never trigger it), so only THAT message is silenced,
+        # and only around this one call. Any other warning still gets through.
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message=r"The structure of `inputs` doesn't match the expected structure",
+                category=UserWarning,
+            )
+            shap_values = self.explainer.shap_values(x_normalized)
         # shap_values shape can be (1, n_features, 1) for single-output models
         values = np.array(shap_values)
         values = values.reshape(-1)  # flatten to (n_features,)

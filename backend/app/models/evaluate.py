@@ -66,12 +66,13 @@ def _load_sequences():
     return feat_df, X_seq, y_seq, meta
 
 
-def _evaluate_lstm(X_seq, y_seq):
+def _evaluate_lstm(X_seq, y_seq, model=None):
     _, X_test, _, y_test = train_test_split(
         X_seq, y_seq, test_size=0.2, random_state=42, stratify=y_seq
     )
 
-    model = keras.models.load_model(LSTM_MODEL_PATH)
+    if model is None:
+        model = keras.models.load_model(LSTM_MODEL_PATH)
     mean = np.load(LSTM_FEATURE_MEAN_PATH)
     std = np.load(LSTM_FEATURE_STD_PATH)
     X_test_norm = (X_test - mean) / std
@@ -80,8 +81,9 @@ def _evaluate_lstm(X_seq, y_seq):
     return _metrics_at_threshold(y_test, y_prob)
 
 
-def _evaluate_dnn(feat_df, X_seq, meta):
-    lstm_model = keras.models.load_model(LSTM_MODEL_PATH)
+def _evaluate_dnn(feat_df, X_seq, meta, lstm_model=None):
+    if lstm_model is None:
+        lstm_model = keras.models.load_model(LSTM_MODEL_PATH)
     lstm_mean = np.load(LSTM_FEATURE_MEAN_PATH)
     lstm_std = np.load(LSTM_FEATURE_STD_PATH)
     X_seq_norm = (X_seq - lstm_mean) / lstm_std
@@ -138,9 +140,10 @@ def evaluate_all(force_refresh: bool = False) -> dict:
         # (even a forced refresh: _generation changed while it was waiting)
         if _cache is None or (force_refresh and _generation == seen_generation):
             feat_df, X_seq, y_seq, meta = _load_sequences()
+            lstm_model = keras.models.load_model(LSTM_MODEL_PATH)   # loaded once, shared by both evaluations
             _cache = {
-                "lstm_risk_predictor": _evaluate_lstm(X_seq, y_seq),
-                "dnn_fraud_classifier": _evaluate_dnn(feat_df, X_seq, meta),
+                "lstm_risk_predictor": _evaluate_lstm(X_seq, y_seq, lstm_model),
+                "dnn_fraud_classifier": _evaluate_dnn(feat_df, X_seq, meta, lstm_model),
                 "evaluation_context": EVALUATION_CONTEXT,
             }
             _generation += 1

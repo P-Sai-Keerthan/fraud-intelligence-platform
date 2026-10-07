@@ -1,21 +1,28 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { getFraudRings } from '../api'
+import { plural } from '../format'
 
 export default function FraudRings() {
   const [rings, setRings] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const load = () => {
+  const load = useCallback((isActive = () => true) => {
     setLoading(true)
     setError('')
     getFraudRings()
-      .then((data) => setRings(data.rings))
-      .catch(() => setError('Could not load fraud ring data. Is the backend running?'))
-      .finally(() => setLoading(false))
-  }
+      .then((data) => { if (isActive()) setRings(data.rings) })
+      .catch(() => { if (isActive()) setError('Could not load fraud ring data. Is the backend running?') })
+      .finally(() => { if (isActive()) setLoading(false) })
+  }, [])
 
-  useEffect(load, [])
+  // ignore the response if the tab was closed before it arrived (also keeps StrictMode's double mount tidy:
+  // the two simultaneous calls share one request, see api.js)
+  useEffect(() => {
+    let active = true
+    load(() => active)
+    return () => { active = false }
+  }, [load])
 
   return (
     <div className="space-y-4">
@@ -27,25 +34,27 @@ export default function FraudRings() {
           pattern&quot; scan on Live Scan for two different customers, then come back here.
         </p>
         <button
-          onClick={load}
-          className="text-xs px-3 py-1.5 rounded-md border shrink-0 transition-colors hover:border-[var(--brand)]"
+          type="button"
+          onClick={() => load()}
+          disabled={loading}
+          className="text-xs px-3 py-1.5 rounded-md border shrink-0 transition-colors hover:border-[var(--brand)] disabled:opacity-40"
           style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
         >
           Refresh
         </button>
       </div>
 
-      {loading && <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Scanning customer histories…</p>}
-      {error && <p className="text-sm" style={{ color: 'var(--risk-critical)' }}>{error}</p>}
+      {loading && <p role="status" className="text-sm" style={{ color: 'var(--text-muted)' }}>Scanning customer histories…</p>}
+      {error && <p role="alert" className="text-sm" style={{ color: 'var(--risk-critical)' }}>{error}</p>}
 
       {!loading && !error && rings?.length === 0 && (
         <p className="text-sm" style={{ color: 'var(--text-faint)' }}>No shared-device rings detected.</p>
       )}
 
       {!loading && !error && rings?.length > 0 && (
-        <div className="space-y-2">
+        <ul className="space-y-2">
           {rings.map((ring) => (
-            <div
+            <li
               key={ring.identifier}
               className="rounded-lg border p-4 flex items-center justify-between gap-4"
               style={{ borderColor: 'var(--risk-critical)', background: 'var(--risk-critical-dim)' }}
@@ -55,7 +64,7 @@ export default function FraudRings() {
                   {ring.identifier}
                 </div>
                 <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                  Shared across {ring.customer_ids.length} customers &middot; {ring.transaction_count} transactions
+                  Shared across {plural(ring.customer_ids.length, 'customer')} &middot; {plural(ring.transaction_count, 'transaction')}
                 </div>
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {ring.customer_ids.map((cid) => (
@@ -75,9 +84,9 @@ export default function FraudRings() {
               >
                 Ring Detected
               </div>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   )

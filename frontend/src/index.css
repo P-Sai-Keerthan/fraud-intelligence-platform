@@ -9,7 +9,7 @@
 
   --text-primary: #e7eaf0;
   --text-muted: #8891a3;
-  --text-faint: #565e70;
+  --text-faint: #7a8396; /* was #565e70 (2.7-3.0:1 contrast on the dark surfaces); this is >= 4.5:1 on all of them */
 
   --brand: #22d3ee;
   --brand-dim: #22d3ee33;
@@ -23,9 +23,10 @@
   --risk-critical: #f87171;
   --risk-critical-dim: #f8717122;
 
-  --font-display: 'Space Grotesk', sans-serif;
-  --font-body: 'Inter', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  /* The named fonts load from Google Fonts (see index.html); the system stacks are the offline fallback. */
+  --font-display: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
 }
 
 * {
@@ -59,3 +60,18 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
+
+/* Keyboard focus must be visible. Several controls drop the browser outline (Tailwind's outline-none) and only
+   change their border colour, which is easy to miss; this ring shows for keyboard focus only. */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* Respect the user's "reduce motion" setting (the header helix drifts continuously). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+}

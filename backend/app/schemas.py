@@ -14,13 +14,13 @@ class TransactionInput(BaseModel):
     The same model validates every batch-CSV row (see app/batch.py)."""
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    customer_id: str = Field(..., min_length=1, max_length=MAX_ID_LENGTH, example="CUST_0001")
+    customer_id: str = Field(..., min_length=1, max_length=MAX_ID_LENGTH, json_schema_extra={"example": "CUST_0001"})
     # allow_inf_nan=False rejects NaN / Infinity / 1e400 (parsed as inf) explicitly
-    amount: float = Field(..., gt=0, le=MAX_TRANSACTION_AMOUNT, allow_inf_nan=False, example=15000.0)
-    merchant_category: str = Field(..., min_length=1, max_length=MAX_TEXT_LENGTH, example="electronics")
-    device_id: str = Field(..., min_length=1, max_length=MAX_ID_LENGTH, example="DEV_UNKNOWN_1234")
-    location: str = Field(..., min_length=1, max_length=MAX_TEXT_LENGTH, example="Lagos")
-    failed_logins_24h: int = Field(0, ge=0, le=MAX_FAILED_LOGINS, example=3)
+    amount: float = Field(..., gt=0, le=MAX_TRANSACTION_AMOUNT, allow_inf_nan=False, json_schema_extra={"example": 15000.0})
+    merchant_category: str = Field(..., min_length=1, max_length=MAX_TEXT_LENGTH, json_schema_extra={"example": "electronics"})
+    device_id: str = Field(..., min_length=1, max_length=MAX_ID_LENGTH, json_schema_extra={"example": "DEV_UNKNOWN_1234"})
+    location: str = Field(..., min_length=1, max_length=MAX_TEXT_LENGTH, json_schema_extra={"example": "Lagos"})
+    failed_logins_24h: int = Field(0, ge=0, le=MAX_FAILED_LOGINS, json_schema_extra={"example": 3})
     timestamp: Optional[datetime] = Field(
         None,
         description=(

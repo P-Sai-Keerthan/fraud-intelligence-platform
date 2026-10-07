@@ -14,8 +14,9 @@ export default function AlertBanner({ level }) {
       className="rounded-lg px-4 py-3 flex items-center gap-3 border"
       style={{ background: style.bg, borderColor: style.color + '55' }}
     >
-      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: style.color }} />
+      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: style.color }} aria-hidden="true" />
       <span className="text-sm font-medium" style={{ color: style.color, fontFamily: 'var(--font-display)' }}>
+        <span className="sr-only">Alert level: </span>
         {level}
       </span>
     </div>

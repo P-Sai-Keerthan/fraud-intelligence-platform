@@ -300,6 +300,15 @@ models, and API all work off that one schema.
   cold-start policy below), so the score rests on foreign-location / failed-login
   signals only. A "Low Risk" label for a brand-new customer therefore means "no
   behavioral evidence of risk", not "safe".
+- **The dashboard loads its fonts from Google Fonts** (Space Grotesk, Inter, JetBrains Mono; see
+  `frontend/index.html`), so it needs internet access to look exactly as designed. Offline it falls back
+  to the system font stacks and stays fully usable. Self-hosting the font files would remove the external
+  dependency; it was left as is because it is cosmetic. The PDF report writes amounts as "Rs." rather than
+  the rupee sign because its built-in font has no rupee glyph.
+- **Accessibility is improved but not audited against WCAG.** The dashboard has labelled form controls,
+  tab semantics with keyboard navigation, text equivalents for the gauges and charts, a visible focus
+  ring and AA text contrast for body and caption text. It has not been tested with a screen reader
+  or an automated WCAG audit, and form-field borders are low contrast (kept, to preserve the visual design).
 - **Demo-level API protection only.** There is no authentication, and the rate
   limiter is in-process and per-IP. Production would additionally need: real
   authentication/authorisation, TLS, a distributed rate limiter shared across

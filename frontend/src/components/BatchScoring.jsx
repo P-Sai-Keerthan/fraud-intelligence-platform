@@ -1,5 +1,6 @@
-import { useRef, useState } from 'react'
+import { useId, useState } from 'react'
 import { predictBatch, formatApiError } from '../api'
+import { plural, rupees } from '../format'
 
 const SUMMARY_ORDER = [
   { key: 'Critical Risk', color: 'var(--risk-critical)', dim: 'var(--risk-critical-dim)' },
@@ -17,11 +18,11 @@ CUST_0003,2200,dining,,,0
 `
 
 export default function BatchScoring() {
+  const uid = useId()
   const [file, setFile] = useState(null)
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const inputRef = useRef(null)
 
   const handleUpload = async () => {
     if (!file) return
@@ -59,14 +60,15 @@ export default function BatchScoring() {
         Upload a CSV of up to 50 transactions to score them all at once. Required columns: customer_id, amount,
         merchant_category. Optional: device_id, location, failed_logins_24h. A blank device or location uses that
         customer's own usual one. Every row is checked first: if any row is invalid, nothing is scored.{' '}
-        <button onClick={downloadSample} className="underline" style={{ color: 'var(--brand)' }}>
+        <button type="button" onClick={downloadSample} className="underline" style={{ color: 'var(--brand)' }}>
           Download a sample CSV
         </button>
       </p>
 
       <div className="flex items-center gap-3">
+        <label htmlFor={`${uid}-file`} className="sr-only">CSV file of transactions to score</label>
         <input
-          ref={inputRef}
+          id={`${uid}-file`}
           type="file"
           accept=".csv"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
@@ -74,8 +76,10 @@ export default function BatchScoring() {
           style={{ color: 'var(--text-muted)' }}
         />
         <button
+          type="button"
           onClick={handleUpload}
           disabled={!file || loading}
+          aria-busy={loading}
           className="text-xs px-4 py-2 rounded-lg font-medium transition-opacity disabled:opacity-40 shrink-0"
           style={{ background: 'var(--brand)', color: '#04202a', fontFamily: 'var(--font-display)' }}
         >
@@ -84,7 +88,7 @@ export default function BatchScoring() {
       </div>
 
       {error && (
-        <ul className="text-xs space-y-1" style={{ color: 'var(--risk-critical)' }}>
+        <ul role="alert" className="text-xs space-y-1" style={{ color: 'var(--risk-critical)' }}>
           {error.split(' | ').map((line) => (
             <li key={line}>{line}</li>
           ))}
@@ -93,6 +97,10 @@ export default function BatchScoring() {
 
       {result && (
         <div className="space-y-4">
+          <p role="status" className="sr-only">
+            Scored {plural(result.count, 'transaction')}.{' '}
+            {SUMMARY_ORDER.map(({ key }) => `${key}: ${result.summary[key] ?? 0}`).join(', ')}.
+          </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {SUMMARY_ORDER.map(({ key, color, dim }) => (
               <div key={key} className="rounded-lg border p-3 text-center" style={{ borderColor: color, background: dim }}>
@@ -106,13 +114,14 @@ export default function BatchScoring() {
 
           <div className="max-h-80 overflow-y-auto rounded-lg border" style={{ borderColor: 'var(--border)' }}>
             <table className="w-full text-xs">
+              <caption className="sr-only">Batch scoring results, one row per transaction</caption>
               <thead className="sticky top-0" style={{ background: 'var(--surface-raised)' }}>
                 <tr style={{ color: 'var(--text-muted)' }}>
-                  <th className="text-left px-3 py-2 font-normal">Customer</th>
-                  <th className="text-right px-3 py-2 font-normal">Amount</th>
-                  <th className="text-right px-3 py-2 font-normal">Risk Score</th>
-                  <th className="text-right px-3 py-2 font-normal">Fraud Prob.</th>
-                  <th className="text-left px-3 py-2 font-normal">Alert</th>
+                  <th scope="col" className="text-left px-3 py-2 font-normal">Customer</th>
+                  <th scope="col" className="text-right px-3 py-2 font-normal">Amount</th>
+                  <th scope="col" className="text-right px-3 py-2 font-normal">Temporal Risk</th>
+                  <th scope="col" className="text-right px-3 py-2 font-normal">Fraud Risk Score</th>
+                  <th scope="col" className="text-left px-3 py-2 font-normal">Alert</th>
                 </tr>
               </thead>
               <tbody>
@@ -120,10 +129,10 @@ export default function BatchScoring() {
                   const level = SUMMARY_ORDER.find((s) => s.key === r.alert_level)
                   return (
                     <tr key={r.transaction_id} style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                      <td className="px-3 py-2" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{r.customer_id}</td>
-                      <td className="px-3 py-2 text-right" style={{ color: 'var(--text-muted)' }}>₹{r.amount.toLocaleString()}</td>
+                      <th scope="row" className="px-3 py-2 text-left font-normal" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{r.customer_id}</th>
+                      <td className="px-3 py-2 text-right" style={{ color: 'var(--text-muted)' }}>{rupees(r.amount, { exact: true })}</td>
                       <td className="px-3 py-2 text-right" style={{ color: 'var(--text-muted)' }}>{r.risk_score != null ? r.risk_score.toFixed(1) : '—'}</td>
-                      <td className="px-3 py-2 text-right" style={{ color: 'var(--text-muted)' }}>{r.fraud_probability.toFixed(1)}%</td>
+                      <td className="px-3 py-2 text-right" style={{ color: 'var(--text-muted)' }}>{r.fraud_probability.toFixed(1)}</td>
                       <td className="px-3 py-2" style={{ color: level?.color }}>{r.alert_level}</td>
                     </tr>
                   )

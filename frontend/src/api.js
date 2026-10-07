@@ -6,6 +6,15 @@ const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
 
 export const api = axios.create({ baseURL, timeout: 15000 })
 
+// Identical GETs that are in flight at the same moment share ONE request. React StrictMode runs every
+// mount effect twice in development (and the Refresh buttons can be double-clicked), which used to send
+// the same slow request (e.g. /metrics, 4-10 s) twice. Only read-only calls use this.
+const inflight = new Map()
+function shareInflight(key, request) {
+  if (!inflight.has(key)) inflight.set(key, request().finally(() => inflight.delete(key)))
+  return inflight.get(key)
+}
+
 export async function predictTransaction(payload) {
   const { data } = await api.post('/predict', payload)
   return data
@@ -35,20 +44,17 @@ export function formatApiError(err, fallback) {
   return fallback
 }
 
-export async function listCustomers(limit = 100) {
-  const { data } = await api.get(`/customers?limit=${limit}`)
-  return data
+export function listCustomers(limit = 100) {
+  return shareInflight(`customers:${limit}`, async () => (await api.get(`/customers?limit=${limit}`)).data)
 }
 
-export async function getMetrics() {
+export function getMetrics() {
   // the first call re-scores the held-out test set (4-10 s on CPU), so allow more than the 15 s default
-  const { data } = await api.get('/metrics', { timeout: 60000 })
-  return data
+  return shareInflight('metrics', async () => (await api.get('/metrics', { timeout: 60000 })).data)
 }
 
-export async function getFraudRings() {
-  const { data } = await api.get('/fraud-rings')
-  return data
+export function getFraudRings() {
+  return shareInflight('rings', async () => (await api.get('/fraud-rings')).data)
 }
 
 export async function predictBatch(file) {

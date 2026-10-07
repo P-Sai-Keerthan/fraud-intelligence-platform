@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { formatDateTime, parseTimestamp } from '../format'
+import { inputClass, inputStyle, labelClass, labelStyle } from '../ui'
 
 const MERCHANT_CATEGORIES = [
   'grocery', 'electronics', 'travel', 'dining', 'utilities',
@@ -18,10 +20,8 @@ const EMPTY_FORM = {
 }
 
 function formatTime(iso) {
-  const d = new Date(iso)
-  return Number.isNaN(d.getTime())
-    ? iso
-    : d.toLocaleString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+  const d = parseTimestamp(iso)
+  return d ? formatDateTime(d, false) : iso
 }
 
 function typicalValues(profile) {
@@ -34,6 +34,7 @@ function typicalValues(profile) {
 }
 
 export default function TransactionForm({ customerId, profile, onSubmit, loading }) {
+  const uid = useId()
   const [form, setForm] = useState(EMPTY_FORM)
   const [timeIsTypical, setTimeIsTypical] = useState(false)
   const [localError, setLocalError] = useState('')
@@ -107,15 +108,11 @@ export default function TransactionForm({ customerId, profile, onSubmit, loading
     onSubmit(payload)
   }
 
-  const inputClass =
-    'w-full rounded-lg px-3 py-2 text-sm outline-none border transition-colors focus:border-[var(--brand)]'
-  const inputStyle = { background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-primary)' }
-  const labelClass = 'text-xs uppercase tracking-wide mb-1.5 block'
-  const labelStyle = { color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }
+  const id = (name) => `${uid}-${name}`
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="flex gap-2 mb-2">
+    <form onSubmit={handleSubmit} className="space-y-4" aria-label="Scan a transaction">
+      <div role="group" aria-label="Quick scenarios" className="flex gap-2 mb-2">
         <button
           type="button"
           onClick={applyTypical}
@@ -137,8 +134,9 @@ export default function TransactionForm({ customerId, profile, onSubmit, loading
       </div>
 
       <div>
-        <label className={labelClass} style={labelStyle}>Amount (₹)</label>
+        <label htmlFor={id('amount')} className={labelClass} style={labelStyle}>Amount (₹)</label>
         <input
+          id={id('amount')}
           type="number" min="1" max="1000000" step="0.01" required
           className={inputClass} style={inputStyle}
           value={form.amount}
@@ -147,8 +145,9 @@ export default function TransactionForm({ customerId, profile, onSubmit, loading
       </div>
 
       <div>
-        <label className={labelClass} style={labelStyle}>Merchant Category</label>
+        <label htmlFor={id('category')} className={labelClass} style={labelStyle}>Merchant Category</label>
         <select
+          id={id('category')}
           className={inputClass} style={inputStyle}
           value={form.merchant_category}
           onChange={(e) => update('merchant_category', e.target.value)}
@@ -161,18 +160,20 @@ export default function TransactionForm({ customerId, profile, onSubmit, loading
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className={labelClass} style={labelStyle}>Device ID</label>
+          <label htmlFor={id('device')} className={labelClass} style={labelStyle}>Device ID</label>
           <input
-            type="text" placeholder={profile?.primary_device || 'device id'}
+            id={id('device')}
+            type="text" placeholder={profile?.primary_device || 'device id'} autoComplete="off"
             className={inputClass} style={inputStyle}
             value={form.device_id}
             onChange={(e) => update('device_id', e.target.value)}
           />
         </div>
         <div>
-          <label className={labelClass} style={labelStyle}>Location</label>
+          <label htmlFor={id('location')} className={labelClass} style={labelStyle}>Location</label>
           <input
-            type="text" placeholder={profile?.primary_location || 'city'}
+            id={id('location')}
+            type="text" placeholder={profile?.primary_location || 'city'} autoComplete="off"
             className={inputClass} style={inputStyle}
             value={form.location}
             onChange={(e) => update('location', e.target.value)}
@@ -181,8 +182,9 @@ export default function TransactionForm({ customerId, profile, onSubmit, loading
       </div>
 
       <div>
-        <label className={labelClass} style={labelStyle}>Failed Logins (24h)</label>
+        <label htmlFor={id('logins')} className={labelClass} style={labelStyle}>Failed Logins (24h)</label>
         <input
+          id={id('logins')}
           type="number" min="0" max="100"
           className={inputClass} style={inputStyle}
           value={form.failed_logins_24h}
@@ -205,11 +207,12 @@ export default function TransactionForm({ customerId, profile, onSubmit, loading
         )}
       </p>
 
-      {localError && <p className="text-xs" style={{ color: 'var(--risk-critical)' }}>{localError}</p>}
+      {localError && <p role="alert" className="text-xs" style={{ color: 'var(--risk-critical)' }}>{localError}</p>}
 
       <button
         type="submit"
         disabled={!customerId || loading}
+        aria-busy={loading}
         className="w-full rounded-lg py-2.5 text-sm font-medium transition-opacity disabled:opacity-40"
         style={{ background: 'var(--brand)', color: '#04202a', fontFamily: 'var(--font-display)' }}
       >

@@ -91,6 +91,9 @@ def build_pdf_report(prediction: dict) -> bytes:
         ["Transaction ID", _text(prediction.get("transaction_id"))],
         ["Customer ID", _text(prediction.get("customer_id"))],
         ["Timestamp", _text(prediction.get("timestamp"))],
+        # "Rs." on purpose: the dashboard writes rupees as the rupee sign, but the PDF's built-in Helvetica uses
+        # WinAnsi encoding, which has no rupee glyph (verified: the sign renders as a missing-glyph square).
+        # Using it would need an embedded TrueType font file, i.e. a new bundled asset.
         ["Amount", f"Rs. {float(prediction.get('amount') or 0):,.2f}"],
         ["Merchant Category", _text(str(prediction.get("merchant_category", "-")).replace("_", " "))],
         ["Device ID", _text(prediction.get("device_id"))],

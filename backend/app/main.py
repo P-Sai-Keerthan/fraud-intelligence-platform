@@ -18,6 +18,7 @@ Endpoints:
 
 import io
 import threading
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Path, Query, Request
 from fastapi.concurrency import run_in_threadpool
@@ -26,7 +27,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
 
 from .db.database import engine, get_db, Base
 from .db import models as db_models
@@ -47,10 +47,22 @@ from .report import build_pdf_report
 # create DB tables on startup if they don't exist
 Base.metadata.create_all(bind=engine)
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # Load the models once, here, instead of on the first request (it takes about a minute: TensorFlow import
+    # plus two Keras models and the SHAP background). get_pipeline() is a process-wide singleton, so a second app
+    # instance or test client re-uses the same loaded pipeline rather than loading it again.
+    get_pipeline()
+    yield
+    # Nothing to release on shutdown: models and customer histories live in process memory, and the
+    # database session is opened and closed per request (see db.database.get_db).
+
+
 app = FastAPI(
     title="Explainable Fraud Intelligence Platform API",
     description="Behavioral Fraud DNA, real-time fraud detection, and explainable AI for banking transactions.",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Request-body ceilings, enforced before any parsing (added first => runs inside CORS,
@@ -83,13 +95,6 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
         for err in exc.errors()
     ]
     return JSONResponse(status_code=422, content={"detail": detail})
-
-
-@app.on_event("startup")
-def load_models_on_startup():
-    # forces the (potentially slow) model-loading step to happen once at
-    # startup rather than on the first incoming request
-    get_pipeline()
 
 
 @app.get("/health")
@@ -222,7 +227,7 @@ def get_fraud_rings(min_customers: int = Query(2, ge=2, le=1000)):
 @app.get("/metrics")
 def get_metrics(request: Request, refresh: bool = False):
     """Held-out test-set performance for both trained models (precision,
-    recall, F1, AUC-ROC, confusion matrix) -- computed once and cached,
+    recall, F1, ROC-AUC, PR-AUC, false positive rate, confusion matrix) -- computed once and cached,
     pass ?refresh=true to force recomputation (rate-limited: it re-scores the whole test set)."""
     enforce_rate_limit(request, "metrics")
     if refresh:

@@ -28,7 +28,7 @@ function ConfusionMatrix({ cm }) {
     background: bg,
   })
   return (
-    <div className="grid grid-cols-2 gap-2 text-center text-xs" style={{ fontFamily: 'var(--font-mono)' }}>
+    <div role="group" aria-label="Confusion matrix" className="grid grid-cols-2 gap-2 text-center text-xs" style={{ fontFamily: 'var(--font-mono)' }}>
       <div className="rounded-md border p-3" style={cellStyle('var(--risk-low-dim)')}>
         <div style={{ color: 'var(--risk-low)', fontWeight: 600, fontSize: '1.1rem' }}>{cm.true_negative}</div>
         <div style={{ color: 'var(--text-faint)' }} className="mt-1">True Negative</div>
@@ -53,9 +53,9 @@ function ModelBlock({ title, subtitle, data }) {
   if (!data) return null
   return (
     <div className="rounded-xl border p-5" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
-      <h4 style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)', fontWeight: 600 }} className="text-base">
+      <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)', fontWeight: 600 }} className="text-base">
         {title}
-      </h4>
+      </h3>
       <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>{subtitle}</p>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
@@ -77,18 +77,22 @@ export default function ModelPerformance() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  // ignore the response if the tab was closed before it arrived (also keeps StrictMode's double mount tidy:
+  // the two simultaneous calls share one request, see api.js)
   useEffect(() => {
+    let active = true
     getMetrics()
-      .then(setMetrics)
-      .catch(() => setError('Could not load model metrics. Is the backend running?'))
-      .finally(() => setLoading(false))
+      .then((data) => { if (active) setMetrics(data) })
+      .catch(() => { if (active) setError('Could not load model metrics. Is the backend running?') })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
   }, [])
 
   if (loading) {
-    return <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Evaluating held-out test set…</p>
+    return <p role="status" className="text-sm" style={{ color: 'var(--text-muted)' }}>Evaluating held-out test set (this can take a few seconds)…</p>
   }
   if (error) {
-    return <p className="text-sm" style={{ color: 'var(--risk-critical)' }}>{error}</p>
+    return <p role="alert" className="text-sm" style={{ color: 'var(--risk-critical)' }}>{error}</p>
   }
 
   return (
