@@ -31,10 +31,12 @@ relative to each customer, where hand-written rules need constant maintenance.
 On our harder dataset a simple rule scored far below the learned models.
 
 **5. Why LSTM?**
-An LSTM is built for sequences. Fraud often unfolds over several transactions:
-test charges before a cash-out, a takeover followed by rising amounts. The LSTM
-reads the customer's last 10 transactions in order and summarises that
-trajectory.
+The LSTM is used to model the customer's recent transaction sequence. It
+captures temporal behavioral patterns and produces a temporal risk signal that
+is used by the downstream fraud classifier. Fraud often unfolds over several
+transactions (test charges before a cash-out, a takeover followed by rising
+amounts), which is why a sequence model is used. We do not claim that the LSTM
+independently proves that fraud can always be predicted before it occurs.
 
 **6. Why DNN?**
 The final decision is about one transaction described by a small table of
@@ -42,9 +44,9 @@ numbers. A small dense network handles that well, is fast enough for real
 time, and works with SHAP so that each decision can be explained.
 
 **7. Why use two stages?**
-They answer different questions. The LSTM asks "where has this customer's
-recent behaviour been heading?" The DNN asks "is this transaction abnormal
-right now?" Feeding the first into the second lets the final score use both.
+They answer different questions. The LSTM summarises the customer's recent
+transaction sequence as a temporal risk signal. The DNN asks "is this
+transaction abnormal right now?" Feeding the first into the second lets the final score use both.
 On the final hold-out the two-stage model caught more fraud with fewer false
 alerts than the DNN alone (recall 0.558 against 0.419).
 
@@ -52,6 +54,14 @@ alerts than the DNN alone (recall 0.558 against 0.419).
 It produces the Risk Score, 0–100, from the 10 transactions before the current
 one. It does not see the current transaction. Its score is one input to the
 DNN.
+
+**8a. Does the LSTM predict fraud before it happens?**
+It is designed to capture temporal signals that may precede or accompany
+suspicious behavior, but our evaluation does not justify claiming guaranteed
+pre-fraud prediction. On v1 it flagged none of the 16 first-fraud
+transactions, and on v2 the LSTM + DNN design is weaker than the DNN alone on
+the first fraud of an episode. Our defensible claim is temporal behavioral
+risk detection.
 
 **9. What is the role of the DNN?**
 It produces the Fraud Score for the current transaction from 10 inputs: the 9

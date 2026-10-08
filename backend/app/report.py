@@ -39,9 +39,9 @@ FRAUD_SCORE_MEANING = "This transaction's DNN fraud score (0-100); a model score
 MODEL_SET_WORDING = {
     "production": (
         "Risk Score",
-        "Trajectory risk from prior activity, before this transaction: the production LSTM's score for the "
-        "customer's 10 previous transactions",
-        "Risk Score is the output of the production LSTM risk predictor and Fraud Score the output of "
+        "Temporal behavioral risk: the production LSTM's score for the customer's 10 previous transactions, "
+        "computed before this transaction",
+        "Risk Score is the output of the production LSTM temporal risk model and Fraud Score the output of "
         "the production DNN fraud classifier; reasons are derived from SHAP feature attribution on the DNN. "
         "For customers with fewer than 10 earlier transactions the LSTM is not used and Risk Score is the "
         "training-average value.",

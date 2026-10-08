@@ -139,7 +139,7 @@ synthetic data, worth admitting if asked.
 ### D1. An existing ring (no typing needed)
 
 Open **Fraud Rings**. With the seed data and an empty database the page shows
-20 rings in 9 clusters, 29 affected customers, 20 suspicious devices and 40
+20 rings in 9 clusters, 29 affected customers, 20 shared devices and 40
 linked transactions; your numbers can be higher if earlier scans added rings.
 
 **On the review machine the page will show more than that.** Its database
@@ -158,7 +158,7 @@ Click the seed-data cluster labelled `DEV_UNKNOWN_1125 +5`:
 | Customers linked | 7: CUST_0003, CUST_0044, CUST_0057, CUST_0079, CUST_0279, CUST_0377, CUST_0445 |
 | Shared devices | 6: DEV_UNKNOWN_4112, _1299, _2157, _6823, _9350, _1125 |
 | Linked transactions | 12 |
-| Ring severity shown | Critical (a reading aid based on cluster size, not a model output) |
+| Size-based level shown | Critical (a reading aid based on cluster size, not a model output) |
 
 Story: no single account looks alarming on its own, each shares one device with
 one other account. Linking the devices shows seven accounts connected through

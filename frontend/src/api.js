@@ -50,8 +50,11 @@ export async function getFraudRings() {
 export async function predictBatch(file) {
   const formData = new FormData()
   formData.append('file', file)
+  // A batch is scored row by row (model + SHAP for each), so it routinely takes
+  // longer than the 15 s default above; allow up to 5 minutes for this call only.
   const { data } = await api.post('/predict/batch', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 300000,
   })
   return data
 }

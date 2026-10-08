@@ -339,8 +339,8 @@ export default function ModelPerformance({ modelInfo }) {
             />
             <ModelBlock
               eyebrow="Production model · stage 1"
-              title="LSTM Risk Predictor"
-              subtitle="Predicts whether the transaction after a 10-step behavioural window will be fraudulent."
+              title="LSTM Temporal Risk Model"
+              subtitle="Reads the customer's previous 10 transactions and produces the temporal risk signal used by the DNN. It is trained to score whether the next transaction is fraudulent; it does not detect the first fraud of an episode (see below)."
               data={metrics?.lstm_risk_predictor}
               extra={<>
                 <MetaRow label="PR-AUC · ROC-AUC">{fmt(metrics?.lstm_risk_predictor?.pr_auc)} · {fmt(metrics?.lstm_risk_predictor?.auc_roc)}</MetaRow>

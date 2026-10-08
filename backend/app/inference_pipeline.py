@@ -5,9 +5,9 @@ Orchestrates the full scoring flow for one incoming transaction:
 
   1. Update customer's behavioral history with the new transaction
   2. Recompute behavioral features (Behavioral Fraud DNA) using history only
-  3. LSTM -> Risk Score (0-100), from the customer's PRIOR trajectory
-  4. DNN  -> Fraud Probability (0-100%), from current features + risk_score
-  5. SHAP -> top reasons behind the fraud probability
+  3. LSTM -> Risk Score (0-100), a temporal risk signal from the customer's previous 10 transactions
+  4. DNN  -> Fraud Score (0-100, a model score, not a calibrated probability), from current features + risk_score
+  5. SHAP -> top reasons behind the Fraud Score
   6. Behavioral Similarity Score vs the customer's own historical profile
 
 KNOWN SIMPLIFICATION (documented honestly for the paper's limitations

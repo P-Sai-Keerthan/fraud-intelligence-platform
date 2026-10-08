@@ -13,10 +13,10 @@ Feature Engineering                9 behavioral features, each computed only
 Customer Behavioral History        the customer's past transactions, kept in
         │                          time order (seed data + every scan so far)
         ▼
-LSTM Risk Predictor                reads the 10 transactions BEFORE this one
+LSTM temporal risk model           reads the 10 transactions BEFORE this one
         │
         ▼
-Behavioral Risk Signal             Risk Score, 0–100
+Temporal risk signal               Risk Score, 0–100
         │
         ▼
 DNN Fraud Classifier               9 features of this transaction + Risk Score
@@ -40,7 +40,7 @@ Investigation modules              Behavioral similarity, customer profile,
 |---|---|---|
 | Feature engineering | Turns the raw transaction into 9 numbers that compare it with the customer's own past | `backend/app/features/feature_engineering.py` |
 | Customer history | In-memory history per customer, loaded from the seed data and rebuilt from the database at start-up; every scored transaction is appended | `backend/app/inference_pipeline.py` |
-| LSTM risk predictor | Two LSTM layers (64 and 32 units) over a window of 10 earlier transactions × 9 features; output × 100 = Risk Score | `backend/app/models/lstm_model.py` |
+| LSTM temporal risk model | Two LSTM layers (64 and 32 units) over a window of 10 earlier transactions × 9 features; output × 100 = Risk Score | `backend/app/models/lstm_model.py` |
 | DNN fraud classifier | Dense layers 64 → 32 → 16 → 1 on 10 inputs (9 features + Risk Score); output × 100, capped at 99.9 = Fraud Score | `backend/app/models/dnn_model.py` |
 | SHAP explanation | Feature attributions on the DNN; the top contributions towards a higher score are shown as reasons | `backend/app/models/shap_explainer.py` |
 | Alert level | Fixed bands on the Fraud Score: 25 / 50 / 80 | `backend/app/models/dnn_model.py` |
@@ -62,10 +62,16 @@ Investigation modules              Behavioral similarity, customer profile,
 
 ### Why two stages
 
-The LSTM looks **backwards**: is this customer's recent sequence drifting
-towards something risky? The DNN looks at **this** transaction: is it abnormal
-for this customer right now? The LSTM's output is one of the DNN's inputs, so
-the final score uses both the trajectory and the single event.
+The LSTM models the customer's recent transaction sequence: it captures
+temporal behavioral patterns and produces a temporal risk signal (the Risk
+Score). The DNN looks at **this** transaction: is it abnormal for this customer
+right now? The LSTM's output is one of the DNN's inputs, so the final score
+uses both the recent sequence and the single event.
+
+We do not claim that the LSTM predicts fraud before it happens. On v1 it
+flagged none of the first-fraud transactions in the test period, and on v2
+the LSTM + DNN design detects the first fraud of an episode *less* often than
+a DNN without it (0.605 against 0.690 on the final hold-out).
 
 ### Cold start
 
@@ -94,7 +100,7 @@ Investigation                      customers linked, shared devices, linked
 ```
 
 A legitimate customer's devices belong to that customer alone, so one device
-appearing under several accounts suggests coordinated activity. The backend
+appearing under several accounts may indicate coordinated activity and is worth investigating; it is not proof of fraud. The backend
 returns each shared device with its customers and transaction count
 (`GET /fraud-rings`). The frontend joins rings that share a customer into one
 cluster and draws the graph. This part is a **rule over device IDs, not a

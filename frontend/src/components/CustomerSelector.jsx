@@ -42,7 +42,7 @@ export default function CustomerSelector({ customers, value, onChange, profile, 
             </span>
             <div className="min-w-0">
               <div className="mono text-sm truncate" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{value}</div>
-              <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Profile under investigation</div>
+              <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Profile derived from transaction history</div>
             </div>
           </div>
 

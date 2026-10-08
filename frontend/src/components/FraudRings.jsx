@@ -133,14 +133,14 @@ export default function FraudRings() {
     <div className="space-y-5">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatTile label="Rings detected" value={stats.rings.toLocaleString()} accent="var(--risk-critical)"
-          hint={`${stats.clusters.toLocaleString()} suspicious cluster${stats.clusters === 1 ? '' : 's'}`} />
+          hint={`Shared devices, grouped into ${stats.clusters.toLocaleString()} cluster${stats.clusters === 1 ? '' : 's'}`} />
         <StatTile label="Affected customers" value={stats.customers.toLocaleString()} hint="Distinct customers linked to a ring" />
-        <StatTile label="Suspicious devices" value={stats.devices.toLocaleString()} hint="Devices used by two or more customers" />
+        <StatTile label="Shared devices" value={stats.devices.toLocaleString()} hint="Devices used by two or more customers" />
         <StatTile label="Linked transactions" value={stats.transactions.toLocaleString()} hint="Transactions made on those devices" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-5 items-start">
-        <Card title="Suspicious transaction clusters" eyebrow="Relationship map" icon="network" actions={refresh}>
+        <Card title="Shared-device clusters" eyebrow="Relationship map" icon="network" actions={refresh}>
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <Legend />
             {loadedAt && (
@@ -188,17 +188,17 @@ export default function FraudRings() {
         {selected && (
           <div className="xl:sticky xl:top-[92px] xl:max-h-[calc(100vh-108px)] xl:overflow-y-auto rounded-[14px]">
           <Card title="Investigation summary" eyebrow="Selected cluster" icon="search"
-            actions={<Badge tone="danger" icon="alert">Ring detected</Badge>}>
+            actions={<Badge tone="warn" icon="alert">Shared-device link</Badge>}>
             <div className="panel p-2 mb-4">
               <ClusterGraph cluster={selected} width={340} height={210} labels="full" />
             </div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Ring severity</span>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Size-based level (UI)</span>
               <SeverityBadge level={selected.severity} size="md" />
             </div>
             <dl>
               <MetaRow label="Signal" mono={false}>{selected.types.map(ringTypeLabel).join(', ')}</MetaRow>
-              <MetaRow label="Pattern" mono={false}>Coordinated activity across {selected.customers.length} accounts</MetaRow>
+              <MetaRow label="Pattern" mono={false}>{selected.customers.length} accounts linked by shared devices</MetaRow>
               <MetaRow label="Customers linked">{selected.customers.length}</MetaRow>
               <MetaRow label="Shared devices">{selected.devices.length}</MetaRow>
               <MetaRow label="Linked transactions">{selected.transactions}</MetaRow>

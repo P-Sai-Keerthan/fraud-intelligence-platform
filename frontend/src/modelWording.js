@@ -2,7 +2,7 @@
 //
 // What risk_score means depends on the loaded model set (GET /model-info):
 // * production / v2_dnn_lstm: an LSTM score from the customer's previous
-//   transactions (trajectory / behavioral risk), an input to the DNN;
+//   transactions (temporal behavioral risk), an input to the DNN;
 // * v2_dnn_only: there is no sequence model -- risk_score repeats the DNN
 //   fraud score for API compatibility and must not be called trajectory risk.
 // If the model set is unknown (request failed), the wording stays neutral.
@@ -11,9 +11,9 @@
 const WORDING = {
   production: {
     riskLabel: 'Risk Score',
-    riskShort: 'Trajectory risk from customer behavior',
-    riskCaption: "Trajectory risk from this customer's prior activity (LSTM), before this transaction",
-    fraudCaption: "This transaction's fraud score (model output, not a calibrated probability) -- can be high even if prior trajectory was clean",
+    riskShort: 'Temporal behavioral risk (LSTM)',
+    riskCaption: "Temporal behavioral risk signal computed by the LSTM from this customer's previous 10 transactions",
+    fraudCaption: "This transaction's fraud score (model output, not a calibrated probability) -- can be high even if the recent history looked normal",
     riskColumn: 'Risk Score',
     timelineRisk: 'Risk Score (LSTM)',
   },
@@ -21,7 +21,7 @@ const WORDING = {
     riskLabel: 'Risk Score',
     riskShort: 'Behavioral risk from previous transactions',
     riskCaption: "LSTM behavioral-risk component from this customer's previous transactions, before this transaction",
-    fraudCaption: "This transaction's fraud score (model output, not a calibrated probability) -- can be high even if prior behavior was clean",
+    fraudCaption: "This transaction's fraud score (model output, not a calibrated probability) -- can be high even if the recent history looked normal",
     riskColumn: 'Risk Score',
     timelineRisk: 'Risk Score (LSTM)',
   },
@@ -30,7 +30,7 @@ const WORDING = {
     riskLabel: 'Risk Score',
     riskShort: 'Behavioral risk from previous transactions',
     riskCaption: "LSTM behavioral-risk component from this customer's previous transactions, before this transaction",
-    fraudCaption: "This transaction's fraud score (model output, not a calibrated probability) -- can be high even if prior behavior was clean",
+    fraudCaption: "This transaction's fraud score (model output, not a calibrated probability) -- can be high even if the recent history looked normal",
     riskColumn: 'Risk Score',
     timelineRisk: 'Risk Score (LSTM)',
   },

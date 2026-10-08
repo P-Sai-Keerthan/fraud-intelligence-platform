@@ -245,7 +245,7 @@ export default function App() {
                 <Card>
                   <RiskGauge
                     label={wording.riskLabel} value={prediction?.risk_score} loading={loading}
-                    caption={wording.riskShort} note={<span title={wording.riskCaption}>Before this transaction</span>}
+                    caption={wording.riskShort} note={<span title={wording.riskCaption}>From the previous 10 transactions</span>}
                   />
                 </Card>
                 <Card>

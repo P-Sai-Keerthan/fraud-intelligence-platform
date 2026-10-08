@@ -1,14 +1,17 @@
 """
 LSTM Behavioral Risk Predictor
 ================================
-Takes a sequence of a customer's past N transactions' behavioral features
-and outputs a Risk Score (0-100): the predicted probability, x100, that the
-NEXT transaction is fraudulent. This is the pipeline's historical-risk
-signal; the DNN uses it as one extra input.
+The LSTM processes a customer's previous N (10) transactions as a sequence
+to capture temporal behavioral patterns, and produces a temporal risk
+signal, the Risk Score (0-100), for the downstream DNN fraud classifier.
+Training target: whether the NEXT transaction after the window is
+fraudulent; the output x100 is reported as the Risk Score. It is a model
+score, not a calibrated probability.
 
-Research hypothesis: the score rises BEFORE a customer's first fraudulent
-transaction, as an early warning.
-Current measured result (docs/EVALUATION.md, time-based test split of the
+We do not claim that it predicts fraud before it happens. The original
+research hypothesis was that the score would rise before a customer's
+first fraudulent transaction.
+Measured result (docs/EVALUATION.md, time-based test split of the
 synthetic data): the hypothesis is not supported. The score flags 0 of 16
 first-fraud transactions, rises only after an episode has started (median
 1.5 fraud transactions later), and the DNN performs the same with or

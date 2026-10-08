@@ -90,7 +90,8 @@ export default function ShapReasonsChart({ reasons, hasPrediction }) {
       </ul>
       <p className="text-[11px] mt-3 px-3" style={{ color: 'var(--text-muted)' }}>
         Bars show each feature&apos;s SHAP contribution towards a higher fraud score (longest = largest). The percentage is the
-        feature&apos;s share of the contributions listed here.
+        feature&apos;s share of the contributions listed here. The labels (Primary driver, Strong, Contributing) are
+        derived in the interface from these values. SHAP explains the model&apos;s score; it does not prove fraud.
       </p>
     </div>
   )

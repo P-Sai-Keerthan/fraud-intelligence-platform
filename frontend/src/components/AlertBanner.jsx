@@ -67,7 +67,7 @@ export default function AlertBanner({ prediction, modelInfo, loading, onDownload
               {level}
             </p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-              {VERDICT_TEXT[level] || 'Alert level returned by the model.'}
+              {VERDICT_TEXT[level] || 'Alert level from fixed bands on the Fraud Score.'}
               {band && <span className="mono" style={{ color: 'var(--text-muted)' }}> &middot; {band}</span>}
             </p>
           </div>

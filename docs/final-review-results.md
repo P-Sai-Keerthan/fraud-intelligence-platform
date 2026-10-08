@@ -77,7 +77,7 @@ the following period, measured on the latest period (18,904 transactions, 201
 fraud, 16 fraud episodes). These are evaluation copies of the production
 architecture, not the deployed weight files.
 
-| | DNN fraud classifier | LSTM risk predictor |
+| | DNN fraud classifier | LSTM temporal risk model |
 |---|---|---|
 | Precision | 1.000 | 0.829 |
 | Recall | 1.000 | 0.871 |

@@ -280,7 +280,7 @@ def _pdf_for(client, txn=SUSPICIOUS_TXN):
 def test_pdf_production_wording(client, pipeline):
     _, text_ = _pdf_for(client)
     assert "Model set production" in text_ and pipeline.model_version in text_
-    assert "Trajectory risk" in text_ and "production LSTM" in text_
+    assert "Temporal behavioral risk" in text_ and "production LSTM" in text_
     assert "not a calibrated probability" in text_
 
 
@@ -311,7 +311,7 @@ def test_pdf_uses_the_recorded_model_set_not_the_loaded_one(client, standin, use
     pred = client.post("/predict", json=dict(SUSPICIOUS_TXN)).json()      # scored by production
     use_pipeline(standin["v2_dnn_only"])                                   # then the loaded set changes
     text_ = _pdf_text(client.post("/report/pdf", json=pred).content)
-    assert "Model set production" in text_ and "Trajectory risk" in text_
+    assert "Model set production" in text_ and "Temporal behavioral risk" in text_
     assert "v2_dnn_only" not in text_
 
 

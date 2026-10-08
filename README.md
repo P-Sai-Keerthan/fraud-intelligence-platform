@@ -2,15 +2,26 @@
 
 An AI-powered banking fraud intelligence system that builds a **Behavioral
 Fraud DNA** profile per customer, detects fraud in real time on individual
-transactions (DNN), and explains every decision (SHAP). The pipeline
-combines each transaction's own features with a historical-risk signal: an
-LSTM score computed from the customer's previous transactions.
+transactions (DNN), and explains every decision (SHAP). The LSTM processes
+the customer's previous 10 transactions as a sequence to capture temporal
+behavioral patterns, and produces a temporal risk signal (the Risk Score)
+that the downstream DNN fraud classifier uses as one extra input.
 
-The research hypothesis behind the LSTM was that this historical signal
-would rise *before* fraud happens. On the current synthetic dataset the
-corrected evaluation does not support that. The LSTM signal adds no
-measurable predictive value to the DNN, and it does not flag the first
-fraud transaction of an episode (see `docs/EVALUATION.md`).
+The Fraud Score is a model score from 0 to 100, **not a calibrated
+probability**. All data is synthetic.
+
+We do not claim that the LSTM predicts fraud before it happens. The
+original research hypothesis was that its signal would rise before the
+first fraudulent transaction; the evaluation does not support that. On the
+v1 dataset the LSTM flags 0 of 16 first-fraud transactions and adds no
+measurable value to the DNN (`docs/EVALUATION.md`). On the harder synthetic
+v2 data, the LSTM + DNN design catches more fraud transactions overall
+than a DNN without the LSTM, but it is *worse* at detecting the first fraud
+of an episode (`docs/step4c3e-stage-c-final-evaluation.md`). The defensible
+claim is temporal behavioral risk detection.
+
+The state of the current build (model sets, test results, startup commands,
+known limitations) is summarised in `docs/final-demo-verification.md`.
 
 This repository is fully working end-to-end right now, using a **synthetic
 dataset** generated with realistic behavioral patterns (see
@@ -42,7 +53,7 @@ fraud-intelligence-platform/
 │       ├── schemas.py                   # request/response models
 │       ├── features/feature_engineering.py   # Behavioral Fraud DNA feature builder
 │       ├── models/
-│       │   ├── lstm_model.py            # LSTM risk predictor
+│       │   ├── lstm_model.py            # LSTM temporal risk model
 │       │   ├── dnn_model.py              # DNN fraud classifier
 │       │   ├── shap_explainer.py          # Explainable AI (SHAP) wrapper
 │       │   └── similarity.py              # Behavioral Similarity Score
@@ -143,7 +154,8 @@ curl -X POST http://localhost:8000/predict \
   }'
 ```
 
-You should get back a JSON response with `risk_score`, `fraud_probability`,
+You should get back a JSON response with `risk_score`, `fraud_probability`
+(the Fraud Score; the field name is historical, it is not a probability),
 `alert_level: "Critical Risk"`, and a list of `reasons` like "Foreign
 Location" and "New Device".
 
@@ -153,7 +165,7 @@ With the virtual environment activated, from inside `backend/`:
 
 ```bash
 pip install -r requirements-dev.txt   # pytest, httpx, pypdf (test-only)
-pytest                                # full suite, ~1 minute
+pytest                                # full suite, about 12-15 minutes on a laptop CPU
 pytest -m "not slow"                  # skip the slowest tests (metrics, restart, env-var checks)
 ```
 
@@ -167,7 +179,8 @@ All settings are optional; the defaults work for local development.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `DATABASE_URL` | `sqlite:///./fraud_platform.db` | Database for scored transactions (PostgreSQL also works). |
+| `MODEL_SET` | `production` (when unset) | Which model set to load. Leave it unset for the demo. `v2_dnn_lstm_seed14` loads the evaluation-only Seed-14 candidate, which is not deployed; an unknown value stops start-up. |
+| `DATABASE_URL` | `sqlite:///./fraud_platform.db` | Database for scored transactions (PostgreSQL is configurable but untested). |
 | `CORS_ALLOW_ORIGINS` | `http://localhost:5173`, `http://127.0.0.1:5173`, `http://localhost:4173`, `http://127.0.0.1:4173` | Comma-separated browser origins allowed to call the API directly. |
 
 The dashboard's dev server reaches the API through Vite's `/api` proxy,
@@ -207,8 +220,9 @@ You'll see output like:
 Open **http://localhost:5173** in your browser. Select a customer from the
 dropdown (e.g. `CUST_0001`), click one of the quick scenario buttons
 ("Typical purchase" / "Suspicious pattern"), and click **Scan Transaction**.
-You'll see the risk gauge, fraud probability, alert banner, SHAP
-explanation chart, and the fraud evolution timeline update live.
+You'll see the Risk Score, the Fraud Score (a model score, not a
+probability), the alert verdict, the SHAP explanation, behavioral
+similarity and the fraud evolution timeline update live.
 
 The dev server automatically proxies `/api` requests to your backend on
 port 8000 (configured in `vite.config.js`), so no extra setup is needed for
@@ -306,19 +320,20 @@ models, and API all work off that one schema.
    customer's prior history (no lookahead) — amount z-score vs their own
    average, whether the hour/device/location/category is new or unusual,
    transaction velocity, failed logins.
-2. **LSTM Risk Predictor** (`lstm_model.py`): takes the customer's last 10
-   transactions' behavioral features as a sequence and predicts the
-   probability that the *next* transaction will be fraudulent, reported as
-   a Risk Score (0-100). It was designed as a historical-risk signal that
-   could rise *before* an attack; that is the research hypothesis.
-   Measured result on the current synthetic data: it does not. It flags 0
-   of 16 first-fraud transactions in the test period and rises only once an
-   episode is under way. Removing it from the DNN does not change detection
-   (`docs/EVALUATION.md`).
+2. **LSTM temporal risk model** (`lstm_model.py`): processes the customer's
+   previous 10 transactions (9 behavioral features each) as a sequence to
+   capture temporal behavioral patterns, and outputs a temporal risk signal,
+   the Risk Score (0-100). It is trained to score whether the *next*
+   transaction after the window is fraudulent. It was designed in the hope
+   that it would rise *before* an attack; the evaluation does not support
+   that claim. On v1 it flags 0 of 16 first-fraud transactions in the test
+   period and rises only once an episode is under way, and removing it from
+   the DNN does not change detection (`docs/EVALUATION.md`).
 3. **DNN Fraud Detector** (`dnn_model.py`): takes the current transaction's
-   own behavioral features *plus* the LSTM risk score, and outputs a fraud
-   probability for *this specific transaction*. It is trained with class
-   weights, so the probability is not calibrated.
+   9 behavioral features *plus* the LSTM Risk Score, and outputs the Fraud
+   Score (0-100) for *this specific transaction*. It is trained with class
+   weights, so the Fraud Score is a model score, not a calibrated
+   probability.
 4. **SHAP Explainer** (`shap_explainer.py`): wraps the DNN with
    `shap.GradientExplainer` and maps the top contributing features to
    human-readable reasons ("New Device", "Foreign Location", etc.).
@@ -329,6 +344,9 @@ models, and API all work off that one schema.
 
 ### Known limitations (be upfront about these in your paper — reviewers expect it)
 
+- The **Fraud Score is a model score, not a calibrated probability**.
+- The LSTM does not detect the first fraud of an episode; do not describe
+  it as predicting fraud before it happens.
 - The dataset is **synthetic**. Real bank data is never public, so this is
   standard practice in fraud-detection research, but say so explicitly in
   your methodology section.
@@ -336,7 +354,7 @@ models, and API all work off that one schema.
   every request (`O(n)` per prediction). Fine at demo scale; a production
   system would maintain incrementally-updated rolling statistics instead.
 - The Behavioral Similarity Score weights all 9 features equally. It can
-  diverge from the DNN's fraud probability for customers with naturally
+  diverge from the DNN's Fraud Score for customers with naturally
   tight variance in one dimension (e.g. very consistent spending amounts).
   This is a good "future work" paragraph for your paper: learned feature
   weighting for the similarity metric.

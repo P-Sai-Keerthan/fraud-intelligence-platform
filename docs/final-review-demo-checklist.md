@@ -83,7 +83,8 @@ Fraud Rings tab shows exactly 20 rings in 9 clusters.
 - **Screen:** `final-review-architecture.md`, the scoring-path diagram.
 - **Point at:** the two model boxes and the arrow from one into the other.
 - **Say:** "Nine behavioural features are computed from the customer's past.
-  An LSTM reads the previous ten transactions and gives a Risk Score. A dense
+  An LSTM reads the previous ten transactions and gives a temporal risk
+  signal, the Risk Score. A dense
   network takes the features of this transaction plus that Risk Score and
   gives the Fraud Score. SHAP explains it. The backend is FastAPI, the
   frontend is React."
