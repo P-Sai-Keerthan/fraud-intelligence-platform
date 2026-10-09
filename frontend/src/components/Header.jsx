@@ -18,7 +18,15 @@ function Field({ label, children, title }) {
 export default function Header({ health = 'checking', modelInfo }) {
   const status = STATUS[health] || STATUS.checking
   const modelSet = modelInfo?.model_set
-  const isProduction = modelSet === 'production'
+  // the backend says which model set is the deployed default (GET /model-info -> status)
+  const isProduction = modelInfo?.status === 'PRODUCTION'
+  const isPrevious = typeof modelInfo?.status === 'string' && modelInfo.status.startsWith('PREVIOUS DEFAULT')
+  const chipText = isProduction ? 'PRODUCTION' : isPrevious ? 'PREVIOUS DEFAULT (v1)' : 'EVALUATION · NOT DEPLOYED'
+  const chipTitle = isProduction
+    ? `The default model set is loaded${modelInfo?.architecture ? ` (${modelInfo.architecture})` : ''}`
+    : isPrevious
+    ? 'The previous default model set (v1, LSTM -> DNN) was loaded on request. It is not the default.'
+    : 'An evaluation model set is loaded for controlled testing. It is not deployed.'
 
   return (
     <header
@@ -70,12 +78,12 @@ export default function Header({ health = 'checking', modelInfo }) {
           {modelSet && (
             <span
               className="chip"
-              title={isProduction ? 'The production model set is loaded' : 'An evaluation candidate is loaded for controlled testing. It is not deployed; production is the default model set.'}
+              title={chipTitle}
               style={isProduction
                 ? { color: 'var(--risk-low)', borderColor: 'rgba(47,191,143,0.35)', background: 'var(--risk-low-dim)' }
                 : { color: 'var(--risk-medium)', borderColor: 'rgba(242,180,31,0.35)', background: 'var(--risk-medium-dim)' }}
             >
-              {isProduction ? 'PRODUCTION' : 'EVALUATION · NOT DEPLOYED'}
+              {chipText}
             </span>
           )}
         </div>

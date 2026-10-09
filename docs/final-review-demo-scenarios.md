@@ -1,5 +1,15 @@
 # Final review — demo transaction scenarios
 
+> **Step 4D update (8 October 2026).** The default model set is now
+> `v2_lstm_rf_seed14`: the same seed-14 LSTM, followed by a **random forest**
+> instead of a DNN, chosen by a pre-registered comparison and confirmed on a
+> fresh hold-out (`docs/model_selection_report.md`). The "observed"
+> scores in the table below were measured with the **previous default**
+> (`MODEL_SET=production`) and do not apply to the random forest, whose scores
+> are much lower (an ordinary purchase scores about 0.06, single unusual
+> signals 0.2 to 16, a failed-login attack 43, several signals together 75; see section "Default model (Step 4D)" at the end and
+> `docs/final-demo-verification.md`). Rehearse on the review machine.
+
 **Read this first.** No input guarantees a particular score. The score of a
 transaction depends on the loaded model set, on that customer's own history
 (including every scan made earlier on this machine) and on the time of day the
@@ -179,3 +189,42 @@ Say what the screen says and explain it from the SHAP reasons, which is the
 point of the explainability panel. For example: "It is flagged mainly because
 this hour is unusual for this customer." Do not rerun the same scan hoping for
 a different number: each rerun is added to the history and moves the score.
+
+## Default model (Step 4D): hand-built scenarios
+
+Scored on 8 October 2026 by `python -m app.evaluation.downstream_sanity`
+(`backend/models/evaluation/downstream/sanity_scenarios.json`). Every row
+starts from the untouched seed history, dated 10 July 2026 at the customer's
+most common hour. Fraud Scores are model scores (0–100), not probabilities.
+For comparison, the same inputs are shown for the DNN with the same LSTM
+(`v2_dnn_lstm_seed14`) and for the previous default (`production`).
+
+| # | Scenario | Input | Risk Score | Fraud Score (random forest) | SHAP reasons (random forest) | DNN, same LSTM | Previous default |
+|---|---|---|---|---|---|---|---|
+| A | Normal low-risk purchase | CUST_0376, Rs. 2,200, grocery, DEV_0376_A, Hyderabad, 0 failed logins, 17:15 | 14.55 | **0.06** (Low Risk) | (none shown: score below 5) | 9.61 | 1.58 |
+| B | Moderate behavioral deviation (3x usual amount) | CUST_0376, Rs. 6,600, grocery, DEV_0376_A, Hyderabad, 0 failed logins, 17:15 | 14.55 | **1.64** (Low Risk) | (none shown: score below 5) | 50.90 | 2.40 |
+| C | New device only | CUST_0376, Rs. 2,200, grocery, DEV_NEW_A001, Hyderabad, 0 failed logins, 17:15 | 14.55 | **3.34** (Low Risk) | (none shown: score below 5) | 64.69 | 21.27 |
+| D | New domestic location only | CUST_0376, Rs. 2,200, grocery, DEV_0376_A, Mumbai, 0 failed logins, 17:15 | 14.55 | **0.17** (Low Risk) | (none shown: score below 5) | 50.55 | 15.41 |
+| E | Foreign location only | CUST_0376, Rs. 2,200, grocery, DEV_0376_A, Singapore, 0 failed logins, 17:15 | 14.55 | **16.24** (Low Risk) | Foreign Location +0.163, New Location +0.016, Elevated Behavioral Risk Score +0.002, Unusual Transaction Amount +0.001 | 85.88 | 84.30 |
+| F | High amount only (Rs. 85,000) | CUST_0376, Rs. 85,000, grocery, DEV_0376_A, Hyderabad, 0 failed logins, 17:15 | 14.55 | **2.38** (Low Risk) | (none shown: score below 5) | 67.70 | 1.41 |
+| G | Multiple suspicious signals | CUST_0376, Rs. 85,000, electronics, DEV_UNKNOWN_7731, Singapore, 0 failed logins, 17:15 | 14.55 | **74.56** (High Risk) | Foreign Location +0.282, New Device +0.220, Amount Far Above Average +0.120, New Location +0.098 | 91.71 | 99.90 |
+| H | Failed-login attack pattern | CUST_0376, Rs. 25,000, electronics, DEV_UNKNOWN_8842, Hyderabad, 5 failed logins, 17:15 | 14.55 | **43.39** (Medium Risk) | New Device +0.216, Multiple Failed Logins +0.121, Amount Far Above Average +0.088, Unusual Transaction Amount +0.023 | 92.74 | 99.90 |
+| N1 | Normal purchase, CUST_0062 | CUST_0062, Rs. 3,140, healthcare, DEV_0062_A, Pune, 0 failed logins, 12:15 | 9.99 | **0.05** (Low Risk) | (none shown: score below 5) | 7.78 | 1.61 |
+| N2 | Normal purchase, CUST_0082 | CUST_0082, Rs. 3,760, utilities, DEV_0082_A, Pune, 0 failed logins, 01:15 | 16.00 | **0.06** (Low Risk) | (none shown: score below 5) | 10.14 | 1.71 |
+| N3 | Normal purchase, CUST_0318 | CUST_0318, Rs. 2,750, travel, DEV_0318_A, Kolkata, 0 failed logins, 13:15 | 12.86 | **0.06** (Low Risk) | (none shown: score below 5) | 8.47 | 2.03 |
+| N4 | Normal purchase, CUST_0464 | CUST_0464, Rs. 3,610, dining, DEV_0464_A, Mumbai, 0 failed logins, 00:15 | 14.73 | **0.06** (Low Risk) | (none shown: score below 5) | 9.74 | 1.57 |
+| N5 | Normal purchase, CUST_0329 | CUST_0329, Rs. 3,200, healthcare, DEV_0329_A, Mumbai, 0 failed logins, 14:15 | 15.99 | **0.06** (Low Risk) | (none shown: score below 5) | 10.17 | 1.88 |
+
+What this shows:
+
+* **Ordinary purchases** score about 0.06 with the random forest, against about 8
+  to 10 for the DNN with the same LSTM.
+* **One unusual signal on its own** (more money, a new device, a new city, a
+  large amount) stays low: 0.2 to 3.3. A foreign city alone reaches 16.2.
+* **Combined signals rise steeply:** the failed-login attack (H) scores 43.4
+  and the full account-takeover pattern (G) 74.6.
+* **The scores are spread out.** The model does not output about 100 for
+  everything.
+* **Alert bands.** E (16.24) appears as "Low Risk" under the fixed bands,
+  although it is above the random forest's validated alert cut-off (a score
+  of 4.39); see `docs/model_selection_report.md`, limitation 3.

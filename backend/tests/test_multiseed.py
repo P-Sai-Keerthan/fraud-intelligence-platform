@@ -91,11 +91,13 @@ def test_fixed_inputs():
     assert ms.seed_root(11) == ms.MULTISEED_DIR / "v2" / "seed_11"
     assert ev.POLICY_FPR == {"critical": 0.001, "policy_b": 0.01}
     assert ev.key("v2_dnn_lstm", 11) == "v2_dnn_lstm@11"
-    assert DEFAULT_MODEL_SET == "production"
+    assert DEFAULT_MODEL_SET == "v2_lstm_rf_seed14"      # Step 4D: the confirmed LSTM -> random forest (was "production")
     # the application names exactly one multi-seed directory: the artifact selected in 4C-3E.6
     # (seed 14, pinned by checksum, evaluation only -- 4C-3F). No other training seed is loadable by name.
-    assert set(MODEL_SETS) == {"production", "v2_dnn_lstm", "v2_dnn_only", "v2_dnn_lstm_seed14"}
-    assert [n for n, spec in MODEL_SETS.items() if spec.root is not None] == ["v2_dnn_lstm_seed14"]
+    assert set(MODEL_SETS) == {"production", "v2_dnn_lstm", "v2_dnn_only", "v2_dnn_lstm_seed14", "v2_lstm_rf_seed14"}
+    # (Step 4D added the LSTM -> random forest artifact, which lives under candidates_downstream/)
+    assert [n for n, spec in MODEL_SETS.items() if spec.root is not None] == ["v2_dnn_lstm_seed14", "v2_lstm_rf_seed14"]
+    assert MODEL_SETS["v2_lstm_rf_seed14"].root[0] == "candidates_downstream"
     assert MODEL_SETS["v2_dnn_lstm_seed14"].root == ("candidates_multiseed", "v2", "seed_14")
 
 
@@ -353,7 +355,7 @@ def test_report(trained, sample_spec, holdout_roots, tmp_path):
         assert crit["true_positives"] <= cur["true_positives"] and crit["false_positives"] <= cur["false_positives"]
     assert set(nc["unchanged_customers_full_history"]["per_data_seed"]) == {"9"}
     assert rep["seed_42_and_multi_seed"]["v2_dnn_lstm"]["recall"]["seed_42"] == prim["per_model"]["v2_dnn_lstm"]["metrics"]["recall"]["value"]
-    assert rep["state"] == {"model_set_default": "production", "promotion": "none", "production_models_trained": "none",
+    assert rep["state"] == {"model_set_default": DEFAULT_MODEL_SET, "promotion": "none", "production_models_trained": "none",
                             "seed_42_candidates_retrained": "none", "thresholds_changed": "none"}
 
 

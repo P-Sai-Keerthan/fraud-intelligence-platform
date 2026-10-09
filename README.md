@@ -1,14 +1,29 @@
 # Explainable Fraud Intelligence Platform
 
 An AI-powered banking fraud intelligence system that builds a **Behavioral
-Fraud DNA** profile per customer, detects fraud in real time on individual
-transactions (DNN), and explains every decision (SHAP). The LSTM processes
-the customer's previous 10 transactions as a sequence to capture temporal
-behavioral patterns, and produces a temporal risk signal (the Risk Score)
-that the downstream DNN fraud classifier uses as one extra input.
+Fraud DNA** profile per customer, scores individual transactions in real
+time, and explains every decision (SHAP). The LSTM processes the customer's
+previous 10 transactions as a sequence to capture temporal behavioral
+patterns, and produces a temporal risk signal (the Risk Score). A **random
+forest** combines that signal with the 9 behavioral features of the current
+transaction into the Fraud Score.
+
+**Model:** `LSTM + Random Forest` (model set `v2_lstm_rf_seed14`, the
+default). The random forest replaced the earlier DNN classifier after a
+pre-registered comparison of four classifiers (DNN, logistic regression,
+random forest, histogram gradient boosting), chosen on fraud-specific
+metrics (PR-AUC first, never accuracy) on development data and confirmed
+once on a fresh hold-out: PR-AUC 0.464 against 0.328 for the DNN with the
+same LSTM, recall 0.645 against 0.548 at a validation-chosen budget of
+about 10 legitimate alerts per 1,000. The method, every number and the
+limitations are in **`docs/model_selection_report.md`**. The earlier
+"100% accuracy" of the DNN came from an easy synthetic dataset (v1), where
+one feature alone separates fraud perfectly, and from class imbalance; no
+leakage was found.
 
 The Fraud Score is a model score from 0 to 100, **not a calibrated
-probability**. All data is synthetic.
+probability**. All data is synthetic, and no result here describes
+real-world banking performance.
 
 We do not claim that the LSTM predicts fraud before it happens. The
 original research hypothesis was that its signal would rise before the
@@ -19,6 +34,12 @@ v2 data, the LSTM + DNN design catches more fraud transactions overall
 than a DNN without the LSTM, but it is *worse* at detecting the first fraud
 of an episode (`docs/step4c3e-stage-c-final-evaluation.md`). The defensible
 claim is temporal behavioral risk detection.
+
+The models that run by default were trained on the synthetic v2 data, while
+the customer histories the dashboard shows are the v1 seed data
+(`data/transactions_with_features.csv`). The previous default model set
+(v1 LSTM -> DNN, `MODEL_SET=production`) is unchanged and can still be
+loaded by name.
 
 The state of the current build (model sets, test results, startup commands,
 known limitations) is summarised in `docs/final-demo-verification.md`.
@@ -49,12 +70,13 @@ fraud-intelligence-platform/
 │   └── app/
 │       ├── config.py                    # all file paths, resolved automatically
 │       ├── main.py                      # FastAPI app (run this to start the API)
-│       ├── inference_pipeline.py        # orchestrates LSTM -> DNN -> SHAP -> similarity
+│       ├── inference_pipeline.py        # orchestrates LSTM -> classifier -> SHAP -> similarity
 │       ├── schemas.py                   # request/response models
 │       ├── features/feature_engineering.py   # Behavioral Fraud DNA feature builder
 │       ├── models/
 │       │   ├── lstm_model.py            # LSTM temporal risk model
-│       │   ├── dnn_model.py              # DNN fraud classifier
+│       │   ├── dnn_model.py              # DNN fraud classifier (previous default)
+│       │   ├── downstream_classifier.py  # random forest / scikit-learn classifier wrapper + SHAP (default)
 │       │   ├── shap_explainer.py          # Explainable AI (SHAP) wrapper
 │       │   └── similarity.py              # Behavioral Similarity Score
 │       └── db/                          # SQLAlchemy models + session (SQLite by default)
@@ -179,7 +201,7 @@ All settings are optional; the defaults work for local development.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `MODEL_SET` | `production` (when unset) | Which model set to load. Leave it unset for the demo. `v2_dnn_lstm_seed14` loads the evaluation-only Seed-14 candidate, which is not deployed; an unknown value stops start-up. |
+| `MODEL_SET` | `v2_lstm_rf_seed14` (when unset) | Which model set to load. Leave it unset: the default is the seed-14 LSTM followed by the random forest (Step 4D). `production` loads the previous default (v1 LSTM -> DNN); `v2_dnn_lstm_seed14` loads the evaluation-only seed-14 LSTM -> DNN. An unknown value stops start-up. |
 | `DATABASE_URL` | `sqlite:///./fraud_platform.db` | Database for scored transactions (PostgreSQL is configurable but untested). |
 | `CORS_ALLOW_ORIGINS` | `http://localhost:5173`, `http://127.0.0.1:5173`, `http://localhost:4173`, `http://127.0.0.1:4173` | Comma-separated browser origins allowed to call the API directly. |
 
@@ -246,10 +268,12 @@ python -m app.models.dnn_model                  # trains the DNN, ~1 minute
 python -m app.models.shap_explainer              # sanity-check SHAP explanations
 ```
 
-These scripts produce the **production** models used by `/predict`. They
-still use the original random 80/20 split, so their printed test scores are
-not a valid held-out evaluation; use the evaluation below for reported
-numbers.
+These scripts produce the **previous default** models (`MODEL_SET=production`,
+`models/saved/`). They still use the original random 80/20 split, so their
+printed test scores are not a valid held-out evaluation; use the evaluation
+below for reported numbers. The default model set (LSTM + random forest) is
+produced by the Step 4D pipeline (`python -m app.evaluation.downstream ...`,
+reproduction commands in `docs/model_selection_report.md`, section 12).
 
 To regenerate the underlying synthetic dataset from scratch first (only
 needed if you want a different random sample):
@@ -273,7 +297,9 @@ python -m app.evaluation.run --skip-customer  # time-based split only, ~half the
 
 This trains **evaluation copies** of the LSTM and DNN (same architectures and
 hyperparameters) and writes `models/evaluation/evaluation_report.json`, which
-`GET /metrics` and `GET /metrics/report` serve. It never touches the
+`GET /metrics` and `GET /metrics/report` serve when `MODEL_SET=production`
+is loaded. For the default model set they serve the Step 4D model-selection
+reports (`models/evaluation/downstream/`). It never touches the
 production models. Methodology, in short:
 
 - **Time-based split** (primary). Train on the earliest transactions, choose
@@ -329,14 +355,22 @@ models, and API all work off that one schema.
    that claim. On v1 it flags 0 of 16 first-fraud transactions in the test
    period and rises only once an episode is under way, and removing it from
    the DNN does not change detection (`docs/EVALUATION.md`).
-3. **DNN Fraud Detector** (`dnn_model.py`): takes the current transaction's
-   9 behavioral features *plus* the LSTM Risk Score, and outputs the Fraud
-   Score (0-100) for *this specific transaction*. It is trained with class
-   weights, so the Fraud Score is a model score, not a calibrated
-   probability.
-4. **SHAP Explainer** (`shap_explainer.py`): wraps the DNN with
-   `shap.GradientExplainer` and maps the top contributing features to
-   human-readable reasons ("New Device", "Foreign Location", etc.).
+3. **Random forest fraud classifier** (`models/downstream_classifier.py`,
+   artifact in `models/candidates_downstream/v2/seed_14/lstm_random_forest/`):
+   takes the current transaction's 9 behavioral features *plus* the LSTM
+   Risk Score and outputs the Fraud Score (0-100) for *this specific
+   transaction*. 200 trees, max depth 12, at least 5 samples per leaf, no
+   class weighting; trained on out-of-fold LSTM scores. It was selected over
+   the previous DNN, logistic regression and gradient boosting by a
+   pre-registered rule (`docs/step4d-downstream-selection-protocol.md`). The
+   Fraud Score is a model score, not a calibrated probability: it
+   understates the fraud rate above about 30 (section 8 of
+   `docs/model_selection_report.md`).
+4. **SHAP Explainer** (`shap_explainer.py`): exact Tree SHAP
+   (`shap.TreeExplainer`, interventional, on the random forest's own score)
+   maps the top contributing features to human-readable reasons ("New
+   Device", "Foreign Location", etc.). For the previous DNN model set it
+   uses `shap.GradientExplainer`.
 5. **Behavioral Similarity Score** (`similarity.py`): z-scores the current
    transaction against the customer's own historical mean/std per feature,
    and maps the average deviation to a 0-100 similarity percentage via
@@ -345,6 +379,14 @@ models, and API all work off that one schema.
 ### Known limitations (be upfront about these in your paper — reviewers expect it)
 
 - The **Fraud Score is a model score, not a calibrated probability**.
+- The fixed alert bands (Low < 25 ≤ Medium < 50 ≤ High < 80 ≤ Critical) were
+  designed for the earlier DNN and were not derived for the random forest,
+  whose scores are much lower (its validation alert cut-off is a score of
+  4.39). Many fraud transactions therefore show as "Low Risk" in the
+  dashboard; the reported metrics use the validation cut-offs, not the bands.
+- For customers with fewer than 10 earlier transactions (no LSTM window) the
+  random forest raises more false alerts than the DNN did (59.4 against 25.0
+  per 1,000 on the fresh new-customer hold-out).
 - The LSTM does not detect the first fraud of an episode; do not describe
   it as predicting fraud before it happens.
 - The dataset is **synthetic**. Real bank data is never public, so this is
@@ -354,7 +396,7 @@ models, and API all work off that one schema.
   every request (`O(n)` per prediction). Fine at demo scale; a production
   system would maintain incrementally-updated rolling statistics instead.
 - The Behavioral Similarity Score weights all 9 features equally. It can
-  diverge from the DNN's Fraud Score for customers with naturally
+  diverge from the Fraud Score for customers with naturally
   tight variance in one dimension (e.g. very consistent spending amounts).
   This is a good "future work" paragraph for your paper: learned feature
   weighting for the similarity metric.

@@ -1,14 +1,25 @@
 // Model-aware wording for the scores (Step 4C-2f-2).
 //
 // What risk_score means depends on the loaded model set (GET /model-info):
-// * production / v2_dnn_lstm: an LSTM score from the customer's previous
-//   transactions (temporal behavioral risk), an input to the DNN;
+// * v2_lstm_rf_seed14 (the default since Step 4D): an LSTM score from the
+//   customer's previous 10 transactions (temporal behavioral risk), an input
+//   to the random forest that produces the fraud score;
+// * production (previous default) / v2_dnn_lstm: an LSTM score from the
+//   customer's previous transactions, an input to the DNN;
 // * v2_dnn_only: there is no sequence model -- risk_score repeats the DNN
 //   fraud score for API compatibility and must not be called trajectory risk.
 // If the model set is unknown (request failed), the wording stays neutral.
 // fraud_probability is a model score, not a calibrated probability.
 
 const WORDING = {
+  v2_lstm_rf_seed14: {
+    riskLabel: 'Risk Score',
+    riskShort: 'Temporal behavioral risk (LSTM)',
+    riskCaption: "Temporal behavioral risk signal computed by the LSTM from this customer's previous 10 transactions",
+    fraudCaption: "This transaction's fraud score from the random forest (model output, not a calibrated probability) -- can be high even if the recent history looked normal",
+    riskColumn: 'Risk Score',
+    timelineRisk: 'Risk Score (LSTM)',
+  },
   production: {
     riskLabel: 'Risk Score',
     riskShort: 'Temporal behavioral risk (LSTM)',

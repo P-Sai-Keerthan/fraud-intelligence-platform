@@ -4,8 +4,15 @@ Model sets: which trained models the inference pipeline loads.
 Selected with the MODEL_SET environment variable, read once when the
 pipeline is created at application startup:
 
-    MODEL_SET unset        -> production (the default)
-    MODEL_SET=production   -> models/saved/                    LSTM risk score -> DNN (unchanged)
+    MODEL_SET unset        -> v2_lstm_rf_seed14 (the default since Step 4D)
+    MODEL_SET=v2_lstm_rf_seed14
+                           -> models/candidates_downstream/v2/seed_14/lstm_random_forest/
+                              the seed-14 LSTM (unchanged, byte-identical copy) -> random forest,
+                              selected by the pre-registered 4D protocol on development data and
+                              confirmed once on a fresh hold-out (docs/model_selection_report.md).
+                              Loads only if every file equals the SHA-256 pinned below.
+    MODEL_SET=production   -> models/saved/                    LSTM risk score -> DNN (the previous
+                              default, trained on dataset v1; kept loadable, unchanged)
     MODEL_SET=v2_dnn_lstm  -> models/candidates/v2/dnn_lstm/   LSTM risk score -> DNN (4C-2e-b candidate A)
     MODEL_SET=v2_dnn_only  -> models/candidates/v2/dnn_only/   DNN on the 9 features (4C-2e-b candidate B)
     MODEL_SET=v2_dnn_lstm_seed14
@@ -17,7 +24,7 @@ pipeline is created at application startup:
 
 Any other value (including an empty string) raises ModelSetError, so a
 mistyped or explicitly requested candidate never silently falls back to
-production. Loading only reads files; nothing here writes anywhere, and a
+another model set. Loading only reads files; nothing here writes anywhere, and a
 candidate directory inside models/saved/ is refused.
 
 Production loads exactly the files it always has (config.*_PATH) and scores
@@ -48,7 +55,9 @@ from .features.feature_engineering import FEATURE_COLUMNS
 from .features.ground_truth import assert_no_ground_truth
 
 MODEL_SET_ENV = "MODEL_SET"
-DEFAULT_MODEL_SET = "production"
+LEGACY_PRODUCTION = "production"            # the previous default: v1 LSTM -> DNN in models/saved/
+RF_MODEL_SET = "v2_lstm_rf_seed14"
+DEFAULT_MODEL_SET = RF_MODEL_SET
 
 RISK_SCORE = "risk_score"
 
@@ -66,6 +75,8 @@ class ModelSetSpec:
     pinned: Optional[Mapping] = field(default=None, compare=False)   # {"weights": {...}, "files": {...}} SHA-256
     architecture_of: Optional[str] = None     # the model set whose score wording applies (same architecture)
     artifact: Optional[str] = None            # its name in selection_record.json / final_holdout_report.json
+    kind: str = "dnn"                         # "dnn" (Keras DNN) or "lstm_classifier" (scikit-learn, Step 4D)
+    family: Optional[str] = None              # downstream classifier family for kind "lstm_classifier"
 
     @property
     def dnn_input_columns(self) -> list:
@@ -96,6 +107,28 @@ SEED14_PINNED = MappingProxyType({
 # here for provenance only: /predict does NOT apply them (it keeps the fixed 25/50/80 bands).
 SEED14_FROZEN_CUTOFFS = MappingProxyType({"policy_b": 0.7928694486618042, "critical": 0.9430845379829407})
 
+# Step 4D (docs/step4d-downstream-selection-protocol.md, docs/model_selection_report.md): the seed-14
+# LSTM, unchanged, followed by the random forest chosen on development data and confirmed on the
+# fresh hold-out. Values copied from models/candidates_downstream/v2/seed_14/lstm_random_forest/
+# manifest.json; tests/test_rf_model_set.py checks they still match.
+RF_ARTIFACT = "lstm_random_forest@14"
+RF_PINNED = MappingProxyType({
+    "weights": MappingProxyType({
+        "lstm_weights_sha256": "e4851c4c20e864b14f1f54a7051b0ad5dad5d0e4920270737ded6bad6db1a077",
+    }),
+    "files": MappingProxyType({
+        "lstm_risk_model.keras": "5a327ccba85f86e90a927cf5c0a4cd2f1cc6d040f8ded2e47734705b0c1a7600",
+        "lstm_feature_mean.npy": "fbfc1a0afd79ad236b27932198a6a6a6c1d6ac4b2e61b335db1269b9be91e90c",
+        "lstm_feature_std.npy": "e3e7765d84d6b6d2f3ebc665c0798ef36d015cbf604acc53f00d8cd8aaff5a35",
+        "classifier.joblib": "483c1b395789bb1bc7ad3e4cd5f056135edecc84d0b213d8946f59e66ab434fb",
+        "classifier_input_mean.npy": "2071d1baa335af2c06d26ec63cc6623e0e46e6626ee349f79face3bc0f01c681",
+        "classifier_input_std.npy": "b472068a64760b13ab4f959b81309cf5df7abd1c56afbb8372d878aa515eadd8",
+        "shap_background.npy": "ef63280f701e04b5a25dfc47e41457782c1e3152474104560d6c71b3d9761a59",
+    }),
+})
+# Frozen on the validation period (4C-3B rule) by the 4D selection record; provenance only.
+RF_FROZEN_CUTOFFS = MappingProxyType({"policy_b": 0.04393065348267555, "critical": 0.2623065412044525})
+
 MODEL_SETS = {
     "production": ModelSetSpec("production", uses_lstm=True,
                                description="existing production models in models/saved/"),
@@ -108,6 +141,11 @@ MODEL_SETS = {
                                    pinned=SEED14_PINNED, architecture_of="v2_dnn_lstm", artifact=SEED14_ARTIFACT,
                                    description="the selected v2_dnn_lstm artifact, training seed 14 "
                                                "(4C-3E.6); evaluation only, not deployed"),
+    RF_MODEL_SET: ModelSetSpec(RF_MODEL_SET, uses_lstm=True, candidate="lstm_random_forest", dataset_version="v2",
+                               root=("candidates_downstream", "v2", "seed_14"), training_seed=14,
+                               pinned=RF_PINNED, artifact=RF_ARTIFACT, kind="lstm_classifier",
+                               family="random_forest",
+                               description="seed-14 LSTM (unchanged) -> random forest (Step 4D); the default"),
 }
 
 
@@ -173,19 +211,27 @@ class LoadedModelSet:
     manifest: Optional[dict] = None
     files: dict = field(default_factory=dict)   # role -> path actually loaded
 
+    @property
+    def classifier_family(self) -> str:
+        """"dnn" for the Keras DNN model sets, else the scikit-learn family (Step 4D)."""
+        return getattr(self.dnn_model, "family", "dnn")
+
     def describe(self) -> str:
+        downstream = self.classifier_family.replace("_", " ")
         parts = [f"model set {self.name!r} from {self.directory}",
-                 "LSTM risk score -> DNN" if self.uses_lstm else "DNN only (no LSTM)",
-                 f"DNN inputs {self.dnn_input_columns}"]
+                 f"LSTM risk score -> {downstream}" if self.uses_lstm else "DNN only (no LSTM)",
+                 f"classifier inputs {self.dnn_input_columns}"]
         return "; ".join(parts)
 
 
 def load_model_set(name: Optional[str] = None, candidates_root=None) -> LoadedModelSet:
-    """Resolves (argument, then $MODEL_SET, then production) and loads a model set."""
+    """Resolves (argument, then $MODEL_SET, then the default) and loads a model set."""
     name = resolve_model_set_name(name)
     spec = MODEL_SETS[name]
     if spec.candidate is None:
         return _load_production(spec)
+    if spec.kind == "lstm_classifier":
+        return _load_lstm_classifier(spec, model_set_directory(name, candidates_root))
     return _load_candidate(spec, model_set_directory(name, candidates_root))
 
 
@@ -344,6 +390,74 @@ def validate_pinned(spec: ModelSetSpec, manifest: dict, directory: Path) -> None
             _fail(spec, f"missing artifact {path}")
         if _sha256(path) != sha:
             _fail(spec, f"{fname} is not the selected artifact's file ({spec.artifact}): SHA-256 differs")
+
+
+# ---- LSTM -> scikit-learn classifier (Step 4D) ------------------------------------------------
+
+LSTM_CLASSIFIER_FILES = {
+    "lstm_model": "lstm_risk_model.keras", "lstm_mean": "lstm_feature_mean.npy", "lstm_std": "lstm_feature_std.npy",
+    "classifier": "classifier.joblib", "input_mean": "classifier_input_mean.npy", "input_std": "classifier_input_std.npy",
+    "shap_background": "shap_background.npy",
+}
+
+
+def _load_lstm_classifier(spec: ModelSetSpec, directory: Path) -> LoadedModelSet:
+    """Every file must equal its pinned SHA-256 BEFORE anything is deserialized (the
+    classifier is a joblib pickle, which must only ever be loaded from a verified file)."""
+    import joblib
+    from tensorflow import keras
+    from .models.downstream_classifier import ClassifierModel
+    from .training.candidates import weights_sha256
+
+    manifest_path = directory / "manifest.json"
+    if not manifest_path.exists():
+        _fail(spec, f"manifest {manifest_path} not found")
+    manifest = json.loads(manifest_path.read_text())
+    if manifest.get("model_set_kind") != "lstm_classifier" or manifest.get("family") != spec.family:
+        _fail(spec, f"manifest describes {manifest.get('model_set_kind')!r}/{manifest.get('family')!r}, "
+                    f"expected lstm_classifier/{spec.family!r}")
+    if manifest.get("seed") != spec.training_seed:
+        _fail(spec, f"manifest training seed {manifest.get('seed')!r}, expected {spec.training_seed}")
+    if manifest.get("input_columns") != spec.dnn_input_columns:
+        _fail(spec, f"classifier input columns {manifest.get('input_columns')} != {spec.dnn_input_columns}")
+    assert_no_ground_truth(manifest["input_columns"], f"{spec.name} classifier input columns")
+    feats = manifest.get("features") or {}
+    if feats.get("columns") != list(FEATURE_COLUMNS) or feats.get("sha256") != feature_list_sha256(FEATURE_COLUMNS):
+        _fail(spec, "feature list does not match the application's FEATURE_COLUMNS")
+    if manifest.get("sequence_length") != config.SEQUENCE_LENGTH:
+        _fail(spec, f"sequence length {manifest.get('sequence_length')} != {config.SEQUENCE_LENGTH}")
+    if set(manifest.get("files") or {}) != set(spec.pinned["files"]):
+        _fail(spec, f"manifest lists files {sorted(manifest.get('files') or {})}, expected {sorted(spec.pinned['files'])}")
+    for fname, sha in spec.pinned["files"].items():
+        path = directory / fname
+        if not path.is_file():
+            _fail(spec, f"missing artifact {path}")
+        if _sha256(path) != sha or manifest["files"][fname] != sha:
+            _fail(spec, f"{fname} is not the selected artifact's file ({spec.artifact}): SHA-256 differs")
+
+    files = {role: directory / fname for role, fname in LSTM_CLASSIFIER_FILES.items()}
+    lstm = keras.models.load_model(files["lstm_model"])
+    if weights_sha256(lstm) != spec.pinned["weights"]["lstm_weights_sha256"]:
+        _fail(spec, "LSTM weights do not match the pinned lstm_weights_sha256")
+    estimator = joblib.load(files["classifier"])
+    expected_class = {"random_forest": "RandomForestClassifier", "hist_gradient_boosting": "HistGradientBoostingClassifier",
+                      "logistic_regression": "LogisticRegression"}[spec.family]
+    if type(estimator).__name__ != expected_class or manifest.get("classifier_class") != expected_class:
+        _fail(spec, f"classifier is {type(estimator).__name__}, expected {expected_class}")
+    n_in = len(spec.dnn_input_columns)
+    if getattr(estimator, "n_features_in_", None) != n_in:
+        _fail(spec, f"classifier takes {getattr(estimator, 'n_features_in_', None)} inputs, expected {n_in}")
+    ms = LoadedModelSet(
+        name=spec.name, directory=directory, uses_lstm=True,
+        dnn_model=ClassifierModel(estimator, spec.family, n_in),
+        dnn_mean=np.load(files["input_mean"]), dnn_std=np.load(files["input_std"]),
+        shap_background=np.load(files["shap_background"]),
+        dnn_input_columns=list(manifest["input_columns"]), sequence_length=int(manifest["sequence_length"]),
+        lstm_model=lstm, lstm_mean=np.load(files["lstm_mean"]), lstm_std=np.load(files["lstm_std"]),
+        manifest=manifest, files=files,
+    )
+    validate_shapes(ms)
+    return ms
 
 
 def validate_shapes(ms: LoadedModelSet) -> None:

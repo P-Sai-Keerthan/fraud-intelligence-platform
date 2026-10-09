@@ -23,7 +23,7 @@ from app import model_sets as ms
 from app.inference_pipeline import FraudIntelligencePipeline
 from app.main import app
 from app.model_metadata import (FINAL_HOLDOUT_REPORT_PATH, SELECTION_RECORD_PATH, STATUS_EVALUATION,
-                                STATUS_PRODUCTION, final_holdout_evaluation, model_metadata)
+                                STATUS_LEGACY, final_holdout_evaluation, model_metadata)
 
 from conftest import NORMAL_TXN, SUSPICIOUS_TXN
 from test_observability import _pdf_text, _row
@@ -75,7 +75,7 @@ def test_registered_as_an_explicit_evaluation_model_set():
     assert NAME == "v2_dnn_lstm_seed14" and spec.uses_lstm and spec.training_seed == 14
     assert spec.candidate == "dnn_lstm" and spec.dataset_version == "v2" and spec.artifact == "v2_dnn_lstm@14"
     assert ms.architecture_name(NAME) == "v2_dnn_lstm" and ms.architecture_name("production") == "production"
-    assert ms.DEFAULT_MODEL_SET == "production"
+    assert ms.DEFAULT_MODEL_SET == "v2_lstm_rf_seed14"       # Step 4D; seed-14 DNN stays evaluation-only
 
 
 def test_directory_is_the_multiseed_artifact_not_production():
@@ -87,7 +87,7 @@ def test_directory_is_the_multiseed_artifact_not_production():
 
 def test_default_and_explicit_production_are_unaffected(monkeypatch):
     monkeypatch.delenv("MODEL_SET", raising=False)
-    assert ms.resolve_model_set_name() == "production"
+    assert ms.resolve_model_set_name() == "v2_lstm_rf_seed14"      # Step 4D default
     monkeypatch.setenv("MODEL_SET", "production")
     assert ms.resolve_model_set_name() == "production"
     monkeypatch.setenv("MODEL_SET", NAME)
@@ -204,9 +204,10 @@ def test_another_training_seed_is_refused():
 
 # ---- metadata ---------------------------------------------------------------------------------------------
 
-def test_production_metadata_reports_production_status(pipeline):
+def test_production_metadata_reports_previous_default_status(pipeline):
     meta = pipeline.model_metadata
-    assert meta["model_set"] == "production" and meta["status"] == STATUS_PRODUCTION
+    # since Step 4D "production" is the previous default (v1 LSTM -> DNN), still loadable by name
+    assert meta["model_set"] == "production" and meta["status"] == STATUS_LEGACY
     assert meta["architecture"] == "DNN + LSTM" and meta["training_seed"] is None
     assert "selection" not in meta and "frozen_cutoffs" not in meta["thresholds"]
 
@@ -310,7 +311,7 @@ def test_production_pdf_says_fraud_score(client, pipeline):
     pred = client.post("/predict", json=dict(SUSPICIOUS_TXN)).json()
     text = _pdf_text(client.post("/report/pdf", json=pred).content)
     assert "Fraud Score" in text and "Fraud Probability" not in text
-    assert "Model set production" in text and "Status PRODUCTION" in text
+    assert "Model set production" in text and "Status PREVIOUS DEFAULT" in text      # Step 4D: previous default
 
 
 # ---- rollback ---------------------------------------------------------------------------------------------
@@ -357,5 +358,5 @@ def test_rollback_production_seed14_production(monkeypatch, pipeline):
     assert again["risk_score"] == reference["risk_score"] and again["alert_level"] == reference["alert_level"]
 
     monkeypatch.delenv("MODEL_SET")
-    assert FraudIntelligencePipeline().model_set.name == "production"        # unset is production too
+    assert FraudIntelligencePipeline().model_set.name == "v2_lstm_rf_seed14"   # unset is the Step 4D default
     assert _saved_checksums() == saved_before

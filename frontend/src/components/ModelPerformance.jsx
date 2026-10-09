@@ -151,6 +151,194 @@ function FinalHoldout({ fh, info }) {
   )
 }
 
+
+// ---- Step 4D: LSTM -> selected classifier (GET /metrics -> downstream_evaluation) ----
+// Every number is copied by the backend from models/evaluation/downstream/*.json.
+
+const pct = (v, d = 1) => (v == null ? '—' : `${(Number(v) * 100).toFixed(d)}%`)
+const sd = (s, d = 3) => (s?.mean == null ? '—' : `${Number(s.mean).toFixed(d)}${s.sd != null ? ` ± ${Number(s.sd).toFixed(d)}` : ''}`)
+const ciText = (c, d = 3) => (c ? `${Number(c[0]).toFixed(d)} – ${Number(c[1]).toFixed(d)}` : '—')
+
+function ComparisonTable({ rows }) {
+  const cols = [
+    ['pr_auc', 'PR-AUC', 3], ['roc_auc', 'ROC-AUC', 3], ['precision', 'Precision', 3], ['recall', 'Recall', 3],
+    ['f1', 'F1', 3], ['legit_alerts_per_1000', 'Legit alerts / 1,000', 2], ['first_fraud_recall', 'First fraud caught', 3],
+    ['accuracy', 'Accuracy', 4],
+  ]
+  return (
+    <div className="overflow-auto rounded-lg border" style={{ borderColor: 'var(--border)' }}>
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>Classifier after the LSTM</th>
+            {cols.map(([k, label]) => <th key={k} className="num" style={{ textAlign: 'right' }}>{label}</th>)}
+            <th className="num" style={{ textAlign: 'right' }}>Brier</th>
+            <th className="num" style={{ textAlign: 'right' }}>ms / row</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.family}>
+              <td style={{ color: 'var(--text-primary)', fontWeight: r.selected ? 600 : 400 }}>
+                {r.label}{r.selected ? ' · selected' : r.family === 'dnn' ? ' · previous' : ''}
+              </td>
+              {cols.map(([k, , d]) => <td key={k} className="num mono">{sd(r[k], d)}</td>)}
+              <td className="num mono">{r.brier_score != null ? Number(r.brier_score).toFixed(4) : '—'}</td>
+              <td className="num mono">{r.single_row_ms != null ? Number(r.single_row_ms).toFixed(1) : '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function HoldoutTable({ block }) {
+  if (!block) return null
+  const names = ['selected', 'dnn_seed14', 'production']
+  const rows = [['pr_auc', 'PR-AUC', 3], ['roc_auc', 'ROC-AUC', 3], ['precision', 'Precision', 3], ['recall', 'Recall', 3],
+    ['legit_alerts_per_1000', 'Legit alerts / 1,000', 2], ['first_fraud_recall', 'First fraud caught', 3],
+    ['episode_detection_rate', 'Episodes detected', 3]]
+  return (
+    <div className="overflow-auto rounded-lg border" style={{ borderColor: 'var(--border)' }}>
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>Metric</th>
+            {names.map((n) => <th key={n} className="num" style={{ textAlign: 'right' }}>{block.models[n]?.label}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([k, label, d]) => (
+            <tr key={k}>
+              <td>{label}</td>
+              {names.map((n) => {
+                const m = block.models[n]?.metrics?.[k]
+                return (
+                  <td key={n} className="num mono" title={m?.ci95 ? `95% CI ${ciText(m.ci95, d)}` : ''}>
+                    {m?.value != null ? Number(m.value).toFixed(d) : '—'}
+                  </td>
+                )
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function Reliability({ bins }) {
+  if (!bins?.length) return null
+  return (
+    <div className="overflow-auto rounded-lg border" style={{ borderColor: 'var(--border)' }}>
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>Fraud Score band</th>
+            <th className="num" style={{ textAlign: 'right' }}>Transactions</th>
+            <th className="num" style={{ textAlign: 'right' }}>Mean score</th>
+            <th className="num" style={{ textAlign: 'right' }}>Observed fraud rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {bins.map((b) => (
+            <tr key={b.bin[0]}>
+              <td className="mono">{(b.bin[0] * 100).toFixed(0)}–{(b.bin[1] * 100).toFixed(0)}</td>
+              <td className="num mono">{Number(b.rows).toLocaleString()}</td>
+              <td className="num mono">{pct(b.mean_score)}</td>
+              <td className="num mono">{pct(b.observed_fraud_rate)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function DownstreamSelection({ de }) {
+  const fh = de.final_holdout || {}
+  const p = fh.primary || {}
+  const sel = p.models?.selected?.metrics || {}
+  const dev = de.development || {}
+  const g = fh.gates || {}
+  const diff = p.paired_differences?.['selected - dnn_seed14'] || {}
+  const selectedRow = (dev.comparison || []).find((r) => r.selected)
+  const early = fh.new_customer_early_history?.models || {}
+  return (
+    <>
+      <div className="eyebrow">Fresh hold-out (seeds 501–505, scored once) · customers with at least 10 earlier transactions</div>
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 -mt-2">
+        <Kpi label="PR-AUC" value={fmt(sel.pr_auc?.value)} hint={ci(sel.pr_auc)} />
+        <Kpi label="Recall" value={fmt(sel.recall?.value)} hint={ci(sel.recall)} />
+        <Kpi label="Precision" value={fmt(sel.precision?.value)} hint={ci(sel.precision)} />
+        <Kpi label="Legit. alerts" value={sel.legit_alerts_per_1000 ? Number(sel.legit_alerts_per_1000.value).toFixed(2) : '—'} unit="/ 1,000" hint={ci(sel.legit_alerts_per_1000, 2)} />
+        <Kpi label="First fraud caught" value={fmt(sel.first_fraud_recall?.value)} hint={ci(sel.first_fraud_recall)} />
+        <Kpi label="ROC-AUC" value={fmt(sel.roc_auc?.value)} hint={ci(sel.roc_auc)} />
+      </div>
+
+      <Card title="Classifier comparison" eyebrow={`Development data · ${dev.datasets?.length || 5} datasets · mean ± sd over ${dev.training_seeds?.length || 5} training seeds`} icon="cpu"
+        actions={<Badge tone="good">{selectedRow ? `${selectedRow.label} selected` : 'Selected'}</Badge>}>
+        <p className="text-xs -mt-1 mb-3" style={{ color: 'var(--text-muted)' }}>
+          Every classifier receives the same inputs: the 9 behavioral features and the Risk Score of the same LSTM. The winner
+          was fixed by a rule written before scoring: highest mean PR-AUC among candidates that clearly beat the DNN. Accuracy is
+          shown only to make the point that it barely differs (about 99% for every model, because 99.5% of transactions are legitimate).
+        </p>
+        <ComparisonTable rows={dev.comparison || []} />
+        <p className="text-[11px] mt-2" style={{ color: 'var(--text-muted)' }}>
+          {Number(dev.population?.rows || 0).toLocaleString()} transactions, {Number(dev.population?.fraud_transactions || 0).toLocaleString()} fraud.
+          Each model at its own cut-off chosen on the validation period (false-positive rate within 1%). {dev.decision?.note ? `Decision: ${dev.decision.note}.` : ''}
+        </p>
+      </Card>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
+        <Card title="Fresh hold-out confirmation" eyebrow="Pre-registered · scored once" icon="check"
+          actions={<Badge tone={fh.confirmed ? 'good' : 'danger'}>{fh.confirmed ? 'Confirmed' : 'Not confirmed'}</Badge>}>
+          <HoldoutTable block={p} />
+          <ul className="space-y-2 mt-4">
+            <Gate ok={g.C1_pr_auc_higher_than_seed14_dnn?.holds}>PR-AUC above the DNN with the same LSTM: difference {fmt(diff.pr_auc?.difference)} (95% CI {ciText(diff.pr_auc?.ci95)})</Gate>
+            <Gate ok={g['C2_recall_at_least_0.40']?.holds}>Recall at least 0.40</Gate>
+            <Gate ok={g.C3_alert_burden_not_materially_higher?.holds}>Legitimate alerts not more than 1 per 1,000 above the DNN: difference {diff.legit_alerts_per_1000?.difference != null ? Number(diff.legit_alerts_per_1000.difference).toFixed(2) : '—'} (95% CI {ciText(diff.legit_alerts_per_1000?.ci95, 2)})</Gate>
+          </ul>
+          <dl className="mt-4">
+            <MetaRow label="Hold-out transactions">{Number(p.rows || 0).toLocaleString()}</MetaRow>
+            <MetaRow label="Fraud transactions · episodes">{Number(p.fraud_transactions || 0).toLocaleString()} · {Number(p.fraud_episodes || 0).toLocaleString()}</MetaRow>
+            <MetaRow label="Outcome" mono={false}>{fh.outcome}</MetaRow>
+          </dl>
+          <div className="mt-4"><ConfusionMatrix cm={p.models?.selected?.confusion_matrix} /></div>
+        </Card>
+
+        <div className="space-y-5">
+          <Card title="Calibration" eyebrow="Fresh hold-out · selected model" icon="info"
+            actions={<Badge tone="warn">Not a calibrated probability</Badge>}>
+            <p className="text-xs -mt-1 mb-3" style={{ color: 'var(--text-muted)' }}>
+              If the Fraud Score were a probability, each band&apos;s observed fraud rate would match its mean score. Almost every
+              transaction scores below 10, where the two agree; above that the observed rate is clearly higher than the score, so the
+              Fraud Score is a ranking score, not a probability.
+            </p>
+            <Reliability bins={fh.selected_reliability} />
+          </Card>
+          <Card title="Known limitation: new customers" eyebrow="Fewer than 10 earlier transactions" icon="alert"
+            actions={<Badge tone="danger">Open</Badge>}>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <Mini label="Legit. alerts / 1,000 (selected)" value={early.selected?.metrics?.legit_alerts_per_1000 ? Number(early.selected.metrics.legit_alerts_per_1000.value).toFixed(1) : '—'} />
+              <Mini label="Legit. alerts / 1,000 (DNN)" value={early.dnn_seed14?.metrics?.legit_alerts_per_1000 ? Number(early.dnn_seed14.metrics.legit_alerts_per_1000.value).toFixed(1) : '—'} />
+              <Mini label="Recall (selected)" value={fmt(early.selected?.metrics?.recall?.value)} />
+              <Mini label="Recall (DNN)" value={fmt(early.dnn_seed14?.metrics?.recall?.value)} />
+            </div>
+            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+              Without 10 earlier transactions the LSTM is not run. These figures come from the fresh new-customer hold-out (seeds 511–515).
+            </p>
+          </Card>
+        </div>
+      </div>
+      <p className="text-[11px]" style={{ color: 'var(--text-faint)' }}>
+        {de.scores_note} Full method and every number: {de.sources?.report}.
+      </p>
+    </>
+  )
+}
+
 // A compact technical card built from GET /model-info.
 function ModelCard({ info }) {
   if (!info) {
@@ -166,11 +354,12 @@ function ModelCard({ info }) {
   const frozen = info.thresholds?.frozen_cutoffs
   return (
     <Card title="Model information" eyebrow="Observability" icon="cpu"
-      actions={<Badge tone={info.model_set === 'production' ? 'good' : 'warn'}>{info.model_set === 'production' ? 'PRODUCTION' : 'NOT DEPLOYED'}</Badge>}>
+      actions={<Badge tone={info.status === 'PRODUCTION' ? 'good' : 'warn'}>{info.status === 'PRODUCTION' ? 'PRODUCTION' : info.status?.startsWith('PREVIOUS') ? 'PREVIOUS DEFAULT' : 'NOT DEPLOYED'}</Badge>}>
       <dl>
         <MetaRow label="Model set">{info.model_set}</MetaRow>
         <MetaRow label="Model version">{info.model_version}</MetaRow>
-        <MetaRow label="Architecture" mono={false}>{info.architecture ? `${info.architecture} · ` : ''}{info.uses_lstm ? 'LSTM risk score → DNN classifier' : 'DNN classifier (no sequence model)'}</MetaRow>
+        <MetaRow label="Architecture" mono={false}>{info.architecture ? `${info.architecture} · ` : ''}{info.uses_lstm ? `LSTM risk score → ${info.downstream_classifier?.label || 'DNN'} classifier` : 'DNN classifier (no sequence model)'}</MetaRow>
+        {info.downstream_classifier?.params && <MetaRow label="Classifier settings">{Object.entries(info.downstream_classifier.params).map(([k, v]) => `${k}=${v === null ? 'none' : v}`).join(', ')}</MetaRow>}
         {info.training_seed != null && <MetaRow label="Training seed">{info.training_seed}</MetaRow>}
         {info.status && <MetaRow label="Status">{info.status}</MetaRow>}
         {info.selection?.artifact && <MetaRow label="Selected artifact">{info.selection.artifact}</MetaRow>}
@@ -205,7 +394,7 @@ function ModelCard({ info }) {
       {frozen && (
         <div className="mt-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="eyebrow">Frozen evaluation cut-offs</span>
+            <span className="eyebrow">Evaluation cut-offs (validation period)</span>
             <Badge tone="warn" title={frozen.status || ''}>Not applied to live scoring</Badge>
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -263,6 +452,27 @@ export default function ModelPerformance({ modelInfo }) {
 
   const info = modelInfo || metrics?.model_metadata || null
   const modelSet = metrics?.model_set
+  const de = metrics?.downstream_evaluation?.available ? metrics.downstream_evaluation : null
+  if (de) {
+    return (
+      <div className="space-y-5">
+        <div className="card px-5 py-4" style={{ borderColor: 'rgba(47,191,143,0.3)' }}>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge tone="good">PRODUCTION MODEL</Badge>
+            <span className="mono text-xs" style={{ color: 'var(--text-secondary)' }}>{modelSet}{metrics?.model_version ? ` · ${metrics.model_version}` : ''}</span>
+          </div>
+          <p className="text-xs mt-2 max-w-4xl" style={{ color: 'var(--text-muted)' }}>
+            {info?.architecture || 'LSTM + classifier'}: the LSTM turns the customer&apos;s previous 10 transactions into a temporal Risk Score,
+            and the {info?.downstream_classifier?.label || 'classifier'} combines it with the 9 behavioral features into the Fraud Score.
+            The classifier was chosen among four candidates on development data by a pre-registered rule and confirmed once on fresh
+            data. All data is synthetic; these figures do not describe real banking traffic.
+          </p>
+        </div>
+        <DownstreamSelection de={de} />
+        <ModelCard info={info} />
+      </div>
+    )
+  }
   const isCandidate = modelSet && modelSet !== 'production'
   const ev = metrics?.candidate_evaluation
   const fh = isCandidate && metrics?.final_holdout_evaluation?.available ? metrics.final_holdout_evaluation : null
@@ -282,7 +492,7 @@ export default function ModelPerformance({ modelInfo }) {
                 <Badge tone="danger" title="This model set is loaded for evaluation in this session. Production remains the default model set.">NOT DEPLOYED</Badge>
               </>
             ) : (
-              <Badge tone="good">PRODUCTION MODEL</Badge>
+              <Badge tone={info?.status === 'PRODUCTION' ? 'good' : 'warn'}>{info?.status === 'PRODUCTION' ? 'PRODUCTION MODEL' : 'PREVIOUS DEFAULT (v1)'}</Badge>
             )}
             <span className="mono text-xs" style={{ color: 'var(--text-secondary)' }}>{modelSet || 'model set unknown'}{metrics?.model_version ? ` · ${metrics.model_version}` : ''}</span>
           </div>

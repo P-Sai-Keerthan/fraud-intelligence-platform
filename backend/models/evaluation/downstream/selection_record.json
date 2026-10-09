@@ -1,0 +1,58 @@
+{
+  "protocol": "4D v1",
+  "protocol_document_sha256": "46dfbc091abc9c83c576c7783cae2fbd27315e25a92c4194262123d0e497d148",
+  "written_at": "2026-10-08T14:34:52.352883+00:00",
+  "decision": {
+    "winner": "random_forest",
+    "eligible": [
+      "logistic_regression",
+      "random_forest",
+      "hist_gradient_boosting"
+    ],
+    "mean_pr_auc": {
+      "logistic_regression": 0.380784,
+      "random_forest": 0.471423,
+      "hist_gradient_boosting": 0.388043
+    },
+    "note": "highest mean PR-AUC among eligible families",
+    "outcome": "random_forest replaces the DNN, subject to confirmation on the fresh hold-out"
+  },
+  "eligibility": {
+    "logistic_regression": true,
+    "random_forest": true,
+    "hist_gradient_boosting": true
+  },
+  "deploy": {
+    "family": "random_forest",
+    "params": {
+      "min_samples_leaf": 5,
+      "max_depth": 12,
+      "class_weight": null
+    },
+    "training_seed": 14,
+    "lstm": "models/candidates_multiseed/v2/seed_14/dnn_lstm (unchanged)",
+    "cutoffs": {
+      "policy_b": 0.04393065348267555,
+      "critical": 0.2623065412044525
+    },
+    "incumbent_cutoffs": {
+      "policy_b": 0.7928694486618042,
+      "critical": 0.9430845379829407
+    }
+  },
+  "final_holdout_seeds": [
+    501,
+    502,
+    503,
+    504,
+    505
+  ],
+  "final_new_customer_seeds": [
+    511,
+    512,
+    513,
+    514,
+    515
+  ],
+  "final_holdout_existed_when_written": false
+}

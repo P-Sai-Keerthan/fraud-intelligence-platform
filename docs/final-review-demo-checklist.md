@@ -1,5 +1,15 @@
 # Final review — demo checklist
 
+> **Step 4D update (8 October 2026).** The default model set is now
+> `v2_lstm_rf_seed14`: the same seed-14 LSTM, followed by a **random forest**
+> instead of a DNN, chosen by a pre-registered comparison and confirmed on a
+> fresh hold-out (`docs/model_selection_report.md`). This checklist was
+> written for the previous default (`production`, v1 LSTM -> DNN). Its click
+> path still works, but the header, the Model Performance tab and the scores now
+> show the random forest. The current start-up commands and demo sequence are in
+> `docs/final-demo-verification.md`; to reproduce this checklist exactly, start
+> the backend with `$env:MODEL_SET = "production"`.
+
 A 6½-minute walkthrough, with what to open, click, type, point at and say.
 Companion files: `final-review-demo-scenarios.md` (inputs),
 `final-review-results.md` (numbers), `final-review-architecture.md` (diagram),

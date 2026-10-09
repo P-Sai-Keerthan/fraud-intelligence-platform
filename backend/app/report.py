@@ -11,6 +11,8 @@ transaction (its stored provenance) and describes risk_score accordingly:
   transactions;
 * v2_dnn_only: no sequence model -- risk_score repeats the DNN fraud score for
   compatibility, and the report never calls it trajectory risk;
+* v2_lstm_rf_seed14 (the default since Step 4D): an LSTM temporal risk signal,
+  and a random-forest Fraud Score; reasons are exact Tree SHAP on that forest;
 * provenance not recorded: neutral wording, no model set is assumed.
 Scores are described as model scores, not calibrated probabilities.
 """
@@ -34,6 +36,9 @@ ALERT_COLORS = {
 BRAND = colors.HexColor("#0e7a8f")
 
 FRAUD_SCORE_MEANING = "This transaction's DNN fraud score (0-100); a model score, not a calibrated probability"
+RF_FRAUD_SCORE_MEANING = ("This transaction's random-forest fraud score (0-100); a model score, not a calibrated "
+                          "probability")
+FRAUD_SCORE_MEANINGS = {"v2_lstm_rf_seed14": RF_FRAUD_SCORE_MEANING}
 
 # model set -> (Risk Score label, Risk Score meaning, footer)
 MODEL_SET_WORDING = {
@@ -66,6 +71,16 @@ MODEL_SET_WORDING = {
         "than 10 earlier transactions the LSTM is not used and Risk Score is the training-average value; the "
         "candidate's evaluated performance is not claimed for those customers.",
     ),
+    "v2_lstm_rf_seed14": (
+        "Risk Score",
+        "Temporal behavioral risk: the LSTM's score for the customer's 10 previous transactions, computed before "
+        "this transaction and used as an input to the random forest",
+        "Risk Score is the output of the LSTM temporal risk model (training seed 14, unchanged) and Fraud Score the "
+        "output of the random forest that follows it (model set v2_lstm_rf_seed14, trained on synthetic dataset v2 "
+        "and selected by the pre-registered protocol in docs/model_selection_report.md). Reasons are exact Tree SHAP "
+        "contributions of the same random forest. For customers with fewer than 10 earlier transactions the LSTM is "
+        "not used and Risk Score is the training-average value.",
+    ),
     "v2_dnn_only": (
         "Risk Score (compatibility)",
         "Same value as Fraud Score: this model set has no sequence model, so the risk score field "
@@ -80,8 +95,8 @@ UNRECORDED_WORDING = (
     "Risk Score",
     "Model output reported in the risk score field; its meaning depends on the model set, which was not "
     "recorded for this transaction",
-    "Scores are model outputs; reasons are derived from SHAP feature attribution on the DNN. The model set "
-    "that scored this transaction was not recorded, so no model-specific description is given.",
+    "Scores are model outputs; reasons are derived from SHAP feature attribution on the model that scored the "
+    "transaction. The model set that scored it was not recorded, so no model-specific description is given.",
 )
 
 
@@ -153,7 +168,8 @@ def build_pdf_report(prediction: dict, provenance: dict | None = None) -> bytes:
         meta = provenance.get("metadata")
         if meta:
             model_rows.append(["Training data", f"synthetic dataset {meta['dataset']['version']}"])
-            model_rows.append(["Model type", "LSTM risk score -> DNN" if meta["uses_lstm"]
+            downstream = (meta.get("downstream_classifier") or {}).get("label", "DNN")
+            model_rows.append(["Model type", f"LSTM risk score -> {downstream}" if meta["uses_lstm"]
                                else "DNN only (no sequence model)"])
             if meta.get("training_seed") is not None:
                 model_rows.append(["Training seed", str(meta["training_seed"])])
@@ -180,7 +196,7 @@ def build_pdf_report(prediction: dict, provenance: dict | None = None) -> bytes:
         [Paragraph(f"<b>{risk_label}</b>", cell_style), f"{prediction.get('risk_score', 0):.1f} / 100",
          Paragraph(risk_meaning, cell_style)],
         ["Fraud Score", f"{prediction.get('fraud_probability', 0):.1f} / 100",
-         Paragraph(FRAUD_SCORE_MEANING, cell_style)],
+         Paragraph(FRAUD_SCORE_MEANINGS.get(model_set, FRAUD_SCORE_MEANING), cell_style)],
         ["Behavioral Similarity", f"{prediction.get('similarity_pct', 0):.1f}%",
          Paragraph("How closely this matches the customer's normal behavior", cell_style)],
         ["Deviation", f"{prediction.get('deviation_pct', 0):.1f}%",

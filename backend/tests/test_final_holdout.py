@@ -51,7 +51,7 @@ def _primary(lstm=(0.55, [0.51, 0.59], 8.9, [8.3, 9.5]), only=(0.43, [0.39, 0.47
 def test_gates_are_the_approved_ones():
     assert (holdout.ALERT_BUDGET_PER_1000, holdout.MIN_RECALL) == (10.0, 0.40)
     assert (holdout.RECALL_MARGIN, holdout.LEGIT_ALERT_MARGIN_PER_1000, holdout.CRITICAL_RECALL_MARGIN) == (0.05, 1.0, 0.05)
-    assert DEFAULT_MODEL_SET == "production"
+    assert DEFAULT_MODEL_SET == "v2_lstm_rf_seed14"      # Step 4D: the confirmed LSTM -> random forest (was "production")
 
 
 def test_both_eligible_and_tie_break_holds():
@@ -229,7 +229,7 @@ def test_end_to_end_on_samples(tmp_path_factory):
     assert list(report["rings"]["policy_b"]["summary"]) == names
     assert list(report["new_customer"]["current_behaviour"]["models"]) == names
     assert report["size_requirements"]["fraud_episodes_primary"]["met"] is False        # a 60-customer sample is too small
-    assert report["state"] == {"model_set_default": "production", "promotion": "none", "models_trained": "none",
+    assert report["state"] == {"model_set_default": DEFAULT_MODEL_SET, "promotion": "none", "models_trained": "none",
                                "cutoffs_recalibrated": "none", "seed_reselected": "none"}
     # the evaluation itself is deterministic
     again = fh.evaluate(record, root, (21,), final_root, (22,), nc_root, 30, record_sha256=holdout._sha256(record_path))

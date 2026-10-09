@@ -19,7 +19,7 @@ LSTM temporal risk model           reads the 10 transactions BEFORE this one
 Temporal risk signal               Risk Score, 0–100
         │
         ▼
-DNN Fraud Classifier               9 features of this transaction + Risk Score
+Random forest classifier           9 features of this transaction + Risk Score
         │
         ▼
 Fraud Score                        0–100, a model score, not a probability
@@ -41,9 +41,10 @@ Investigation modules              Behavioral similarity, customer profile,
 | Feature engineering | Turns the raw transaction into 9 numbers that compare it with the customer's own past | `backend/app/features/feature_engineering.py` |
 | Customer history | In-memory history per customer, loaded from the seed data and rebuilt from the database at start-up; every scored transaction is appended | `backend/app/inference_pipeline.py` |
 | LSTM temporal risk model | Two LSTM layers (64 and 32 units) over a window of 10 earlier transactions × 9 features; output × 100 = Risk Score | `backend/app/models/lstm_model.py` |
-| DNN fraud classifier | Dense layers 64 → 32 → 16 → 1 on 10 inputs (9 features + Risk Score); output × 100, capped at 99.9 = Fraud Score | `backend/app/models/dnn_model.py` |
-| SHAP explanation | Feature attributions on the DNN; the top contributions towards a higher score are shown as reasons | `backend/app/models/shap_explainer.py` |
-| Alert level | Fixed bands on the Fraud Score: 25 / 50 / 80 | `backend/app/models/dnn_model.py` |
+| Random forest classifier (default) | 200 trees, max depth 12, at least 5 samples per leaf, no class weighting, on 10 inputs (9 features + Risk Score); output × 100, capped at 99.9 = Fraud Score. Selected over the DNN, logistic regression and gradient boosting by a pre-registered rule (`docs/model_selection_report.md`) | `backend/app/models/downstream_classifier.py`, artifact `backend/models/candidates_downstream/v2/seed_14/lstm_random_forest/` |
+| DNN classifier (previous default, `MODEL_SET=production`) | Dense layers 64 → 32 → 16 → 1 on the same 10 inputs | `backend/app/models/dnn_model.py` |
+| SHAP explanation | Exact Tree SHAP on the random forest's own score; the top contributions towards a higher score are shown as reasons | `backend/app/models/shap_explainer.py` |
+| Alert level | Fixed bands on the Fraud Score: 25 / 50 / 80 (designed for the earlier DNN; not derived for the random forest) | `backend/app/models/dnn_model.py` |
 | Behavioral similarity | How far the transaction's features are from the customer's own averages, in standard deviations, mapped to 0–100% | `backend/app/models/similarity.py` |
 
 ### The 9 features
@@ -64,8 +65,8 @@ Investigation modules              Behavioral similarity, customer profile,
 
 The LSTM models the customer's recent transaction sequence: it captures
 temporal behavioral patterns and produces a temporal risk signal (the Risk
-Score). The DNN looks at **this** transaction: is it abnormal for this customer
-right now? The LSTM's output is one of the DNN's inputs, so the final score
+Score). The random forest looks at **this** transaction: is it abnormal for this customer
+right now? The LSTM's output is one of the random forest's inputs, so the final score
 uses both the recent sequence and the single event.
 
 We do not claim that the LSTM predicts fraud before it happens. On v1 it
@@ -76,7 +77,7 @@ a DNN without it (0.605 against 0.690 on the final hold-out).
 ### Cold start
 
 Every model was trained only on transactions that have at least 10 earlier
-ones. For a customer with fewer, the LSTM is not run and the DNN receives the
+ones. For a customer with fewer, the LSTM is not run and the classifier receives the
 training-average Risk Score. Accuracy for such customers is weaker; see the
 new-customer limitation in `final-review-results.md`.
 
@@ -119,15 +120,15 @@ FastAPI backend (port 8000)
   /predict  /predict/batch  /fraud-rings  /customers  /customer/{id}/profile
   /customer/{id}/history  /report/pdf  /model-info  /metrics  /health
         │
-        ├── Inference pipeline: features → LSTM → DNN → SHAP → similarity
-        ├── Model set (chosen by MODEL_SET at start-up; default "production")
+        ├── Inference pipeline: features → LSTM → random forest → SHAP → similarity
+        ├── Model set (chosen by MODEL_SET at start-up; default "v2_lstm_rf_seed14")
         ├── SQLite database: every scored transaction, with the model set that scored it
         └── PDF report generator
 ```
 
 | Layer | Technology |
 |---|---|
-| Models | TensorFlow / Keras (LSTM and DNN), SHAP |
+| Models | TensorFlow / Keras (LSTM; DNN of the previous default), scikit-learn (random forest), SHAP |
 | Backend | Python, FastAPI, SQLAlchemy, SQLite, ReportLab (PDF) |
 | Frontend | React, Vite, Tailwind CSS, Recharts |
 
@@ -135,11 +136,12 @@ FastAPI backend (port 8000)
 
 | Model set | What it is | Status |
 |---|---|---|
-| `production` | LSTM + DNN trained on dataset v1; files in `backend/models/saved/` | **Loaded by default; the model in the demo** |
+| `v2_lstm_rf_seed14` | The seed-14 v2 LSTM (unchanged) + random forest; selected and confirmed in Step 4D | **Loaded by default; the model in the demo** |
+| `production` | LSTM + DNN trained on dataset v1; files in `backend/models/saved/` | Previous default; loadable by name |
 | `v2_dnn_lstm_seed14` | The same LSTM + DNN architecture retrained on dataset v2 with training seed 14; selected by the pre-registered protocol | Evaluation only, **not deployed** |
 | `v2_dnn_lstm`, `v2_dnn_only` | Earlier v2 candidates (seed 42) | Evaluation only |
 
 The model set is read once at start-up from the `MODEL_SET` environment
-variable. Unset means `production`. An unknown name stops the server instead of
+variable. Unset means `v2_lstm_rf_seed14`. An unknown name stops the server instead of
 falling back. The seed-14 files are checked against recorded SHA-256 values
 before loading.

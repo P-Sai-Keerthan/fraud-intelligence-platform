@@ -6,8 +6,10 @@ Orchestrates the full scoring flow for one incoming transaction:
   1. Update customer's behavioral history with the new transaction
   2. Recompute behavioral features (Behavioral Fraud DNA) using history only
   3. LSTM -> Risk Score (0-100), a temporal risk signal from the customer's previous 10 transactions
-  4. DNN  -> Fraud Score (0-100, a model score, not a calibrated probability), from current features + risk_score
-  5. SHAP -> top reasons behind the Fraud Score
+  4. Downstream classifier -> Fraud Score (0-100, a model score, not a calibrated probability), from
+     current features + risk_score. Default model set (Step 4D): a random forest; the previous
+     default ("production") used a DNN.
+  5. SHAP -> top reasons behind the Fraud Score, computed on the same classifier
   6. Behavioral Similarity Score vs the customer's own historical profile
 
 KNOWN SIMPLIFICATION (documented honestly for the paper's limitations
@@ -18,7 +20,11 @@ would maintain incremental rolling statistics (updated in O(1) per
 transaction) instead of recomputing from scratch each time.
 
 MODEL SETS: which models are loaded is chosen by MODEL_SET (see
-app/model_sets.py; default "production" = models/saved/, unchanged). For a
+app/model_sets.py; default "v2_lstm_rf_seed14" = the unchanged seed-14 LSTM
+followed by a random forest; "production" = models/saved/, unchanged). The
+pipeline calls the downstream classifier through the same predict interface
+whether it is the Keras DNN or a scikit-learn model (app/models/
+downstream_classifier.py), so the steps below are identical. For a
 DNN-only model set (v2_dnn_only) there is no LSTM: step 3 is skipped, the
 DNN scores the 9 features alone, and the response's risk_score field (kept
 for API compatibility) carries the DNN's own score, i.e. the same value as
@@ -141,7 +147,7 @@ def _synchronized(method):
 
 class FraudIntelligencePipeline:
     def __init__(self, model_set=None, candidates_root=None):
-        """model_set: a name (else $MODEL_SET, else "production"); see app/model_sets.py.
+        """model_set: a name (else $MODEL_SET, else the default); see app/model_sets.py.
         candidates_root: only for tests (a copy of models/candidates/<dataset>/)."""
         print("[pipeline] Loading trained models...")
         self.model_set = load_model_set(model_set, candidates_root=candidates_root)
@@ -370,7 +376,7 @@ class FraudIntelligencePipeline:
                 risk_score = round(float(self.dnn_mean[risk_index]), 2)
                 imputed.append("risk_score")
 
-            # ---- DNN: fraud probability from current point features + risk_score ----
+            # ---- downstream classifier: fraud score from current point features + risk_score ----
             dnn_input_raw = np.concatenate([current_point_features, [risk_score]]).astype(np.float32)
         else:
             # DNN-only model set: no LSTM, the DNN scores the 9 point features
@@ -388,8 +394,8 @@ class FraudIntelligencePipeline:
         for column in imputed:
             dnn_input_norm[input_columns.index(column)] = 0.0      # the training mean, scaled
         fraud_prob = float(self.dnn_model.predict(dnn_input_norm[np.newaxis, :], verbose=0)[0][0])
-        # the output is the model's fraud score (class-weighted training, so it is
-        # not a calibrated probability); cap it so it is never shown as 100% certain
+        # the output is the model's fraud score (not a calibrated probability: see
+        # docs/model_selection_report.md); cap it so it is never shown as 100% certain
         fraud_prob = min(fraud_prob, 0.999)
         alert_level = alert_level_from_probability(fraud_prob)
         if not self.model_set.uses_lstm:

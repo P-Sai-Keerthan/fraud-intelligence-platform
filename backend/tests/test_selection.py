@@ -70,7 +70,7 @@ def test_fixed_inputs():
     assert sel.majority(5) == 3 and sel.majority(3) == 2 and sel.majority(4) == 3
     assert sel.DEVELOPMENT_DATA_DIR == config.DATA_DIR / "v2_holdout" / "development"
     assert sel.FINAL_DATA_DIR == config.DATA_DIR / "v2_holdout" / "final"
-    assert DEFAULT_MODEL_SET == "production"
+    assert DEFAULT_MODEL_SET == "v2_lstm_rf_seed14"      # Step 4D: the confirmed LSTM -> random forest (was "production")
 
 
 def test_every_number_is_an_already_approved_one():
@@ -290,6 +290,7 @@ def test_the_recorded_selection_is_the_rule_applied_to_the_recorded_metrics():
                 assert holdout._sha256(directory / fname) == sha
         assert art["cutoffs"]["critical"] >= art["cutoffs"]["policy_b"]
     assert record["stage_c_final_holdout"] == "not generated, not scored"
+    # the stored 4C-3E.6 record was written when "production" was the default (before Step 4D)
     assert record["state"] == {"model_set_default": "production", "promotion": "none", "models_trained": "none"}
 
 
@@ -358,7 +359,8 @@ def test_end_to_end_on_a_sample(tmp_path_factory):
         assert art["cutoffs"]["policy_b"] == dev["cutoffs"][name]["policy_b"]
     assert list(record["selected_artifacts"]) == record["stage_b_outcome"]["artifacts"]
     assert record["stage_c_final_holdout"] == "not generated, not scored"
-    assert record["state"] == {"model_set_default": "production", "promotion": "none", "models_trained": "none"}
+    # the stored 4C-3E.6 record was written when "production" was the default (before Step 4D)
+    assert record["state"] == {"model_set_default": DEFAULT_MODEL_SET, "promotion": "none", "models_trained": "none"}
     # the existing hold-out and the final hold-out can never be selection data
     for bad in ((101,), (201,), (401,), (42,)):
         with pytest.raises(sel.SelectionError):

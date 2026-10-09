@@ -41,7 +41,7 @@ from .schemas import (
 )
 from .inference_pipeline import get_pipeline
 from .db.migrations import ensure_schema
-from .model_metadata import candidate_evaluation, final_holdout_evaluation
+from .model_metadata import candidate_evaluation, downstream_evaluation, final_holdout_evaluation
 from .models.evaluate import EvaluationReportMissing, evaluate_all, load_report
 from .report import build_pdf_report
 
@@ -233,6 +233,11 @@ def get_model_info():
     return get_pipeline().model_metadata
 
 
+def _is_lstm_classifier(pipeline) -> bool:
+    manifest = pipeline.model_set.manifest
+    return manifest is not None and manifest.get("model_set_kind") == "lstm_classifier"
+
+
 def _model_context(pipeline) -> dict:
     meta = pipeline.model_metadata
     return {
@@ -247,7 +252,11 @@ def _model_context(pipeline) -> dict:
 def get_metrics(refresh: bool = False):
     """Evaluation metrics for the LOADED model set, labelled with it.
 
-    production: the held-out time-split metrics of the corrected v1 evaluation
+    v2_lstm_rf_seed14 (the default, Step 4D): downstream_evaluation -- the model-
+    selection comparison on development data and the fresh hold-out confirmation,
+    copied from models/evaluation/downstream/*.json (docs/model_selection_report.md).
+
+    production (the previous default): the held-out time-split metrics of the corrected v1 evaluation
     (the same lstm_risk_predictor / dnn_fraud_classifier entries as before,
     served from models/evaluation/evaluation_report.json; ?refresh=true re-reads
     it). They evaluate evaluation copies of the production architecture on v1,
@@ -261,6 +270,18 @@ def get_metrics(refresh: bool = False):
     pipeline = get_pipeline()
     context = _model_context(pipeline)
     evaluation = dict(pipeline.model_metadata["evaluation"])
+    if _is_lstm_classifier(pipeline):
+        downstream = downstream_evaluation(pipeline.model_set)
+        evaluation["available"] = downstream["available"]
+        return {
+            "lstm_risk_predictor": None,
+            "dnn_fraud_classifier": None,
+            "v1_metrics_withheld": "the v1 evaluation report evaluates the previous default (v1 LSTM -> DNN), "
+                                   "not this model set",
+            **context,
+            "evaluation": evaluation,
+            "downstream_evaluation": downstream,
+        }
     if pipeline.model_set.manifest is None:
         try:
             metrics = evaluate_all(force_refresh=refresh)
@@ -295,6 +316,9 @@ def get_metrics_report(refresh: bool = False):
     (candidate_evaluation) and the model metadata."""
     pipeline = get_pipeline()
     context = _model_context(pipeline)
+    if _is_lstm_classifier(pipeline):
+        return {**context, "v1_report_withheld": "the v1 evaluation report does not evaluate this model set",
+                "downstream_evaluation": downstream_evaluation(pipeline.model_set)}
     if pipeline.model_set.manifest is None:
         try:
             report = load_report(force_refresh=refresh)

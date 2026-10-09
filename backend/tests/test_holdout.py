@@ -54,7 +54,7 @@ def test_fixed_inputs_are_the_approved_ones():
     assert holdout.MIN_PRIOR == 10 and holdout.SECONDARY_START == "2026-06-01"
     assert holdout.MIN_RECALL == 0.40 and holdout.ALERT_BUDGET_PER_1000 == 10.0
     assert holdout.BOOTSTRAP_REPS == 2000
-    assert DEFAULT_MODEL_SET == "production"
+    assert DEFAULT_MODEL_SET == "v2_lstm_rf_seed14"      # Step 4D: the confirmed LSTM -> random forest (was "production")
 
 
 def test_cutoffs_are_the_4c3b_values_and_cannot_be_changed():
@@ -389,7 +389,7 @@ def test_report_is_reproducible_and_model_files_are_untouched(sample_root, model
     b = holdout.write_report(second, tmp_path / "b").read_bytes()
     assert a == b and b"\r" not in a
     assert holdout.model_file_checksums() == before == first["model_files_sha256"]
-    assert first["state"] == {"model_set_default": "production", "promotion": "none", "models_trained": "none",
+    assert first["state"] == {"model_set_default": DEFAULT_MODEL_SET, "promotion": "none", "models_trained": "none",
                               "thresholds_changed": "none"}
     assert first["fixed_inputs"]["cutoffs_score_0_1"] == {t: dict(v) for t, v in holdout.CUTOFFS.items()}
     prim = first["pooled"]["primary"]
@@ -482,5 +482,5 @@ def test_new_customer_report(new_customer_root, model_sets, tmp_path):
     assert set(full["unchanged_customers_per_seed"]) == {str(NEW_SEED)}
     assert full["unchanged_customers_pooled"]["rows"] + full["late_joiners_pooled"]["rows"] == int((n_prior >= 10).sum())
     assert full["unchanged_customers_pooled"] == full["unchanged_customers_per_seed"][str(NEW_SEED)]
-    assert rep["state"]["model_set_default"] == "production" and rep["state"]["cold_start_behaviour_changed"].startswith("none")
+    assert rep["state"]["model_set_default"] == DEFAULT_MODEL_SET and rep["state"]["cold_start_behaviour_changed"].startswith("none")
     assert "not that it works on real new-customer fraud" in rep["limit"]

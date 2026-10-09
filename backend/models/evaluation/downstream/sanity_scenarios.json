@@ -1,0 +1,852 @@
+{
+  "step": "4D sanity scenarios",
+  "customer": "CUST_0376",
+  "customer_profile": {
+    "home_device": "DEV_0376_A",
+    "home_city": "Hyderabad",
+    "usual_category": "grocery",
+    "median_amount": 2200.0,
+    "usual_hour": 17,
+    "cities_used": [
+      "Hyderabad"
+    ],
+    "seed_transactions": 272
+  },
+  "note": "each scenario scored from the untouched seed history at the customer's most common hour; scores are model scores (0-100), not calibrated probabilities",
+  "scenarios": [
+    {
+      "id": "A",
+      "scenario": "Normal low-risk purchase",
+      "input": {
+        "customer_id": "CUST_0376",
+        "amount": 2200.0,
+        "merchant_category": "grocery",
+        "device_id": "DEV_0376_A",
+        "location": "Hyderabad",
+        "failed_logins_24h": 0,
+        "timestamp": "2026-07-10T17:15:00"
+      }
+    },
+    {
+      "id": "B",
+      "scenario": "Moderate behavioral deviation (3x usual amount)",
+      "input": {
+        "customer_id": "CUST_0376",
+        "amount": 6600.0,
+        "merchant_category": "grocery",
+        "device_id": "DEV_0376_A",
+        "location": "Hyderabad",
+        "failed_logins_24h": 0,
+        "timestamp": "2026-07-10T17:15:00"
+      }
+    },
+    {
+      "id": "C",
+      "scenario": "New device only",
+      "input": {
+        "customer_id": "CUST_0376",
+        "amount": 2200.0,
+        "merchant_category": "grocery",
+        "device_id": "DEV_NEW_A001",
+        "location": "Hyderabad",
+        "failed_logins_24h": 0,
+        "timestamp": "2026-07-10T17:15:00"
+      }
+    },
+    {
+      "id": "D",
+      "scenario": "New domestic location only",
+      "input": {
+        "customer_id": "CUST_0376",
+        "amount": 2200.0,
+        "merchant_category": "grocery",
+        "device_id": "DEV_0376_A",
+        "location": "Mumbai",
+        "failed_logins_24h": 0,
+        "timestamp": "2026-07-10T17:15:00"
+      }
+    },
+    {
+      "id": "E",
+      "scenario": "Foreign location only",
+      "input": {
+        "customer_id": "CUST_0376",
+        "amount": 2200.0,
+        "merchant_category": "grocery",
+        "device_id": "DEV_0376_A",
+        "location": "Singapore",
+        "failed_logins_24h": 0,
+        "timestamp": "2026-07-10T17:15:00"
+      }
+    },
+    {
+      "id": "F",
+      "scenario": "High amount only (Rs. 85,000)",
+      "input": {
+        "customer_id": "CUST_0376",
+        "amount": 85000.0,
+        "merchant_category": "grocery",
+        "device_id": "DEV_0376_A",
+        "location": "Hyderabad",
+        "failed_logins_24h": 0,
+        "timestamp": "2026-07-10T17:15:00"
+      }
+    },
+    {
+      "id": "G",
+      "scenario": "Multiple suspicious signals",
+      "input": {
+        "customer_id": "CUST_0376",
+        "amount": 85000.0,
+        "merchant_category": "electronics",
+        "device_id": "DEV_UNKNOWN_7731",
+        "location": "Singapore",
+        "failed_logins_24h": 0,
+        "timestamp": "2026-07-10T17:15:00"
+      }
+    },
+    {
+      "id": "H",
+      "scenario": "Failed-login attack pattern",
+      "input": {
+        "customer_id": "CUST_0376",
+        "amount": 25000.0,
+        "merchant_category": "electronics",
+        "device_id": "DEV_UNKNOWN_8842",
+        "location": "Hyderabad",
+        "failed_logins_24h": 5,
+        "timestamp": "2026-07-10T17:15:00"
+      }
+    },
+    {
+      "id": "N1",
+      "scenario": "Normal purchase, CUST_0062",
+      "input": {
+        "customer_id": "CUST_0062",
+        "amount": 3140.0,
+        "merchant_category": "healthcare",
+        "device_id": "DEV_0062_A",
+        "location": "Pune",
+        "failed_logins_24h": 0,
+        "timestamp": "2026-07-10T12:15:00"
+      }
+    },
+    {
+      "id": "N2",
+      "scenario": "Normal purchase, CUST_0082",
+      "input": {
+        "customer_id": "CUST_0082",
+        "amount": 3760.0,
+        "merchant_category": "utilities",
+        "device_id": "DEV_0082_A",
+        "location": "Pune",
+        "failed_logins_24h": 0,
+        "timestamp": "2026-07-10T01:15:00"
+      }
+    },
+    {
+      "id": "N3",
+      "scenario": "Normal purchase, CUST_0318",
+      "input": {
+        "customer_id": "CUST_0318",
+        "amount": 2750.0,
+        "merchant_category": "travel",
+        "device_id": "DEV_0318_A",
+        "location": "Kolkata",
+        "failed_logins_24h": 0,
+        "timestamp": "2026-07-10T13:15:00"
+      }
+    },
+    {
+      "id": "N4",
+      "scenario": "Normal purchase, CUST_0464",
+      "input": {
+        "customer_id": "CUST_0464",
+        "amount": 3610.0,
+        "merchant_category": "dining",
+        "device_id": "DEV_0464_A",
+        "location": "Mumbai",
+        "failed_logins_24h": 0,
+        "timestamp": "2026-07-10T00:15:00"
+      }
+    },
+    {
+      "id": "N5",
+      "scenario": "Normal purchase, CUST_0329",
+      "input": {
+        "customer_id": "CUST_0329",
+        "amount": 3200.0,
+        "merchant_category": "healthcare",
+        "device_id": "DEV_0329_A",
+        "location": "Mumbai",
+        "failed_logins_24h": 0,
+        "timestamp": "2026-07-10T14:15:00"
+      }
+    }
+  ],
+  "results": {
+    "v2_lstm_rf_seed14": {
+      "model_version": "v2_lstm_rf_seed14-483c1b395789",
+      "results": [
+        {
+          "id": "A",
+          "risk_score": 14.55,
+          "fraud_score": 0.06,
+          "alert_level": "Low Risk",
+          "similarity_pct": 95.08,
+          "reasons": [],
+          "lstm_used": true
+        },
+        {
+          "id": "B",
+          "risk_score": 14.55,
+          "fraud_score": 1.64,
+          "alert_level": "Low Risk",
+          "similarity_pct": 35.37,
+          "reasons": [],
+          "lstm_used": true
+        },
+        {
+          "id": "C",
+          "risk_score": 14.55,
+          "fraud_score": 3.34,
+          "alert_level": "Low Risk",
+          "similarity_pct": 61.12,
+          "reasons": [],
+          "lstm_used": true
+        },
+        {
+          "id": "D",
+          "risk_score": 14.55,
+          "fraud_score": 0.17,
+          "alert_level": "Low Risk",
+          "similarity_pct": 50.72,
+          "reasons": [],
+          "lstm_used": true
+        },
+        {
+          "id": "E",
+          "risk_score": 14.55,
+          "fraud_score": 16.24,
+          "alert_level": "Low Risk",
+          "similarity_pct": 48.81,
+          "reasons": [
+            {
+              "feature": "Foreign Location",
+              "shap_value": 0.1628
+            },
+            {
+              "feature": "New Location",
+              "shap_value": 0.0158
+            },
+            {
+              "feature": "Elevated Behavioral Risk Score",
+              "shap_value": 0.0016
+            },
+            {
+              "feature": "Unusual Transaction Amount",
+              "shap_value": 0.0014
+            }
+          ],
+          "lstm_used": true
+        },
+        {
+          "id": "F",
+          "risk_score": 14.55,
+          "fraud_score": 2.38,
+          "alert_level": "Low Risk",
+          "similarity_pct": 3.9,
+          "reasons": [],
+          "lstm_used": true
+        },
+        {
+          "id": "G",
+          "risk_score": 14.55,
+          "fraud_score": 74.56,
+          "alert_level": "High Risk",
+          "similarity_pct": 0.98,
+          "reasons": [
+            {
+              "feature": "Foreign Location",
+              "shap_value": 0.2819
+            },
+            {
+              "feature": "New Device",
+              "shap_value": 0.2201
+            },
+            {
+              "feature": "Amount Far Above Average",
+              "shap_value": 0.1197
+            },
+            {
+              "feature": "New Location",
+              "shap_value": 0.098
+            }
+          ],
+          "lstm_used": true
+        },
+        {
+          "id": "H",
+          "risk_score": 14.55,
+          "fraud_score": 43.39,
+          "alert_level": "Medium Risk",
+          "similarity_pct": 1.1,
+          "reasons": [
+            {
+              "feature": "New Device",
+              "shap_value": 0.2158
+            },
+            {
+              "feature": "Multiple Failed Logins",
+              "shap_value": 0.1208
+            },
+            {
+              "feature": "Amount Far Above Average",
+              "shap_value": 0.0876
+            },
+            {
+              "feature": "Unusual Transaction Amount",
+              "shap_value": 0.023
+            }
+          ],
+          "lstm_used": true
+        },
+        {
+          "id": "N1",
+          "risk_score": 9.99,
+          "fraud_score": 0.05,
+          "alert_level": "Low Risk",
+          "similarity_pct": 95.37,
+          "reasons": [],
+          "lstm_used": true
+        },
+        {
+          "id": "N2",
+          "risk_score": 16.0,
+          "fraud_score": 0.06,
+          "alert_level": "Low Risk",
+          "similarity_pct": 95.7,
+          "reasons": [],
+          "lstm_used": true
+        },
+        {
+          "id": "N3",
+          "risk_score": 12.86,
+          "fraud_score": 0.06,
+          "alert_level": "Low Risk",
+          "similarity_pct": 94.82,
+          "reasons": [],
+          "lstm_used": true
+        },
+        {
+          "id": "N4",
+          "risk_score": 14.73,
+          "fraud_score": 0.06,
+          "alert_level": "Low Risk",
+          "similarity_pct": 95.44,
+          "reasons": [],
+          "lstm_used": true
+        },
+        {
+          "id": "N5",
+          "risk_score": 15.99,
+          "fraud_score": 0.06,
+          "alert_level": "Low Risk",
+          "similarity_pct": 96.01,
+          "reasons": [],
+          "lstm_used": true
+        }
+      ]
+    },
+    "production": {
+      "model_version": "production-f42f2a4f6d1d",
+      "results": [
+        {
+          "id": "A",
+          "risk_score": 21.88,
+          "fraud_score": 1.58,
+          "alert_level": "Low Risk",
+          "similarity_pct": 95.08,
+          "reasons": [],
+          "lstm_used": true
+        },
+        {
+          "id": "B",
+          "risk_score": 21.88,
+          "fraud_score": 2.4,
+          "alert_level": "Low Risk",
+          "similarity_pct": 35.37,
+          "reasons": [],
+          "lstm_used": true
+        },
+        {
+          "id": "C",
+          "risk_score": 21.88,
+          "fraud_score": 21.27,
+          "alert_level": "Low Risk",
+          "similarity_pct": 61.12,
+          "reasons": [
+            {
+              "feature": "Elevated Behavioral Risk Score",
+              "shap_value": 0.1274
+            },
+            {
+              "feature": "High Transaction Velocity",
+              "shap_value": 0.0114
+            },
+            {
+              "feature": "Amount Far Above Average",
+              "shap_value": 0.0037
+            },
+            {
+              "feature": "Unusual Transaction Amount",
+              "shap_value": 0.0024
+            }
+          ],
+          "lstm_used": true
+        },
+        {
+          "id": "D",
+          "risk_score": 21.88,
+          "fraud_score": 15.41,
+          "alert_level": "Low Risk",
+          "similarity_pct": 50.72,
+          "reasons": [
+            {
+              "feature": "New Location",
+              "shap_value": 0.072
+            },
+            {
+              "feature": "High Transaction Velocity",
+              "shap_value": 0.0244
+            },
+            {
+              "feature": "Elevated Behavioral Risk Score",
+              "shap_value": 0.0183
+            },
+            {
+              "feature": "Amount Far Above Average",
+              "shap_value": 0.0076
+            }
+          ],
+          "lstm_used": true
+        },
+        {
+          "id": "E",
+          "risk_score": 21.88,
+          "fraud_score": 84.3,
+          "alert_level": "Critical Risk",
+          "similarity_pct": 48.81,
+          "reasons": [
+            {
+              "feature": "Foreign Location",
+              "shap_value": 0.4556
+            },
+            {
+              "feature": "New Location",
+              "shap_value": 0.2587
+            },
+            {
+              "feature": "High Transaction Velocity",
+              "shap_value": 0.057
+            },
+            {
+              "feature": "Multiple Failed Logins",
+              "shap_value": 0.0095
+            }
+          ],
+          "lstm_used": true
+        },
+        {
+          "id": "F",
+          "risk_score": 21.88,
+          "fraud_score": 1.41,
+          "alert_level": "Low Risk",
+          "similarity_pct": 3.9,
+          "reasons": [],
+          "lstm_used": true
+        },
+        {
+          "id": "G",
+          "risk_score": 21.88,
+          "fraud_score": 99.9,
+          "alert_level": "Critical Risk",
+          "similarity_pct": 0.98,
+          "reasons": [
+            {
+              "feature": "Unusual Merchant Category",
+              "shap_value": 0.2453
+            },
+            {
+              "feature": "New Device",
+              "shap_value": 0.2335
+            },
+            {
+              "feature": "Amount Far Above Average",
+              "shap_value": 0.1237
+            },
+            {
+              "feature": "Foreign Location",
+              "shap_value": 0.1125
+            }
+          ],
+          "lstm_used": true
+        },
+        {
+          "id": "H",
+          "risk_score": 21.88,
+          "fraud_score": 99.9,
+          "alert_level": "Critical Risk",
+          "similarity_pct": 1.1,
+          "reasons": [
+            {
+              "feature": "Unusual Merchant Category",
+              "shap_value": 0.4587
+            },
+            {
+              "feature": "New Device",
+              "shap_value": 0.1498
+            },
+            {
+              "feature": "Unusual Transaction Amount",
+              "shap_value": 0.1151
+            },
+            {
+              "feature": "Amount Far Above Average",
+              "shap_value": 0.0821
+            }
+          ],
+          "lstm_used": true
+        },
+        {
+          "id": "N1",
+          "risk_score": 22.39,
+          "fraud_score": 1.61,
+          "alert_level": "Low Risk",
+          "similarity_pct": 95.37,
+          "reasons": [],
+          "lstm_used": true
+        },
+        {
+          "id": "N2",
+          "risk_score": 12.27,
+          "fraud_score": 1.71,
+          "alert_level": "Low Risk",
+          "similarity_pct": 95.7,
+          "reasons": [],
+          "lstm_used": true
+        },
+        {
+          "id": "N3",
+          "risk_score": 25.92,
+          "fraud_score": 2.03,
+          "alert_level": "Low Risk",
+          "similarity_pct": 94.82,
+          "reasons": [],
+          "lstm_used": true
+        },
+        {
+          "id": "N4",
+          "risk_score": 21.85,
+          "fraud_score": 1.57,
+          "alert_level": "Low Risk",
+          "similarity_pct": 95.44,
+          "reasons": [],
+          "lstm_used": true
+        },
+        {
+          "id": "N5",
+          "risk_score": 24.5,
+          "fraud_score": 1.88,
+          "alert_level": "Low Risk",
+          "similarity_pct": 96.01,
+          "reasons": [],
+          "lstm_used": true
+        }
+      ]
+    },
+    "v2_dnn_lstm_seed14": {
+      "model_version": "v2_dnn_lstm_seed14-32fc53979e06",
+      "results": [
+        {
+          "id": "A",
+          "risk_score": 14.55,
+          "fraud_score": 9.61,
+          "alert_level": "Low Risk",
+          "similarity_pct": 95.08,
+          "reasons": [
+            {
+              "feature": "Unusual Transaction Amount",
+              "shap_value": 0.0108
+            },
+            {
+              "feature": "Unusual Merchant Category",
+              "shap_value": 0.0029
+            }
+          ],
+          "lstm_used": true
+        },
+        {
+          "id": "B",
+          "risk_score": 14.55,
+          "fraud_score": 50.9,
+          "alert_level": "High Risk",
+          "similarity_pct": 35.37,
+          "reasons": [
+            {
+              "feature": "Amount Far Above Average",
+              "shap_value": 0.2415
+            },
+            {
+              "feature": "Unusual Transaction Amount",
+              "shap_value": 0.1766
+            },
+            {
+              "feature": "Unusual Merchant Category",
+              "shap_value": 0.0017
+            }
+          ],
+          "lstm_used": true
+        },
+        {
+          "id": "C",
+          "risk_score": 14.55,
+          "fraud_score": 64.69,
+          "alert_level": "High Risk",
+          "similarity_pct": 61.12,
+          "reasons": [
+            {
+              "feature": "New Device",
+              "shap_value": 0.5152
+            },
+            {
+              "feature": "Unusual Merchant Category",
+              "shap_value": 0.0096
+            },
+            {
+              "feature": "Unusual Transaction Amount",
+              "shap_value": 0.0059
+            },
+            {
+              "feature": "Amount Far Above Average",
+              "shap_value": 0.0052
+            }
+          ],
+          "lstm_used": true
+        },
+        {
+          "id": "D",
+          "risk_score": 14.55,
+          "fraud_score": 50.55,
+          "alert_level": "High Risk",
+          "similarity_pct": 50.72,
+          "reasons": [
+            {
+              "feature": "New Location",
+              "shap_value": 0.3598
+            },
+            {
+              "feature": "Unusual Transaction Amount",
+              "shap_value": 0.0115
+            },
+            {
+              "feature": "Unusual Transaction Time",
+              "shap_value": 0.0056
+            },
+            {
+              "feature": "Unusual Merchant Category",
+              "shap_value": 0.0054
+            }
+          ],
+          "lstm_used": true
+        },
+        {
+          "id": "E",
+          "risk_score": 14.55,
+          "fraud_score": 85.88,
+          "alert_level": "Critical Risk",
+          "similarity_pct": 48.81,
+          "reasons": [
+            {
+              "feature": "Foreign Location",
+              "shap_value": 0.4828
+            },
+            {
+              "feature": "New Location",
+              "shap_value": 0.2074
+            },
+            {
+              "feature": "Unusual Transaction Amount",
+              "shap_value": 0.0066
+            },
+            {
+              "feature": "Unusual Merchant Category",
+              "shap_value": 0.0038
+            }
+          ],
+          "lstm_used": true
+        },
+        {
+          "id": "F",
+          "risk_score": 14.55,
+          "fraud_score": 67.7,
+          "alert_level": "High Risk",
+          "similarity_pct": 3.9,
+          "reasons": [
+            {
+              "feature": "Amount Far Above Average",
+              "shap_value": 0.6164
+            },
+            {
+              "feature": "Unusual Merchant Category",
+              "shap_value": 0.0135
+            }
+          ],
+          "lstm_used": true
+        },
+        {
+          "id": "G",
+          "risk_score": 14.55,
+          "fraud_score": 91.71,
+          "alert_level": "Critical Risk",
+          "similarity_pct": 0.98,
+          "reasons": [
+            {
+              "feature": "Foreign Location",
+              "shap_value": 0.2872
+            },
+            {
+              "feature": "New Location",
+              "shap_value": 0.174
+            },
+            {
+              "feature": "New Device",
+              "shap_value": 0.1673
+            },
+            {
+              "feature": "Amount Far Above Average",
+              "shap_value": 0.0935
+            }
+          ],
+          "lstm_used": true
+        },
+        {
+          "id": "H",
+          "risk_score": 14.55,
+          "fraud_score": 92.74,
+          "alert_level": "Critical Risk",
+          "similarity_pct": 1.1,
+          "reasons": [
+            {
+              "feature": "New Device",
+              "shap_value": 0.3432
+            },
+            {
+              "feature": "Multiple Failed Logins",
+              "shap_value": 0.2792
+            },
+            {
+              "feature": "Amount Far Above Average",
+              "shap_value": 0.2362
+            },
+            {
+              "feature": "Unusual Transaction Amount",
+              "shap_value": 0.0004
+            }
+          ],
+          "lstm_used": true
+        },
+        {
+          "id": "N1",
+          "risk_score": 9.99,
+          "fraud_score": 7.78,
+          "alert_level": "Low Risk",
+          "similarity_pct": 95.37,
+          "reasons": [
+            {
+              "feature": "Unusual Transaction Amount",
+              "shap_value": 0.0114
+            },
+            {
+              "feature": "Unusual Merchant Category",
+              "shap_value": 0.0034
+            }
+          ],
+          "lstm_used": true
+        },
+        {
+          "id": "N2",
+          "risk_score": 16.0,
+          "fraud_score": 10.14,
+          "alert_level": "Low Risk",
+          "similarity_pct": 95.7,
+          "reasons": [
+            {
+              "feature": "Unusual Transaction Amount",
+              "shap_value": 0.013
+            },
+            {
+              "feature": "Amount Far Above Average",
+              "shap_value": 0.0105
+            }
+          ],
+          "lstm_used": true
+        },
+        {
+          "id": "N3",
+          "risk_score": 12.86,
+          "fraud_score": 8.47,
+          "alert_level": "Low Risk",
+          "similarity_pct": 94.82,
+          "reasons": [
+            {
+              "feature": "Unusual Transaction Amount",
+              "shap_value": 0.0104
+            },
+            {
+              "feature": "Unusual Merchant Category",
+              "shap_value": 0.0046
+            }
+          ],
+          "lstm_used": true
+        },
+        {
+          "id": "N4",
+          "risk_score": 14.73,
+          "fraud_score": 9.74,
+          "alert_level": "Low Risk",
+          "similarity_pct": 95.44,
+          "reasons": [
+            {
+              "feature": "Unusual Transaction Amount",
+              "shap_value": 0.0123
+            },
+            {
+              "feature": "Unusual Merchant Category",
+              "shap_value": 0.0007
+            }
+          ],
+          "lstm_used": true
+        },
+        {
+          "id": "N5",
+          "risk_score": 15.99,
+          "fraud_score": 10.17,
+          "alert_level": "Low Risk",
+          "similarity_pct": 96.01,
+          "reasons": [
+            {
+              "feature": "Unusual Transaction Amount",
+              "shap_value": 0.0114
+            },
+            {
+              "feature": "Unusual Merchant Category",
+              "shap_value": 0.0041
+            }
+          ],
+          "lstm_used": true
+        }
+      ]
+    }
+  }
+}

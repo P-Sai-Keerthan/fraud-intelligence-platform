@@ -1,5 +1,14 @@
 # Final review — model results summary
 
+> **Step 4D update (8 October 2026).** The default model set is now
+> `v2_lstm_rf_seed14`: the same seed-14 LSTM, followed by a **random forest**
+> instead of a DNN, chosen by a pre-registered comparison and confirmed on a
+> fresh hold-out (`docs/model_selection_report.md`). The figures below describe
+> the DNN-based models (previous default and the Step 4C candidates) and remain
+> correct for them. For the model that runs by default, use
+> `docs/model_selection_report.md` (fresh hold-out: PR-AUC 0.464, recall 0.645,
+> 10.23 legitimate alerts per 1,000) and `docs/final-demo-verification.md`.
+
 Every number here is copied from the project's own result files. Nothing is
 rounded up and nothing is estimated.
 

@@ -141,10 +141,10 @@ def _edit_manifest(root: Path, candidate: str, fn) -> None:
 
 # ---- MODEL_SET resolution -------------------------------------------------------------------
 
-def test_default_is_production(monkeypatch, pipeline):
+def test_default_is_the_4d_model_and_production_is_unchanged(monkeypatch, pipeline):
     monkeypatch.delenv("MODEL_SET", raising=False)
-    assert ms.resolve_model_set_name() == "production"
-    # the application's shared pipeline (started without MODEL_SET) is production, from models/saved/
+    assert ms.resolve_model_set_name() == "v2_lstm_rf_seed14"       # Step 4D default
+    # the test suite's shared pipeline (MODEL_SET=production, conftest.py) loads models/saved/ exactly as before
     assert pipeline.model_set.name == "production" and pipeline.model_set.uses_lstm
     assert pipeline.model_set.directory == config.MODELS_SAVED_DIR
     assert pipeline.model_set.files == {

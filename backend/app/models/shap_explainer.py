@@ -1,14 +1,25 @@
 """
 Explainable AI Module (SHAP)
 ==============================
-Wraps the trained DNN in a SHAP explainer and converts raw SHAP values into
-human-readable reasons like "New Device", "Foreign Location", etc.
+Wraps the loaded downstream classifier in a SHAP explainer and converts raw
+SHAP values into human-readable reasons like "New Device", "Foreign Location".
+
+* Random forest / gradient boosting (Step 4D): shap.TreeExplainer, exact
+  interventional Tree SHAP on the predicted score, with the model set's
+  background rows as the reference. The values add up to
+  (score - average score over the background).
+* Logistic regression: shap.LinearExplainer (exact), log-odds space.
+* Keras DNN (production / v2 candidates): shap.GradientExplainer (expected
+  gradients, sampled; approximate).
+The explanation always comes from the same model object that produced the
+score.
 """
 
 import numpy as np
 import shap
 
 from .dnn_model import DNN_INPUT_COLUMNS
+from .downstream_classifier import shap_explainer_for
 from ..config import DNN_MODEL_PATH, SHAP_BACKGROUND_PATH, DNN_FEATURE_MEAN_PATH, DNN_FEATURE_STD_PATH
 
 # Human-readable label + the condition under which a feature "fires" as a reason.
@@ -50,9 +61,15 @@ class FraudExplainer:
         if background_data.ndim != 2 or background_data.shape[1] != n:
             raise ValueError(f"SHAP: background shape {background_data.shape} does not match {n} feature names")
         self.model = model
-        # KernelExplainer works model-agnostically but is slow; for a Keras
-        # dense model, GradientExplainer is much faster and accurate enough.
-        self.explainer = shap.GradientExplainer(model, background_data)
+        self.explainer, self.output_space = shap_explainer_for(model, background_data)
+        if self.explainer is None:
+            # Keras DNN: KernelExplainer works model-agnostically but is slow; for a
+            # dense network GradientExplainer is much faster and accurate enough.
+            self.explainer = shap.GradientExplainer(model, background_data)
+            self.output_space = "dnn output (expected gradients, sampled)"
+            self.method = "GradientExplainer"
+        else:
+            self.method = type(self.explainer).__name__
 
     def explain(self, x_normalized: np.ndarray, top_k: int = 4, exclude=()):
         """
@@ -64,8 +81,11 @@ class FraudExplainer:
         imputed because they were not observed).
         """
         shap_values = self.explainer.shap_values(x_normalized)
-        # shap_values shape can be (1, n_features, 1) for single-output models
+        # shap_values shape can be (1, n_features, 1) for single-output models,
+        # or (1, n_features, 2) for a two-class scikit-learn classifier
         values = np.array(shap_values)
+        if values.ndim == 3 and values.shape[-1] == 2:
+            values = values[..., 1]            # contributions to the fraud class
         values = values.reshape(-1)  # flatten to (n_features,)
         if len(values) != len(self.feature_names):
             raise ValueError(f"SHAP returned {len(values)} values for {len(self.feature_names)} features")

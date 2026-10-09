@@ -1,5 +1,12 @@
 # Final report
 
+> **Out of date for the classifier (Step 4D, 8 October 2026).** This report
+> describes the build before Step 4D, in which a DNN followed the LSTM. The
+> default model is now the same LSTM followed by a random forest
+> (`docs/model_selection_report.md`). The report's model sections, scores and
+> screenshots must be regenerated before it is presented as the current
+> system.
+
 | File | Contents |
 |---|---|
 | `Fraud_Intelligence_Platform_Technical_Report.docx` | The project technical report, editable in Word |

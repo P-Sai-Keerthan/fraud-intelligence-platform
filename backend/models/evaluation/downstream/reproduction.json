@@ -1,0 +1,57 @@
+{
+  "14": {
+    "seed": 14,
+    "final_lstm_weights_match_saved": true,
+    "dnn_refit_weights_match_saved": true,
+    "lstm_weights_sha256": "e4851c4c20e864b14f1f54a7051b0ad5dad5d0e4920270737ded6bad6db1a077",
+    "dnn_weights_sha256": "32fc53979e06db730742423133e54bee2305f89a439cbd634ae03b76f8c94f0f",
+    "training_rows": 58840,
+    "training_fraud": 291,
+    "dnn_mean_matches_saved": true,
+    "seconds": 519.1
+  },
+  "11": {
+    "seed": 11,
+    "final_lstm_weights_match_saved": true,
+    "dnn_refit_weights_match_saved": true,
+    "lstm_weights_sha256": "f370caba890ec970a5204c7bf7246df52c53612a138c34274d574218339732b2",
+    "dnn_weights_sha256": "a9236eabe40aa66780462bc567c63675c343462ba4552935b13293f2bc33fd99",
+    "training_rows": 58840,
+    "training_fraud": 291,
+    "dnn_mean_matches_saved": true,
+    "seconds": 408.2
+  },
+  "12": {
+    "seed": 12,
+    "final_lstm_weights_match_saved": true,
+    "dnn_refit_weights_match_saved": true,
+    "lstm_weights_sha256": "36a1614ec069ad60ce1df8047aa70f937046ea3c02e6d6d61a70a9d9899d26e5",
+    "dnn_weights_sha256": "11b4328d1370cbe9571d9da2fdf1035f65e4a2e978632111d07ecf8c4b9b71cb",
+    "training_rows": 58840,
+    "training_fraud": 291,
+    "dnn_mean_matches_saved": true,
+    "seconds": 505.4
+  },
+  "13": {
+    "seed": 13,
+    "final_lstm_weights_match_saved": true,
+    "dnn_refit_weights_match_saved": true,
+    "lstm_weights_sha256": "151ec43d7b6539a011710c2f231095f02efa24af8bef958f4daa3c92031a93de",
+    "dnn_weights_sha256": "b39332c0c873460034bdb801b763f8f89074d57e4286ac57d9e19a11b1105e03",
+    "training_rows": 58840,
+    "training_fraud": 291,
+    "dnn_mean_matches_saved": true,
+    "seconds": 482.9
+  },
+  "15": {
+    "seed": 15,
+    "final_lstm_weights_match_saved": true,
+    "dnn_refit_weights_match_saved": true,
+    "lstm_weights_sha256": "e466abd5171bd59797fcdb592d9c053f3704ae043d6b162198c639cab6256067",
+    "dnn_weights_sha256": "6a427aa8935a2ea1ed7d481865b8766110e1a6d5a0bcbabfde36d7fe5cc78d25",
+    "training_rows": 58840,
+    "training_fraud": 291,
+    "dnn_mean_matches_saved": true,
+    "seconds": 467.2
+  }
+}

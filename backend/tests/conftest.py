@@ -32,6 +32,11 @@ from datetime import datetime
 _TMP_DIR = tempfile.mkdtemp(prefix="fraud_platform_tests_")
 os.environ["DATABASE_URL"] = "sqlite:///" + os.path.join(_TMP_DIR, "test.db").replace("\\", "/")
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")  # silence TensorFlow C++ startup noise
+# The shared application pipeline used by most tests is the previous default
+# ("production": v1 LSTM -> DNN), which stays loadable and is what this suite was
+# written against. The current default (v2_lstm_rf_seed14, Step 4D) is loaded and
+# tested through the API in tests/test_rf_model_set.py.
+os.environ["MODEL_SET"] = "production"
 
 import numpy as np  # noqa: E402
 import pytest  # noqa: E402

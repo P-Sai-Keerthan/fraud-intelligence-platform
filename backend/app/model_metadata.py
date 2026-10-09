@@ -30,7 +30,9 @@ from pathlib import Path
 
 from . import config
 from .features.feature_engineering import FEATURE_COLUMNS, build_point_features
-from .model_sets import MODEL_SETS, SEED14_FROZEN_CUTOFFS, architecture_name
+from .model_sets import (DEFAULT_MODEL_SET, LEGACY_PRODUCTION, MODEL_SETS, RF_FROZEN_CUTOFFS, SEED14_FROZEN_CUTOFFS,
+                         architecture_name)
+from .models.downstream_classifier import FAMILY_LABELS
 from .models.dnn_model import alert_level_from_probability  # noqa: F401  (the bands documented below)
 
 ALERT_BANDS = {
@@ -94,13 +96,28 @@ RISK_SCORE_SEMANTICS = {
                    "run and the training-average value is reported (4C-2f-1).",
     "v2_dnn_only": "No LSTM in this model set: risk_score repeats the DNN fraud score (equal to "
                    "fraud_probability) and is kept only for API compatibility.",
+    "v2_lstm_rf_seed14": "Temporal risk signal: the seed-14 v2 LSTM's output x 100 for the customer's 10 previous "
+                         "transactions (the same LSTM as v2_dnn_lstm_seed14, unchanged); an input to the random "
+                         "forest. With fewer than 10 earlier transactions the LSTM is not run and the "
+                         "training-average value is reported (4C-2f-1).",
 }
+RF_FRAUD_SCORE_SEMANTICS = ("Random forest output (predict_proba of the fraud class) x 100, capped at 99.9. A model "
+                            "score, not a calibrated probability: on the synthetic development data its overall "
+                            "calibration error is small because almost every transaction scores near 0, but in the "
+                            "middle and upper range it under-states how often the transaction is fraud "
+                            "(docs/model_selection_report.md, section 8).")
 FRAUD_PROBABILITY_SEMANTICS = ("DNN output x 100, capped at 99.9. A fraud SCORE from class-weighted training, "
                                "not a calibrated probability.")
 
 
 STATUS_PRODUCTION = "PRODUCTION"
 STATUS_EVALUATION = "EVALUATION / NOT DEPLOYED"
+STATUS_LEGACY = "PREVIOUS DEFAULT (v1, LSTM -> DNN)"
+
+DOWNSTREAM_DIR = config.BACKEND_DIR / "models" / "evaluation" / "downstream"
+DOWNSTREAM_DEVELOPMENT_REPORT = DOWNSTREAM_DIR / "development_report.json"
+DOWNSTREAM_FINAL_REPORT = DOWNSTREAM_DIR / "final_holdout_report.json"
+DOWNSTREAM_RECORD = DOWNSTREAM_DIR / "selection_record.json"
 
 V2_HOLDOUT_DIR = config.BACKEND_DIR / "models" / "evaluation" / "v2_holdout"
 SELECTION_RECORD_PATH = V2_HOLDOUT_DIR / "selection_record.json"
@@ -122,19 +139,126 @@ PROMOTION_BLOCKERS = (
 
 def model_version(ms) -> str:
     """A short, content-derived identifier of the loaded weights."""
+    if ms.manifest is not None and ms.manifest.get("model_set_kind") == "lstm_classifier":
+        return f"{ms.name}-{ms.manifest['files']['classifier.joblib'][:12]}"
     if ms.manifest is None:
         digest = hashlib.sha256("".join(_sha256(ms.files[k]) for k in sorted(ms.files)).encode()).hexdigest()
         return f"{ms.name}-{digest[:12]}"
     return f"{ms.name}-{ms.manifest['model']['dnn_weights_sha256'][:12]}"
 
 
+def _status(ms) -> str:
+    if ms.name == DEFAULT_MODEL_SET:
+        return STATUS_PRODUCTION
+    if ms.name == LEGACY_PRODUCTION:
+        return STATUS_LEGACY
+    return STATUS_EVALUATION
+
+
+def _read_json(path):
+    return json.loads(Path(path).read_text()) if Path(path).exists() else None
+
+
+def lstm_classifier_metadata(ms) -> dict:
+    """/model-info for an LSTM -> scikit-learn classifier model set (Step 4D)."""
+    man = ms.manifest
+    spec = MODEL_SETS[ms.name]
+    live_features = current_feature_implementation()
+    label = FAMILY_LABELS.get(spec.family, spec.family)
+    final = _read_json(DOWNSTREAM_FINAL_REPORT) or {}
+    dev = _read_json(DOWNSTREAM_DEVELOPMENT_REPORT) or {}
+    calib = (dev.get("calibration_by_family") or {}).get(spec.family)
+    return {
+        "model_set": ms.name,
+        "model_version": model_version(ms),
+        "status": _status(ms),
+        "architecture": f"LSTM + {label}",
+        "downstream_classifier": {
+            "family": spec.family, "label": label, "class": man.get("classifier_class"), "params": man.get("params"),
+            "library": f"scikit-learn {man.get('versions', {}).get('scikit_learn', '')}".strip(),
+            "selected_by": "pre-registered protocol 4D v1 (docs/step4d-downstream-selection-protocol.md): highest mean "
+                           "PR-AUC on development data among the candidates that clearly beat the DNN; confirmed once "
+                           "on a fresh hold-out (docs/model_selection_report.md)",
+        },
+        "training_seed": man.get("seed"),
+        "directory": _rel(ms.directory),
+        "uses_lstm": True,
+        "lstm": {"window": f"{config.SEQUENCE_LENGTH} previous transactions x {len(FEATURE_COLUMNS)} behavioral features",
+                 "source": man["lstm"]["source"], "lstm_weights_sha256": man["lstm"]["lstm_weights_sha256"],
+                 "output": "risk_score = LSTM output x 100 (an input to the classifier)"},
+        "dnn_input_columns": list(ms.dnn_input_columns),
+        "classifier_input_columns": list(ms.dnn_input_columns),
+        "score_semantics": {
+            "fraud_probability": RF_FRAUD_SCORE_SEMANTICS,
+            "risk_score": RISK_SCORE_SEMANTICS[ms.name],
+            "calibrated_probabilities": False,
+        },
+        "calibration": {
+            "status": "not demonstrated: the score is shown as a Fraud Score (model score)",
+            "development_data_mean_over_training_seeds": calib,
+            "source": _rel(DOWNSTREAM_DEVELOPMENT_REPORT),
+        },
+        "explanations": {"method": "shap.TreeExplainer (exact interventional Tree SHAP on the classifier's score), "
+                                   "background: 200 training rows", "explains": "this model set's random forest"},
+        "thresholds": {
+            "alert_bands": ALERT_BANDS,
+            "alert_bands_status": ALERT_BANDS_STATUS,
+            "frozen_cutoffs": {
+                "policy_b": RF_FROZEN_CUTOFFS["policy_b"], "critical": RF_FROZEN_CUTOFFS["critical"],
+                "scale": "classifier output, 0-1 (fraud score / 100)",
+                "source": "validation period of the training dataset, 4C-3B rule (false-positive rate within 1% / "
+                          "0.1%), recorded in selection_record.json",
+                "status": "used for every reported metric; NOT applied by /predict, which keeps the fixed bands",
+            },
+        },
+        "cold_start": {
+            "min_prior_transactions": config.SEQUENCE_LENGTH,
+            "policy": "fewer than 10 earlier transactions: LSTM not run, risk_score input = training mean; "
+                      "first transaction: baseline-relative features treated as missing (4C-2f-1)",
+        },
+        "model": {"artifact": spec.artifact, "manifest_sha256": _sha256(ms.directory / "manifest.json"),
+                  "files_sha256": dict(spec.pinned["files"]),
+                  "files_verified": "every file matched its pinned SHA-256 before it was loaded",
+                  "seed": man.get("seed")},
+        "dataset": {"version": man["dataset"]["version"], "file": man["dataset"].get("file"),
+                    "sha256": man["dataset"]["sha256"], "generator_version": man["dataset"].get("generator_version"),
+                    "split_sha256": (man.get("split") or {}).get("sha256"), "synthetic": True},
+        "features": {
+            "columns": list(man["features"]["columns"]), "list_sha256": man["features"]["sha256"],
+            "training_feature_version": {"name": "current", "description": live_features["description"],
+                                         "source": "v2 generator, built with build_point_features"},
+            "live_feature_version": live_features,
+            "training_and_live_features_consistent": True,
+        },
+        "evaluation": {
+            "status": final.get("outcome", "final hold-out report not found"),
+            "confirmed_on_fresh_holdout": final.get("confirmed"),
+            "source": _rel(DOWNSTREAM_FINAL_REPORT),
+            "development_source": _rel(DOWNSTREAM_DEVELOPMENT_REPORT),
+            "dataset_version": "v2 (synthetic)",
+            "evaluates": "exactly these files: development datasets 301-305 (selection) and the fresh hold-out "
+                         "501-505 / 511-515 (confirmation, scored once), customers with at least 10 earlier "
+                         "transactions, at the frozen cut-offs",
+        },
+        "limitations": [
+            "all data is synthetic (generator v2); no result describes real banking traffic",
+            "the application's customer histories are the v1 seed data, while this model was trained on v2 data",
+            "the score is not a calibrated probability",
+            "the fixed 25/50/80 alert bands were not derived for this model; see the model selection report",
+        ],
+    }
+
+
 def model_metadata(ms) -> dict:
+    if ms.manifest is not None and ms.manifest.get("model_set_kind") == "lstm_classifier":
+        return lstm_classifier_metadata(ms)
     live_features = current_feature_implementation()
     meta = {
         "model_set": ms.name,
         "model_version": model_version(ms),
-        "status": STATUS_PRODUCTION if ms.manifest is None else STATUS_EVALUATION,
+        "status": _status(ms),
         "architecture": "DNN + LSTM" if ms.uses_lstm else "DNN only",
+        "downstream_classifier": {"family": "dnn", "label": "DNN", "class": "Keras Sequential (dense)"},
         "training_seed": None if ms.manifest is None else ms.manifest.get("seed"),
         "directory": _rel(ms.directory),
         "uses_lstm": bool(ms.uses_lstm),
@@ -322,4 +446,89 @@ def final_holdout_evaluation(ms) -> dict:
         "promotion": decision["promotion"],
         "scores_note": "Scores are not calibrated probabilities. Alerts are counted at the frozen Policy B "
                        "cut-off, which /predict does not apply.",
+    }
+
+
+# ---- Step 4D: evaluation of the LSTM -> classifier model set --------------------------------------------
+
+_COMPARISON_METRICS = ("pr_auc", "roc_auc", "precision", "recall", "f1", "legit_alerts_per_1000", "critical_recall",
+                       "first_fraud_recall", "episode_detection_rate")
+_FINAL_NAMES = {"selected": "Selected model", "dnn_seed14": "DNN (same LSTM, seed 14)", "production": "Previous default (v1)"}
+
+
+def downstream_evaluation(ms) -> dict:
+    """The model-selection evidence for an LSTM -> classifier model set, copied from
+    models/evaluation/downstream/*.json (nothing is recomputed). Only returned when
+    the reports describe exactly the loaded classifier file."""
+    if ms.manifest is None or ms.manifest.get("model_set_kind") != "lstm_classifier":
+        return {"available": False, "reason": "not an LSTM -> classifier model set"}
+    dev, final, record = (_read_json(p) for p in (DOWNSTREAM_DEVELOPMENT_REPORT, DOWNSTREAM_FINAL_REPORT, DOWNSTREAM_RECORD))
+    if dev is None or final is None or record is None:
+        return {"available": False, "reason": "model-selection reports not found under models/evaluation/downstream/"}
+    loaded = ms.manifest["files"]["classifier.joblib"]
+    if (final.get("artifact_manifest") or {}).get("files", {}).get("classifier.joblib") != loaded:
+        return {"available": False, "reason": "final_holdout_report.json was produced for a different classifier file"}
+    spec = MODEL_SETS[ms.name]
+    summary = dev["summary"]
+    families = list(summary["families"])
+    table = []
+    for f in families:
+        row = {"family": f, "label": FAMILY_LABELS.get(f, f), "selected": f == spec.family,
+               "params": (dev.get("chosen_params") or {}).get(f, {}),
+               "eligible": (dev["eligibility"].get(f) or {}).get("eligible") if f != "dnn" else None}
+        for m in _COMPARISON_METRICS:
+            st = summary["families"][f][m]
+            row[m] = {k: st.get(k) for k in ("mean", "sd", "min", "max")}
+        row["accuracy"] = {k: dev["accuracy_at_policy_b"][f].get(k) for k in ("mean", "sd", "min", "max")}
+        row["brier_score"] = dev["calibration_by_family"][f]["brier_score_mean"]
+        row["ece"] = dev["calibration_by_family"][f]["ece_equal_width_mean"]
+        cost = dev["inference_cost_seed_14"][f]
+        row["single_row_ms"] = cost["single_row_ms_median"]
+        row["size_bytes"] = cost["size_bytes"]
+        if f in summary["versus_incumbent"]:
+            row["versus_dnn"] = {m: {"difference": summary["versus_incumbent"][f][m]["difference_of_means"],
+                                     "ci95": summary["versus_incumbent"][f][m]["ci95_data_and_training_seeds"]}
+                                 for m in ("pr_auc", "recall", "legit_alerts_per_1000", "first_fraud_recall")}
+        table.append(row)
+
+    def holdout_block(block):
+        out = {k: block[k] for k in ("rows", "fraud_transactions", "legitimate_transactions", "fraud_episodes",
+                                     "first_fraud_transactions", "datasets")}
+        out["models"] = {}
+        for name, label in _FINAL_NAMES.items():
+            m = block["models"][name]
+            out["models"][name] = {"label": label,
+                                   "metrics": {k: m["metrics"][k] for k in _COMPARISON_METRICS},
+                                   "confusion_matrix": m["confusion_matrix_policy_b"]}
+            if "calibration" in block:
+                c = block["calibration"][name]
+                out["models"][name]["calibration"] = {k: c[k] for k in ("brier_score", "log_loss", "ece_equal_width_10_bins")}
+        out["paired_differences"] = {k: {m: v[m] for m in ("pr_auc", "recall", "legit_alerts_per_1000", "first_fraud_recall")}
+                                     for k, v in block["paired_differences"].items()}
+        return out
+
+    sel_cal = final["final"]["primary"]["calibration"]["selected"]
+    return {
+        "available": True,
+        "protocol": dev["protocol"],
+        "sources": {"development": _rel(DOWNSTREAM_DEVELOPMENT_REPORT), "final_holdout": _rel(DOWNSTREAM_FINAL_REPORT),
+                    "selection_record": _rel(DOWNSTREAM_RECORD),
+                    "report": "docs/model_selection_report.md"},
+        "development": {
+            "population": dev["population"], "training_seeds": dev["training_seeds"],
+            "datasets": list(dev["development_datasets"]),
+            "note": "mean over training seeds 11-15 (sd, min, max across seeds); each model at its own frozen "
+                    "validation cut-offs; accuracy is reported but was not used to choose",
+            "comparison": table,
+            "decision": record["decision"],
+        },
+        "final_holdout": {
+            "confirmed": final["confirmed"], "outcome": final["outcome"], "gates": final["gates"],
+            "cutoffs": final["cutoffs"],
+            "primary": holdout_block(final["final"]["primary"]),
+            "new_customer_full_history": holdout_block(final["new_customer"]["primary"]),
+            "new_customer_early_history": holdout_block(final["new_customer"]["early_history"]),
+            "selected_reliability": sel_cal["reliability_equal_width"],
+        },
+        "scores_note": "Scores are model scores, not calibrated probabilities. All data is synthetic (generator v2).",
     }

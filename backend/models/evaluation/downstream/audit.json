@@ -1,0 +1,414 @@
+{
+  "step": "4D-1 audit of the current DNN",
+  "v1_dnn_evaluation": {
+    "dnn_with_risk_score": {
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "pr_auc": 1.0,
+      "roc_auc": 1.0,
+      "confusion_matrix": {
+        "true_negative": 18703,
+        "false_positive": 0,
+        "false_negative": 0,
+        "true_positive": 201
+      },
+      "threshold": 0.542248,
+      "threshold_source": "validation (F1-maximizing)"
+    },
+    "lstm_alone": {
+      "accuracy": 0.99672,
+      "precision": 0.8294,
+      "recall": 0.8706,
+      "pr_auc": 0.8294,
+      "roc_auc": 0.9474,
+      "confusion_matrix": {
+        "true_negative": 18667,
+        "false_positive": 36,
+        "false_negative": 26,
+        "true_positive": 175
+      },
+      "threshold": 0.997932,
+      "threshold_source": "validation (F1-maximizing)"
+    },
+    "baselines_same_split": {
+      "amount_hour_rule": {
+        "pr_auc": 1.0,
+        "auc_roc": 1.0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "logistic_regression": {
+        "pr_auc": 1.0,
+        "auc_roc": 1.0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "dnn_without_risk_score": {
+        "pr_auc": 1.0,
+        "auc_roc": 1.0,
+        "precision": 1.0,
+        "recall": 1.0
+      }
+    },
+    "source": "models/evaluation/evaluation_report.json (primary = time split, test period)"
+  },
+  "v1": {
+    "dataset": {
+      "version": "v1",
+      "sha256": "8f6977dd110a7bda251b21d8b8bdfbb6e670b33404e1b1fbd3fb90cdb4118b33",
+      "transactions": 93913,
+      "fraud_transactions": 819,
+      "fraud_rate": 0.008721,
+      "scored_rows_with_10_earlier": 88913
+    },
+    "class_imbalance": {
+      "test_rows": 18904,
+      "test_fraud": 201,
+      "accuracy_of_always_predicting_legitimate": 0.989367
+    },
+    "leakage_checks": {
+      "ground_truth_columns_in_model_frame": [],
+      "model_input_columns": [
+        "amount_zscore",
+        "hour_is_unusual",
+        "is_new_device",
+        "is_new_location",
+        "is_foreign_location",
+        "failed_logins_24h",
+        "category_is_unusual",
+        "txn_velocity_1h",
+        "amount_pct_of_avg",
+        "risk_score (LSTM output)"
+      ],
+      "forbidden_columns_among_model_inputs": [],
+      "duplicated_transaction_ids": 0,
+      "exact_duplicate_rows_ignoring_transaction_id": 0,
+      "time_split": {
+        "train": {
+          "rows": 61143,
+          "fraud": 454,
+          "first": "2026-01-12 00:07:45.970095",
+          "last": "2026-05-05 23:59:45.970095"
+        },
+        "validation": {
+          "rows": 13866,
+          "fraud": 164,
+          "first": "2026-04-27 03:03:45.970095",
+          "last": "2026-05-31 23:53:45.970095"
+        },
+        "test": {
+          "rows": 18904,
+          "fraud": 201,
+          "first": "2026-05-25 09:11:45.970095",
+          "last": "2026-07-06 23:56:45.970095"
+        },
+        "fraud_episodes_crossing_splits": 0,
+        "boundaries": {
+          "train_before": "2026-05-06 00:00:00",
+          "validation_before": "2026-06-01 00:00:00"
+        },
+        "training_rows_at_or_after_train_boundary": 0,
+        "validation_rows_at_or_after_validation_boundary": 0,
+        "customer_split_customers_shared": {
+          "train&test": 0,
+          "train&validation": 0,
+          "validation&test": 0
+        }
+      },
+      "test_vs_training_feature_vector_overlap": {
+        "test_rows": 18904,
+        "test_rows_whose_vector_occurs_in_training": 0,
+        "test_fraud_rows": 201,
+        "test_fraud_rows_whose_vector_occurs_in_training": 0
+      },
+      "lstm_windows_strictly_before_target": "checked by windows.assert_past_only in every training run"
+    },
+    "separability_on_test_period": {
+      "amount_zscore": {
+        "roc_auc_oriented": 0.999963,
+        "higher_means_fraud": true,
+        "best_single_threshold": {
+          "threshold": 3.5536,
+          "direction": ">=",
+          "precision": 0.98,
+          "recall": 0.9751,
+          "f1": 0.9776
+        }
+      },
+      "hour_is_unusual": {
+        "roc_auc_oriented": 1.0,
+        "higher_means_fraud": true,
+        "best_single_threshold": {
+          "threshold": 1.0,
+          "direction": ">=",
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        }
+      },
+      "is_new_device": {
+        "roc_auc_oriented": 0.830846,
+        "higher_means_fraud": true,
+        "best_single_threshold": {
+          "threshold": 1.0,
+          "direction": ">=",
+          "precision": 1.0,
+          "recall": 0.6617,
+          "f1": 0.7964
+        }
+      },
+      "is_new_location": {
+        "roc_auc_oriented": 0.641791,
+        "higher_means_fraud": true,
+        "best_single_threshold": {
+          "threshold": 1.0,
+          "direction": ">=",
+          "precision": 1.0,
+          "recall": 0.2836,
+          "f1": 0.4419
+        }
+      },
+      "is_foreign_location": {
+        "roc_auc_oriented": 0.768657,
+        "higher_means_fraud": true,
+        "best_single_threshold": {
+          "threshold": 1.0,
+          "direction": ">=",
+          "precision": 1.0,
+          "recall": 0.5373,
+          "f1": 0.699
+        }
+      },
+      "failed_logins_24h": {
+        "roc_auc_oriented": 0.976625,
+        "higher_means_fraud": true,
+        "best_single_threshold": {
+          "threshold": 3.0,
+          "direction": ">=",
+          "precision": 0.9708,
+          "recall": 0.6617,
+          "f1": 0.787
+        }
+      },
+      "category_is_unusual": {
+        "roc_auc_oriented": 0.850746,
+        "higher_means_fraud": true,
+        "best_single_threshold": {
+          "threshold": 1.0,
+          "direction": ">=",
+          "precision": 1.0,
+          "recall": 0.7015,
+          "f1": 0.8246
+        }
+      },
+      "txn_velocity_1h": {
+        "roc_auc_oriented": 0.553985,
+        "higher_means_fraud": false,
+        "best_single_threshold": {
+          "threshold": 0.0,
+          "direction": "<=",
+          "precision": 0.0119,
+          "recall": 0.9652,
+          "f1": 0.0236
+        }
+      },
+      "amount_pct_of_avg": {
+        "roc_auc_oriented": 1.0,
+        "higher_means_fraud": true,
+        "best_single_threshold": {
+          "threshold": 310.1419,
+          "direction": ">=",
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0
+        }
+      }
+    },
+    "identical_feature_vectors_with_both_labels_test_period": {
+      "rows": 18904,
+      "distinct_feature_vectors": 18904,
+      "fraud_rows_with_an_identical_legitimate_vector": 0,
+      "fraud_rows": 201
+    }
+  },
+  "v2": {
+    "dataset": {
+      "version": "v2",
+      "sha256": "a09d06114ce7c0dec4b93ff9946ab9506f5c7d25317bb95396b596f2f7b1ef08",
+      "transactions": 101297,
+      "fraud_transactions": 471,
+      "fraud_rate": 0.00465,
+      "scored_rows_with_10_earlier": 96297
+    },
+    "class_imbalance": {
+      "test_rows": 21142,
+      "test_fraud": 61,
+      "accuracy_of_always_predicting_legitimate": 0.997115
+    },
+    "leakage_checks": {
+      "ground_truth_columns_in_model_frame": [],
+      "model_input_columns": [
+        "amount_zscore",
+        "hour_is_unusual",
+        "is_new_device",
+        "is_new_location",
+        "is_foreign_location",
+        "failed_logins_24h",
+        "category_is_unusual",
+        "txn_velocity_1h",
+        "amount_pct_of_avg",
+        "risk_score (LSTM output)"
+      ],
+      "forbidden_columns_among_model_inputs": [],
+      "duplicated_transaction_ids": 0,
+      "exact_duplicate_rows_ignoring_transaction_id": 0,
+      "time_split": {
+        "train": {
+          "rows": 63840,
+          "fraud": 291,
+          "first": "2026-01-12 00:02:36",
+          "last": "2026-05-02 23:58:54"
+        },
+        "validation": {
+          "rows": 16315,
+          "fraud": 119,
+          "first": "2026-05-03 00:02:35",
+          "last": "2026-05-31 23:59:24"
+        },
+        "test": {
+          "rows": 21142,
+          "fraud": 61,
+          "first": "2026-06-01 00:02:17",
+          "last": "2026-07-06 23:59:17"
+        },
+        "fraud_episodes_crossing_splits": 0,
+        "boundaries": {
+          "train_before": "2026-05-03 00:00:00",
+          "validation_before": "2026-06-01 00:00:00"
+        },
+        "training_rows_at_or_after_train_boundary": 0,
+        "validation_rows_at_or_after_validation_boundary": 0,
+        "customer_split_customers_shared": {
+          "train&test": 0,
+          "train&validation": 0,
+          "validation&test": 0
+        }
+      },
+      "test_vs_training_feature_vector_overlap": {
+        "test_rows": 21142,
+        "test_rows_whose_vector_occurs_in_training": 53,
+        "test_fraud_rows": 61,
+        "test_fraud_rows_whose_vector_occurs_in_training": 0
+      },
+      "lstm_windows_strictly_before_target": "checked by windows.assert_past_only in every training run"
+    },
+    "separability_on_test_period": {
+      "amount_zscore": {
+        "roc_auc_oriented": 0.561433,
+        "higher_means_fraud": true,
+        "best_single_threshold": {
+          "threshold": 2.6243,
+          "direction": ">=",
+          "precision": 0.0318,
+          "recall": 0.1967,
+          "f1": 0.0548
+        }
+      },
+      "hour_is_unusual": {
+        "roc_auc_oriented": 0.730782,
+        "higher_means_fraud": true,
+        "best_single_threshold": {
+          "threshold": 1.0,
+          "direction": ">=",
+          "precision": 0.0131,
+          "recall": 0.5902,
+          "f1": 0.0256
+        }
+      },
+      "is_new_device": {
+        "roc_auc_oriented": 0.548469,
+        "higher_means_fraud": true,
+        "best_single_threshold": {
+          "threshold": 1.0,
+          "direction": ">=",
+          "precision": 0.1667,
+          "recall": 0.0984,
+          "f1": 0.1237
+        }
+      },
+      "is_new_location": {
+        "roc_auc_oriented": 0.515184,
+        "higher_means_fraud": true,
+        "best_single_threshold": {
+          "threshold": 1.0,
+          "direction": ">=",
+          "precision": 0.0377,
+          "recall": 0.0328,
+          "f1": 0.0351
+        }
+      },
+      "is_foreign_location": {
+        "roc_auc_oriented": 0.588765,
+        "higher_means_fraud": true,
+        "best_single_threshold": {
+          "threshold": 1.0,
+          "direction": ">=",
+          "precision": 0.1571,
+          "recall": 0.1803,
+          "f1": 0.1679
+        }
+      },
+      "failed_logins_24h": {
+        "roc_auc_oriented": 0.574001,
+        "higher_means_fraud": true,
+        "best_single_threshold": {
+          "threshold": 4.0,
+          "direction": ">=",
+          "precision": 0.0694,
+          "recall": 0.1639,
+          "f1": 0.0976
+        }
+      },
+      "category_is_unusual": {
+        "roc_auc_oriented": 0.586562,
+        "higher_means_fraud": true,
+        "best_single_threshold": {
+          "threshold": 1.0,
+          "direction": ">=",
+          "precision": 0.007,
+          "recall": 0.2951,
+          "f1": 0.0136
+        }
+      },
+      "txn_velocity_1h": {
+        "roc_auc_oriented": 0.600467,
+        "higher_means_fraud": true,
+        "best_single_threshold": {
+          "threshold": 4.0,
+          "direction": ">=",
+          "precision": 0.043,
+          "recall": 0.0656,
+          "f1": 0.0519
+        }
+      },
+      "amount_pct_of_avg": {
+        "roc_auc_oriented": 0.548805,
+        "higher_means_fraud": true,
+        "best_single_threshold": {
+          "threshold": 246.5252,
+          "direction": ">=",
+          "precision": 0.0331,
+          "recall": 0.2951,
+          "f1": 0.0595
+        }
+      }
+    },
+    "identical_feature_vectors_with_both_labels_test_period": {
+      "rows": 21142,
+      "distinct_feature_vectors": 21096,
+      "fraud_rows_with_an_identical_legitimate_vector": 0,
+      "fraud_rows": 61
+    }
+  }
+}
