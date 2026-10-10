@@ -40,6 +40,11 @@ import random
 RNG_SEED = 42
 np.random.seed(RNG_SEED)
 random.seed(RNG_SEED)
+# The history window used to end "now" (datetime.now() - 180 days), so every run produced different timestamps and, through
+# the hour/week arithmetic, different data. It now starts on a fixed date (the first day of the committed seed data), so the
+# same seed gives byte-identical output (audit finding R-09). The committed CSV was produced by an earlier, uncommitted
+# version of this code and is not regenerated.
+START_DATE = datetime(2026, 1, 12)
 
 N_CUSTOMERS = 500
 DAYS_OF_HISTORY = 180
@@ -113,9 +118,10 @@ def generate_fraud_transaction(profile, ts, severity=1.0):
     }
 
 
-def generate_dataset():
+def generate_dataset(start_date=START_DATE, seed=RNG_SEED):
+    np.random.seed(seed)
+    random.seed(seed)
     all_rows = []
-    start_date = datetime.now() - timedelta(days=DAYS_OF_HISTORY)
 
     # ~12% of customers will experience a fraud event with a lead-up ramp
     fraud_customer_idxs = set(

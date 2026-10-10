@@ -18,6 +18,7 @@ ADDED_COLUMNS = {
     "transactions": [
         ("model_set", "VARCHAR"),
         ("model_version", "VARCHAR"),
+        ("reasons_json", "TEXT"),          # SHAP reasons stored with the score (trusted PDF reports)
     ],
 }
 

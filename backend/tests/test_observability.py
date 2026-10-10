@@ -84,9 +84,9 @@ def test_migration_adds_provenance_columns_to_an_old_database(tmp_path):
         conn.execute(text("INSERT INTO transactions (transaction_id, customer_id, timestamp, amount, risk_score, "
                           "fraud_probability, alert_level) VALUES ('TXN_OLD', 'CUST_0001', '2026-07-10 13:30:00', "
                           "3800, 20.0, 1.5, 'Low Risk')"))
-    assert ensure_schema(engine) == ["transactions.model_set", "transactions.model_version"]
+    assert ensure_schema(engine) == ["transactions.model_set", "transactions.model_version", "transactions.reasons_json"]
     cols = {c["name"] for c in inspect(engine).get_columns("transactions")}
-    assert {"model_set", "model_version"} <= cols
+    assert {"model_set", "model_version", "reasons_json"} <= cols
     with engine.connect() as conn:
         row = conn.execute(text("SELECT risk_score, model_set, model_version FROM transactions")).one()
     assert row == (20.0, None, None)                     # readable; provenance NOT back-filled
@@ -329,11 +329,13 @@ def test_pdf_without_recorded_provenance_is_neutral(client):
     assert "Trajectory" not in text_ and "LSTM" not in text_
 
 
-def test_pdf_for_unknown_transaction_is_neutral(client):
+def test_pdf_for_unknown_transaction_is_404_not_a_report_built_from_client_data(client):
+    # before the audit this produced a neutral report from whatever the client sent; reports are now only
+    # available for transactions that were scored and stored (compatibility change, see FIX_AND_TEST_LOG.md)
     pred = client.post("/predict", json=dict(NORMAL_TXN)).json()
     pred["transaction_id"] = "TXN_NOT_IN_DB"
-    text_ = _pdf_text(client.post("/report/pdf", json=pred).content)
-    assert "Model set not recorded" in text_ and "not found in the database" in text_
+    r = client.post("/report/pdf", json=pred)
+    assert r.status_code == 404
 
 
 def test_build_pdf_report_default_is_neutral():

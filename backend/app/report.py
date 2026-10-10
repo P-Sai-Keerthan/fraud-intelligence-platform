@@ -100,6 +100,18 @@ UNRECORDED_WORDING = (
 )
 
 
+NO_BASELINE_TEXT = ("Not available: the customer has fewer than 10 earlier transactions, so there is no "
+                    "behavioral baseline to compare with")
+
+
+def _pct(value) -> str:
+    return "n/a" if value is None else f"{value:.1f}%"
+
+
+def _similarity_meaning(value, meaning: str) -> str:
+    return NO_BASELINE_TEXT if value is None else meaning
+
+
 def build_pdf_report(prediction: dict, provenance: dict | None = None) -> bytes:
     """provenance: {"recorded", "model_set", "model_version", "reason"?, "metadata"?}
     from the transaction's stored row (main._provenance). None or not recorded:
@@ -197,10 +209,12 @@ def build_pdf_report(prediction: dict, provenance: dict | None = None) -> bytes:
          Paragraph(risk_meaning, cell_style)],
         ["Fraud Score", f"{prediction.get('fraud_probability', 0):.1f} / 100",
          Paragraph(FRAUD_SCORE_MEANINGS.get(model_set, FRAUD_SCORE_MEANING), cell_style)],
-        ["Behavioral Similarity", f"{prediction.get('similarity_pct', 0):.1f}%",
-         Paragraph("How closely this matches the customer's normal behavior", cell_style)],
-        ["Deviation", f"{prediction.get('deviation_pct', 0):.1f}%",
-         Paragraph("How far this deviates from the customer's own historical norm", cell_style)],
+        ["Behavioral Similarity", _pct(prediction.get("similarity_pct")),
+         Paragraph(_similarity_meaning(prediction.get("similarity_pct"),
+                                       "How closely this matches the customer's normal behavior"), cell_style)],
+        ["Deviation", _pct(prediction.get("deviation_pct")),
+         Paragraph(_similarity_meaning(prediction.get("deviation_pct"),
+                                       "How far this deviates from the customer's own historical norm"), cell_style)],
     ]
     risk_table = Table(risk_rows, colWidths=[1.5 * inch, 1.1 * inch, 3.4 * inch])
     risk_table.setStyle(TableStyle([
@@ -218,8 +232,11 @@ def build_pdf_report(prediction: dict, provenance: dict | None = None) -> bytes:
     story.append(risk_table)
 
     story.append(Paragraph("Explainable AI — Why This Score", h2_style))
-    reasons = prediction.get("reasons") or []
-    if reasons:
+    reasons = prediction.get("reasons")
+    if reasons is None:
+        story.append(Paragraph("The explanation (SHAP reasons) was not stored for this transaction: it was scored before "
+                               "explanations were saved, so none is shown rather than a recomputed one.", body_style))
+    elif reasons:
         reason_rows = [["Factor", "SHAP Contribution"]]
         for r in reasons:
             reason_rows.append([r.get("display_name", r.get("feature", "-")), f"{r.get('shap_value', 0):+.3f}"])

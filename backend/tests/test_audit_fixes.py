@@ -158,14 +158,18 @@ def test_customers_limit_returns_exactly_that_many(client):
 
 # ---- F-07: PDF download filename -----------------------------------------------------------------
 
-@pytest.mark.parametrize("tid", ['TXN"; evil=1', "TXN_é中\U0001F600", "TXN\r\nX-Injected: 1", "../../etc/passwd"])
+@pytest.mark.parametrize("tid", ['TXN"; evil=1', "TXN_\u00e9\u4e2d\U0001F600", "TXN\r\nX-Injected: 1", "../../etc/passwd"])
 def test_pdf_filename_cannot_break_or_inject_into_the_header(client, normal_txn, tid):
+    # F-07 sanitised the filename; since R-04 a hostile id is rejected with 422 before any lookup (stronger)
+    client.post("/predict", json=normal_txn)
+    r = client.post("/report/pdf", json={"transaction_id": tid})
+    assert r.status_code == 422 and "content-disposition" not in r.headers and "X-Injected" not in r.headers
+
+
+def test_pdf_filename_of_a_real_transaction_is_safe(client, normal_txn):
     pred = client.post("/predict", json=normal_txn).json()
-    r = client.post("/report/pdf", json=dict(pred, transaction_id=tid))
-    assert r.status_code == 200, r.text            # a non-Latin-1 id used to be a 500
-    disposition = r.headers["content-disposition"]
-    assert disposition.count('"') == 2 and "\n" not in disposition and "/" not in disposition and ";" not in disposition.split("filename=")[1]
-    assert "X-Injected" not in r.headers
+    r = client.post("/report/pdf", json={"transaction_id": pred["transaction_id"]})
+    assert r.headers["content-disposition"] == f'attachment; filename="fraud_report_{pred["transaction_id"]}.pdf"'
 
 
 # ---- F-08: batch limits --------------------------------------------------------------------------

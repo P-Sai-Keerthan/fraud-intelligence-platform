@@ -60,7 +60,8 @@ export async function predictBatch(file) {
 }
 
 export async function downloadReportPdf(prediction) {
-  const response = await api.post('/report/pdf', prediction, { responseType: 'blob' })
+  // only the id is sent: the server builds the report from the transaction it stored
+  const response = await api.post('/report/pdf', { transaction_id: prediction.transaction_id }, { responseType: 'blob' })
   const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
   const link = document.createElement('a')
   link.href = url

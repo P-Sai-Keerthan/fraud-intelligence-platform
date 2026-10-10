@@ -19,6 +19,7 @@ Endpoints:
 """
 
 import io
+import json
 import math
 import os
 import re
@@ -39,7 +40,7 @@ from .db import models as db_models
 from .schemas import (
     TransactionInput, PredictionResponse, ExplanationReason,
     CustomerHistoryResponse, TimelinePoint, CustomerProfile,
-    FraudRingsResponse, BatchPredictionResponse, MAX_ID_LENGTH, MAX_AMOUNT, MAX_FAILED_LOGINS,
+    FraudRingsResponse, BatchPredictionResponse, ReportRequest, MAX_ID_LENGTH, MAX_AMOUNT, MAX_FAILED_LOGINS,
 )
 from .inference_pipeline import get_pipeline
 from .db.migrations import ensure_schema
@@ -88,11 +89,21 @@ async def lifespan(app: FastAPI):
     yield
 
 
+def docs_config(env=None) -> dict:
+    """Interactive API documentation (/docs, /redoc, /openapi.json) is on by default for the local demo.
+    API_DOCS=off removes all three, for deployments that should not advertise the API surface."""
+    env = os.environ if env is None else env
+    if str(env.get("API_DOCS", "on")).strip().lower() in ("off", "0", "false", "no"):
+        return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+    return {}
+
+
 app = FastAPI(
     title="Explainable Fraud Intelligence Platform API",
     description="Behavioral Fraud DNA, real-time fraud detection, and explainable AI for banking transactions.",
     version="1.0.0",
     lifespan=lifespan,
+    **docs_config(),
 )
 
 # browser origins allowed to call this API directly -- configured with the
@@ -103,9 +114,30 @@ app.add_middleware(
     allow_origins=CORS_ALLOW_ORIGINS,
     # an allow-any-origin wildcard must not be combined with credentials
     allow_credentials="*" not in CORS_ALLOW_ORIGINS,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    # only what the dashboard uses (JSON and multipart POSTs, GETs); a wildcard here would also permit
+    # DELETE/PUT and arbitrary request headers from any allowed origin
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Accept"],
 )
+
+# a request may not declare a body larger than the batch limit plus multipart overhead. This is a cheap guard on the
+# declared Content-Length only; chunked bodies and real request-size limits belong at the reverse proxy (see
+# docs/deployment-security-requirements.md).
+MAX_REQUEST_BYTES_OVERHEAD = 100_000
+
+
+@app.middleware("http")
+async def security_defaults(request: Request, call_next):
+    declared = request.headers.get("content-length")
+    if declared is not None and declared.isdigit() and int(declared) > MAX_BATCH_BYTES + MAX_REQUEST_BYTES_OVERHEAD:
+        return JSONResponse(status_code=413, content={"detail": "Request body is too large."},
+                            headers={"X-Content-Type-Options": "nosniff"})
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    if request.url.path not in ("/docs", "/redoc", "/openapi.json"):
+        # customer histories, scores and reports must not be kept by browser or proxy caches
+        response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 def _json_safe(value):
@@ -166,6 +198,7 @@ def _persist_transaction(db: Session, result: dict):
         alert_level=result["alert_level"],
         model_set=result["model_set"],
         model_version=result["model_version"],
+        reasons_json=json.dumps(result["reasons"]),
     )
     db.add(db_txn)
 
@@ -198,6 +231,8 @@ def predict_transaction(txn: TransactionInput, db: Session = Depends(get_db)):
         alert_level=result["alert_level"],
         similarity_pct=result["similarity_pct"],
         deviation_pct=result["deviation_pct"],
+        similarity_status=result["similarity_status"],
+        history_transactions=result["history_transactions"],
         reasons=[ExplanationReason(**r) for r in result["reasons"]],
     )
 
@@ -554,17 +589,36 @@ def _provenance(transaction_id: str, db: Session) -> dict:
     return provenance
 
 
+def _stored_prediction(row) -> dict:
+    """The report's input, built only from the stored transaction (never from the request)."""
+    return {
+        "transaction_id": row.transaction_id, "customer_id": row.customer_id, "timestamp": row.timestamp,
+        "amount": row.amount, "merchant_category": row.merchant_category, "device_id": row.device_id,
+        "location": row.location, "failed_logins_24h": row.failed_logins_24h or 0,
+        "risk_score": row.risk_score, "fraud_probability": row.fraud_probability, "alert_level": row.alert_level,
+        "similarity_pct": row.similarity_pct, "deviation_pct": row.deviation_pct,
+        # None = the explanation was never stored (older row); [] = stored, nothing flagged
+        "reasons": None if row.reasons_json is None else json.loads(row.reasons_json),
+    }
+
+
 @app.post("/report/pdf")
-def get_pdf_report(prediction: PredictionResponse, db: Session = Depends(get_db)):
-    """Generate a downloadable PDF explaining a single prediction result --
-    takes exactly what POST /predict returns, so the frontend can request
-    a report for whatever is currently on screen. The model set named in the
-    report (and its risk-score wording) is the one recorded with the
-    transaction in the database, not the currently loaded one."""
-    pdf_bytes = build_pdf_report(prediction.model_dump(), _provenance(prediction.transaction_id, db))
+def get_pdf_report(request: ReportRequest, db: Session = Depends(get_db)):
+    """Generate a downloadable PDF explaining one scored transaction.
+
+    The report is produced ONLY from the transaction stored by POST /predict (or the batch endpoint): the
+    request supplies just the transaction id, and scores, alert level, similarity and explanation printed in the
+    report are read from the database, so a client cannot alter them (audit finding R-04). Extra fields in the
+    body, such as a full /predict response, are ignored. An unknown id returns 404. The model set named in the
+    report is the one recorded with the transaction, not the currently loaded one."""
+    row = db.get(db_models.Transaction, request.transaction_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail=f"No scored transaction '{request.transaction_id}' was found; "
+                                                    "reports are only available for transactions that were scored and saved.")
+    pdf_bytes = build_pdf_report(_stored_prediction(row), _provenance(row.transaction_id, db))
     # the id comes from the client: keep only filename-safe characters, so a quote, newline or
     # non-Latin-1 character cannot break or inject into the Content-Disposition header (F-07)
-    safe_id = re.sub(r"[^A-Za-z0-9_.-]", "_", prediction.transaction_id)[:64] or "transaction"
+    safe_id = re.sub(r"[^A-Za-z0-9_.-]", "_", row.transaction_id)[:64] or "transaction"
     filename = f"fraud_report_{safe_id}.pdf"
     return StreamingResponse(
         io.BytesIO(pdf_bytes),

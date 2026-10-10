@@ -78,7 +78,7 @@ from .model_sets import load_model_set
 from .models.dnn_model import alert_level_from_probability
 from .models.lstm_model import risk_probability_to_score
 from .models.shap_explainer import FraudExplainer
-from .models.similarity import compute_similarity
+from .models.similarity import behavioral_similarity
 
 # every model was trained on transactions with at least this many earlier ones
 MIN_PRIOR_TRANSACTIONS = SEQUENCE_LENGTH
@@ -377,7 +377,6 @@ class FraudIntelligencePipeline:
         current_point_features = recomputed.iloc[position][FEATURE_COLUMNS].values.astype(np.float32)
 
         # the customer's transactions strictly before this one, in time order
-        n_features = len(FEATURE_COLUMNS)
         prior_features = recomputed.iloc[:position][FEATURE_COLUMNS].values.astype(np.float32)
         n_prior = len(prior_features)
         cold_start = n_prior < MIN_PRIOR_TRANSACTIONS
@@ -438,13 +437,8 @@ class FraudIntelligencePipeline:
             reasons = []
 
         # ---- Behavioral similarity vs this customer's own historical profile ----
-        if len(prior_features) > 0:
-            hist_mean = prior_features.mean(axis=0)
-            hist_std = prior_features.std(axis=0) if len(prior_features) > 1 else np.ones(n_features)
-        else:
-            hist_mean = np.zeros(n_features)
-            hist_std = np.ones(n_features)
-        similarity = compute_similarity(current_point_features, hist_mean, hist_std)
+        # None (not 0 or 100) when the customer has too few earlier transactions to define a baseline
+        similarity = behavioral_similarity(current_point_features, prior_features)
 
         # persist updated history in memory so the NEXT transaction for this
         # customer builds on top of it
@@ -464,6 +458,8 @@ class FraudIntelligencePipeline:
             "alert_level": alert_level,
             "similarity_pct": similarity["similarity_pct"],
             "deviation_pct": similarity["deviation_pct"],
+            "similarity_status": similarity["similarity_status"],
+            "history_transactions": similarity["history_transactions"],
             "reasons": reasons,
             # provenance, persisted with the transaction (not part of the /predict response)
             "model_set": self.model_set.name,

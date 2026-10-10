@@ -38,7 +38,7 @@ real_candidates = pytest.mark.skipif(not HAVE_REAL, reason="trained v2 candidate
 
 PREDICT_KEYS = {"transaction_id", "customer_id", "timestamp", "amount", "merchant_category", "device_id",
                 "location", "failed_logins_24h", "risk_score", "fraud_probability", "alert_level",
-                "similarity_pct", "deviation_pct", "reasons"}
+                "similarity_pct", "deviation_pct", "similarity_status", "history_transactions", "reasons"}
 ALERT_LEVELS = {"Low Risk", "Medium Risk", "High Risk", "Critical Risk"}
 
 

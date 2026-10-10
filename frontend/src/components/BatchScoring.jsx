@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { predictBatch } from '../api'
 import { SEVERITY_ORDER, severityOf } from '../severity'
 import { Badge, Card, EmptyState, ErrorState, Icon, SeverityBadge, Spinner, StatTile } from './ui'
+import { formatApiError } from '../apiError'
 
 const REQUIRED_COLUMNS = ['customer_id', 'amount', 'merchant_category']
 const OPTIONAL_COLUMNS = ['device_id', 'location', 'failed_logins_24h']
@@ -133,11 +134,7 @@ export default function BatchScoring({ riskColumn = 'Risk Score' }) {
       const data = await predictBatch(file)
       setResult(data)
     } catch (err) {
-      setError(
-        err?.response?.data?.detail
-          ? String(err.response.data.detail)
-          : 'Batch scoring failed. Is the backend running?'
-      )
+      setError(formatApiError(err, 'Batch scoring failed. Is the backend running?'))
     } finally {
       setLoading(false)
     }

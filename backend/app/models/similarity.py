@@ -20,6 +20,17 @@ contribution comparable and the result behaves intuitively:
 
 import numpy as np
 
+from ..config import SEQUENCE_LENGTH
+
+# A baseline (mean and standard deviation of the customer's earlier feature vectors) needs enough
+# earlier transactions to mean anything. Below this many, the score is NOT computed: comparing a
+# transaction with an empty or one-row baseline (zeros / forced unit std) produced values such as
+# "98 % deviation" for an ordinary first purchase (audit finding R-05). The constant equals the
+# cold-start threshold used by the rest of the pipeline (MIN_PRIOR_TRANSACTIONS = SEQUENCE_LENGTH).
+MIN_HISTORY_FOR_SIMILARITY = SEQUENCE_LENGTH
+STATUS_OK = "ok"
+STATUS_INSUFFICIENT_HISTORY = "insufficient_history"
+
 # controls how fast similarity decays with average z-deviation; larger DECAY_K
 # = more forgiving (slower decay). Tuned so ~2 std devs of average deviation
 # lands around 50% similarity.
@@ -52,6 +63,24 @@ def compute_similarity(
         "deviation_pct": deviation_pct,
         "avg_z_deviation": round(avg_abs_deviation, 3),
     }
+
+
+def behavioral_similarity(current_vector, prior_features: np.ndarray) -> dict:
+    """Similarity of the current transaction to the customer's own earlier transactions
+    (`prior_features`: one row per earlier transaction, strictly before the current one).
+
+    Returns {"similarity_pct", "deviation_pct", "similarity_status", "history_transactions"}.
+    With fewer than MIN_HISTORY_FOR_SIMILARITY earlier transactions the two scores are None
+    and the status is "insufficient_history": a missing score is never replaced by 0 or 100.
+    The formula (compute_similarity) is unchanged."""
+    prior = np.asarray(prior_features, dtype=np.float64)
+    n_prior = int(len(prior))
+    if n_prior < MIN_HISTORY_FOR_SIMILARITY:
+        return {"similarity_pct": None, "deviation_pct": None,
+                "similarity_status": STATUS_INSUFFICIENT_HISTORY, "history_transactions": n_prior}
+    result = compute_similarity(current_vector, prior.mean(axis=0), prior.std(axis=0))
+    return {"similarity_pct": result["similarity_pct"], "deviation_pct": result["deviation_pct"],
+            "similarity_status": STATUS_OK, "history_transactions": n_prior}
 
 
 def historical_profile_for_customer(feat_df, customer_id: str, feature_columns, up_to_index=None):

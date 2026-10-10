@@ -16,6 +16,7 @@ import {
   predictTransaction, getCustomerHistory, getCustomerProfile, listCustomers, downloadReportPdf, getModelInfo, getHealth,
 } from './api'
 import { scoreWording } from './modelWording'
+import { formatApiError } from './apiError'
 
 const TABS = [
   { key: 'live', label: 'Live Scan', icon: 'scan' },
@@ -180,11 +181,7 @@ export default function App() {
       // the history count in the profile grows with every scan
       getCustomerProfile(payload.customer_id).then(setProfile).catch(() => {})
     } catch (err) {
-      setError(
-        err?.response?.data?.detail
-          ? JSON.stringify(err.response.data.detail)
-          : 'Prediction request failed. Is the backend running?'
-      )
+      setError(formatApiError(err, 'Prediction request failed. Is the backend running?'))
     } finally {
       setLoading(false)
     }
@@ -255,7 +252,10 @@ export default function App() {
                   />
                 </Card>
                 <Card>
-                  <SimilarityMeter similarityPct={prediction?.similarity_pct} deviationPct={prediction?.deviation_pct} loading={loading} />
+                  <SimilarityMeter
+                    similarityPct={prediction?.similarity_pct} deviationPct={prediction?.deviation_pct}
+                    similarityStatus={prediction?.similarity_status} historyTransactions={prediction?.history_transactions} loading={loading}
+                  />
                 </Card>
               </div>
 

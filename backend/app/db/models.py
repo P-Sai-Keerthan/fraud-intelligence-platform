@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, Integer, DateTime, Boolean
+from sqlalchemy import Column, String, Float, Integer, DateTime, Boolean, Text
 from datetime import datetime, timezone
 
 from .database import Base
@@ -25,6 +25,9 @@ class Transaction(Base):
     deviation_pct = Column(Float)
     alert_level = Column(String)                 # Low / Medium / High / Critical
     is_fraud_actual = Column(Boolean, nullable=True)  # ground truth, if known (for demo/eval)
+    # the SHAP reasons returned with the score, as JSON text, so a report can be produced from stored values
+    # only. NULL for rows scored before this column existed (their explanation was never stored).
+    reasons_json = Column(Text, nullable=True)
 
     # provenance (4C-2f-2): which model set / weights scored this row. NULL for
     # rows scored before provenance was recorded -- never back-filled, because

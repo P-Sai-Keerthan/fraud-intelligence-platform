@@ -38,6 +38,7 @@ export default function BehavioralAnalysis({ profile, prediction }) {
   const similarity = prediction?.similarity_pct
   const deviation = prediction?.deviation_pct
   const hasSplit = similarity != null && deviation != null
+  const insufficient = prediction?.similarity_status === 'insufficient_history' && !hasSplit
 
   return (
     <div>
@@ -62,7 +63,7 @@ export default function BehavioralAnalysis({ profile, prediction }) {
           </span>
         </div>
         <div className="flex h-3 w-full" style={{ gap: 2 }} role="img"
-          aria-label={hasSplit ? `Similarity ${similarity.toFixed(1)} percent, deviation ${deviation.toFixed(1)} percent` : 'No scan yet'}>
+          aria-label={hasSplit ? `Similarity ${similarity.toFixed(1)} percent, deviation ${deviation.toFixed(1)} percent` : insufficient ? 'Not enough history for a behavioural baseline' : 'No scan yet'}>
           {hasSplit ? (
             <>
               <div style={{ width: `${similarity}%`, background: 'var(--brand)', borderRadius: '4px 0 0 4px', transition: 'width 0.5s ease', minWidth: similarity > 0 ? 3 : 0 }} />
@@ -85,6 +86,12 @@ export default function BehavioralAnalysis({ profile, prediction }) {
           </span>
         </div>
       </div>
+      {insufficient && (
+        <p className="text-[11px] mt-3" data-testid="behavioral-insufficient" style={{ color: 'var(--text-muted)' }}>
+          Not enough history for a behavioural match: this customer has {prediction.history_transactions ?? 0} earlier
+          transaction{prediction.history_transactions === 1 ? '' : 's'} and at least 10 are needed. No score is shown rather than a misleading one.
+        </p>
+      )}
       {!prediction && (
         <p className="text-[11px] mt-3" style={{ color: 'var(--text-muted)' }}>Scan a transaction to compare it with this baseline.</p>
       )}

@@ -9,6 +9,10 @@ from pydantic import BaseModel, Field, StringConstraints, field_validator
 MAX_AMOUNT = 1_000_000_000.0          # 100 crore INR; far above any amount in the data (max ~1e6)
 MAX_FAILED_LOGINS = 10_000
 MAX_ID_LENGTH = 64
+# Back-dated transactions are a supported feature, but a timestamp of year 1 or 9999 is a client error, and a far-future
+# transaction would become the "newest" anchor of the customer's home-device window (audit finding R-06).
+MIN_TIMESTAMP = datetime(2000, 1, 1)
+MAX_TIMESTAMP = datetime(2100, 1, 1)
 
 # identifiers and labels: surrounding whitespace is removed, blank values and over-long values are rejected
 ShortText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_ID_LENGTH)]
@@ -22,14 +26,16 @@ class TransactionInput(BaseModel):
     location: ShortText = Field(..., example="Lagos")
     failed_logins_24h: int = Field(0, ge=0, le=MAX_FAILED_LOGINS, example=3)
     timestamp: Optional[datetime] = Field(
-        None, description="Defaults to now if omitted. A timezone-aware value is converted to UTC; histories are stored without a timezone.")
+        None, description="Defaults to now if omitted. A timezone-aware value is converted to UTC; histories are stored without a timezone. Must lie between 2000-01-01 and 2100-01-01.")
 
     @field_validator("timestamp")
     @classmethod
     def _timestamp_to_naive_utc(cls, value):
         # the stored histories use naive timestamps: a tz-aware value (e.g. "...Z") made scoring fail with a 500
         if value is not None and value.tzinfo is not None:
-            return value.astimezone(timezone.utc).replace(tzinfo=None)
+            value = value.astimezone(timezone.utc).replace(tzinfo=None)
+        if value is not None and not (MIN_TIMESTAMP <= value < MAX_TIMESTAMP):
+            raise ValueError(f"timestamp must be between {MIN_TIMESTAMP.date()} and {MAX_TIMESTAMP.date()}")
         return value
 
 
@@ -54,10 +60,19 @@ class PredictionResponse(BaseModel):
     fraud_probability: float = Field(..., description="0-100, DNN fraud score (capped at 99.9); a model score, not a calibrated probability")
     alert_level: str = Field(..., description="Low Risk / Medium Risk / High Risk / Critical Risk")
 
-    similarity_pct: float = Field(..., description="0-100, how closely this matches the customer's normal behavior")
-    deviation_pct: float
+    similarity_pct: Optional[float] = Field(None, description="0-100, how closely this matches the customer's normal behavior. null (never 0 or 100) when similarity_status is 'insufficient_history'")
+    deviation_pct: Optional[float] = Field(None, description="100 - similarity_pct; null together with similarity_pct")
+    similarity_status: str = Field("ok", description="'ok', or 'insufficient_history' when the customer has fewer than 10 earlier transactions and no baseline exists")
+    history_transactions: int = Field(0, ge=0, description="number of the customer's earlier transactions the baseline is built from")
 
     reasons: List[ExplanationReason] = Field(default_factory=list, description="Top SHAP-derived reasons, empty if transaction looks normal")
+
+
+class ReportRequest(BaseModel):
+    """Body of POST /report/pdf. Only the transaction id is used: every value printed in the report is read
+    from the stored transaction. Any other field a client sends (for example a whole /predict response, which
+    the dashboard used to send) is ignored."""
+    transaction_id: Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_.-]{1,64}$")]
 
 
 class FraudRing(BaseModel):

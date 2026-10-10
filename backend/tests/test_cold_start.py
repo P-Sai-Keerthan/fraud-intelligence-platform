@@ -172,4 +172,4 @@ def test_api_schema_unchanged_for_cold_start(client):
     assert "history_context" not in body
     assert set(body) == {"transaction_id", "customer_id", "timestamp", "amount", "merchant_category", "device_id",
                          "location", "failed_logins_24h", "risk_score", "fraud_probability", "alert_level",
-                         "similarity_pct", "deviation_pct", "reasons"}
+                         "similarity_pct", "deviation_pct", "similarity_status", "history_transactions", "reasons"}

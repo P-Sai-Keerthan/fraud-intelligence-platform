@@ -1,7 +1,23 @@
 import { ScoreRing } from './RiskGauge'
 
-export default function SimilarityMeter({ similarityPct, deviationPct, loading = false }) {
+// similarityStatus is 'ok' or 'insufficient_history' (the customer has too few earlier transactions to
+// define a baseline). A missing score is never drawn as 0 %, 100 % or a ring: it gets its own state.
+export default function SimilarityMeter({ similarityPct, deviationPct, similarityStatus, historyTransactions, loading = false }) {
   const hasData = similarityPct != null
+  if (similarityStatus === 'insufficient_history' && !hasData) {
+    return (
+      <div className="flex flex-col items-center text-center h-full" data-testid="similarity-insufficient">
+        <div className="eyebrow self-start">Behavioral Similarity</div>
+        <div className="my-3 grid place-items-center rounded-full" style={{ width: 132, height: 132, border: '2px dashed var(--border-strong)', opacity: loading ? 0.45 : 1 }}>
+          <span className="text-[15px]" style={{ fontWeight: 600, color: 'var(--text-secondary)' }}
+            aria-label="Behavioral similarity not available: not enough history">Not enough history</span>
+        </div>
+        <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+          No baseline yet: this customer has {historyTransactions ?? 0} earlier transaction{historyTransactions === 1 ? '' : 's'}; at least 10 are needed.
+        </p>
+      </div>
+    )
+  }
   return (
     <div className="flex flex-col items-center text-center h-full">
       <div className="eyebrow self-start">Behavioral Similarity</div>
