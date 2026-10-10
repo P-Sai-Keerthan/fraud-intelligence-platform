@@ -1,0 +1,30 @@
+[pipeline] Loading trained models...
+[pipeline] model set 'v2_lstm_rf_seed14' from <scratch>/orig/backend/models/candidates_downstream/v2/seed_14/lstm_random_forest; LSTM risk score -> random forest; 
+[pipeline] Loading seed customer history for behavioral profiles...
+[pipeline] Loaded history for 500 customers.
+[startup] Restored 0 previously scored transaction(s) from the database.
+== 1. 500 on a huge integer: does the in-memory history get ahead of the database?
+   seed rows 97 | memory rows 97 | db rows 0
+   POST failed_logins_24h=10**30 -> 500
+   after: memory rows 98 (seed 97 ) | db rows 0
+   next normal POST -> 200 | memory rows 99 | db rows 1
+   phantom row present in memory history (failed_logins_24h > 1e18): True
+== 2. amount=Infinity: stored, and what happens to that customer afterwards?
+   POST amount=Infinity -> 200 | body amount: None
+   stored amount in DB: inf
+   next normal POST #1 -> 200 {"transaction_id":"TXN_29A42F540B","customer_id":"CUST_0012","timestamp":"2026-10-10T18:55:18.274430","amount":1500.0,"m
+   next normal POST #2 -> 200 {"transaction_id":"TXN_E223F41F8C","customer_id":"CUST_0012","timestamp":"2026-10-10T18:55:18.817245","amount":1500.0,"m
+   history amount_zscore values (last 3): ['10.0', 'nan', 'nan']
+   -- simulate a server restart: rebuild histories from the database
+   restore ok, replayed 4 rows
+   POST after restore -> 200 {"transaction_id":"TXN_F93E0B805C","customer_id":"CUST_0012","timestamp":"2026-10-10T18:55:19.743308","amount":1500.0,"m
+   GET history -> 200 {"customer_id":"CUST_0012","n_transactions":4,"timeline":[{"transaction_id":"TXN_F93E0B805C","timestamp":"2026-10-10T18:55:19.743308","risk_
+== 3. timestamp extremes
+   0001-01-01T00:00:00 -> 200 
+   9999-12-31T23:59:59 -> 200 
+   2262-04-12T00:00:00 -> 200 
+   1677-01-01T00:00:00 -> 200 
+== 4. a single normal /predict, timed (machine may be busy with the test suite)
+   5 sequential /predict calls (s): [0.45, 0.46, 0.45, 0.44, 0.47]
+== 5. model-info thresholds (what the alert bands are)
+   {"alert_bands": {"Low Risk": "fraud_probability < 25", "Medium Risk": "25 <= fraud_probability < 50", "High Risk": "50 <= fraud_probability < 80", "Critical Risk": "fraud_probability >= 80"}, "alert_bands_status": "legacy fixed bands, applied by /predict to

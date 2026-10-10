@@ -1,0 +1,146 @@
+Sat Oct 10 18:21:37 UTC 2026
+........................................................................ [ 11%]
+........................................................................ [ 23%]
+........................................................................ [ 35%]
+........................................................................ [ 46%]
+........................................................................ [ 58%]
+...........s..............sss........................................... [ 70%]
+........................................................................ [ 81%]
+........................................................................ [ 93%]
+.......................................                                  [100%]
+=============================== warnings summary ===============================
+../../../..<scratch>/venv/lib/python3.13/site-packages/fastapi/testclient.py:1
+  <scratch>/venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+tests/test_backdated.py: 25 warnings
+tests/test_batch.py: 15 warnings
+tests/test_cold_start.py: 61 warnings
+tests/test_concurrency.py: 3 warnings
+tests/test_fraud_rings.py: 4 warnings
+tests/test_history.py: 6 warnings
+tests/test_holdout.py: 30 warnings
+tests/test_home_device.py: 1 warning
+tests/test_model_sets.py: 13 warnings
+tests/test_observability.py: 8 warnings
+tests/test_persistence.py: 12 warnings
+tests/test_predict.py: 7 warnings
+tests/test_report.py: 2 warnings
+tests/test_seed14_model_set.py: 9 warnings
+  <scratch>/venv/lib/python3.13/site-packages/keras/src/models/functional.py:259: UserWarning: The structure of `inputs` doesn't match the expected structure.
+  Expected: transaction_features
+  Received: inputs=['Tensor(shape=(1, 10))']
+    warnings.warn(msg)
+
+tests/test_backdated.py: 1 warning
+tests/test_cold_start.py: 1 warning
+tests/test_holdout.py: 2 warnings
+tests/test_model_sets.py: 4 warnings
+tests/test_observability.py: 2 warnings
+tests/test_seed14_model_set.py: 3 warnings
+  <scratch>/venv/lib/python3.13/site-packages/keras/src/models/functional.py:259: UserWarning: The structure of `inputs` doesn't match the expected structure.
+  Expected: transaction_features
+  Received: inputs=['Tensor(shape=(50, 10))']
+    warnings.warn(msg)
+
+tests/test_cold_start.py: 43 warnings
+tests/test_holdout.py: 16 warnings
+tests/test_model_sets.py: 9 warnings
+tests/test_observability.py: 4 warnings
+  <scratch>/venv/lib/python3.13/site-packages/keras/src/models/functional.py:259: UserWarning: The structure of `inputs` doesn't match the expected structure.
+  Expected: transaction_features
+  Received: inputs=['Tensor(shape=(1, 9))']
+    warnings.warn(msg)
+
+tests/test_cold_start.py::test_cold_start_handling[0-v2_dnn_only]
+tests/test_holdout.py::test_scoring_matches_the_live_pipeline[v2_dnn_only]
+tests/test_model_sets.py::test_dnn_only_does_not_need_lstm_files
+tests/test_model_sets.py::test_dnn_only_scoring_matches_manual_preprocessing
+tests/test_model_sets.py::test_switching_model_sets_does_not_modify_artifacts
+tests/test_observability.py::test_candidate_provenance[v2_dnn_only]
+tests/test_observability.py::test_pdf_v2_dnn_only_never_claims_lstm[real]
+  <scratch>/venv/lib/python3.13/site-packages/keras/src/models/functional.py:259: UserWarning: The structure of `inputs` doesn't match the expected structure.
+  Expected: transaction_features
+  Received: inputs=['Tensor(shape=(50, 9))']
+    warnings.warn(msg)
+
+tests/test_model_sets.py::test_explicit_v2_dnn_lstm_via_environment
+tests/test_model_sets.py::test_dnn_lstm_scoring_matches_manual_preprocessing
+tests/test_model_sets.py::test_manifest_mismatch[dnn_lstm-v2_dnn_lstm-<lambda>-LSTM weights do not match]
+tests/test_model_sets.py::test_lstm_input_shape_mismatch
+tests/test_model_sets.py::test_switching_model_sets_does_not_modify_artifacts
+  <scratch>/venv/lib/python3.13/site-packages/keras/src/saving/saving_lib.py:869: UserWarning: Skipping variable loading for optimizer 'adam_26', because it has 22 variables whereas the saved optimizer has 2 variables. 
+    saveable.load_own_variables(store)
+
+tests/test_model_sets.py::test_explicit_v2_dnn_lstm_via_environment
+tests/test_model_sets.py::test_dnn_lstm_scoring_matches_manual_preprocessing
+tests/test_model_sets.py::test_manifest_mismatch[dnn_lstm-v2_dnn_lstm-<lambda>-LSTM weights do not match]
+tests/test_model_sets.py::test_switching_model_sets_does_not_modify_artifacts
+  <scratch>/venv/lib/python3.13/site-packages/keras/src/saving/saving_lib.py:869: UserWarning: Skipping variable loading for optimizer 'adam_25', because it has 22 variables whereas the saved optimizer has 2 variables. 
+    saveable.load_own_variables(store)
+
+tests/test_model_sets.py::test_explicit_v2_dnn_only_via_environment
+tests/test_model_sets.py::test_dnn_only_does_not_need_lstm_files
+tests/test_model_sets.py::test_dnn_lstm_scoring_matches_manual_preprocessing
+tests/test_model_sets.py::test_manifest_mismatch[dnn_only-v2_dnn_only-<lambda>-DNN weights do not match]
+tests/test_model_sets.py::test_scaler_and_background_shape_mismatch[dnn_feature_mean.npy-shape0-dnn mean has shape]
+tests/test_model_sets.py::test_scaler_and_background_shape_mismatch[shap_background.npy-shape1-SHAP background has shape]
+tests/test_model_sets.py::test_switching_model_sets_does_not_modify_artifacts
+  <scratch>/venv/lib/python3.13/site-packages/keras/src/saving/saving_lib.py:869: UserWarning: Skipping variable loading for optimizer 'adam_27', because it has 22 variables whereas the saved optimizer has 2 variables. 
+    saveable.load_own_variables(store)
+
+tests/test_model_sets.py::test_model_input_shape_mismatch
+  <scratch>/venv/lib/python3.13/site-packages/keras/src/saving/saving_lib.py:869: UserWarning: Skipping variable loading for optimizer 'adam_28', because it has 22 variables whereas the saved optimizer has 2 variables. 
+    saveable.load_own_variables(store)
+
+tests/test_model_sets.py::test_lstm_input_shape_mismatch
+  <scratch>/venv/lib/python3.13/site-packages/keras/src/saving/saving_lib.py:869: UserWarning: Skipping variable loading for optimizer 'adam_29', because it has 22 variables whereas the saved optimizer has 2 variables. 
+    saveable.load_own_variables(store)
+
+tests/test_model_sets.py::test_shap_values_are_attributed_to_the_right_feature
+  <scratch>/venv/lib/python3.13/site-packages/keras/src/models/functional.py:259: UserWarning: The structure of `inputs` doesn't match the expected structure.
+  Expected: keras_tensor_1388
+  Received: inputs=['Tensor(shape=(1, 9))']
+    warnings.warn(msg)
+
+tests/test_model_sets.py::test_shap_values_are_attributed_to_the_right_feature
+  <scratch>/venv/lib/python3.13/site-packages/keras/src/models/functional.py:259: UserWarning: The structure of `inputs` doesn't match the expected structure.
+  Expected: keras_tensor_1388
+  Received: inputs=['Tensor(shape=(50, 9))']
+    warnings.warn(msg)
+
+tests/test_observability.py::test_candidate_provenance[v2_dnn_lstm]
+  <scratch>/venv/lib/python3.13/site-packages/keras/src/saving/saving_lib.py:869: UserWarning: Skipping variable loading for optimizer 'adam_46', because it has 22 variables whereas the saved optimizer has 2 variables. 
+    saveable.load_own_variables(store)
+
+tests/test_observability.py::test_candidate_provenance[v2_dnn_lstm]
+  <scratch>/venv/lib/python3.13/site-packages/keras/src/saving/saving_lib.py:869: UserWarning: Skipping variable loading for optimizer 'adam_45', because it has 22 variables whereas the saved optimizer has 2 variables. 
+    saveable.load_own_variables(store)
+
+tests/test_observability.py::test_candidate_provenance[v2_dnn_lstm]
+  <scratch>/venv/lib/python3.13/site-packages/keras/src/saving/saving_lib.py:869: UserWarning: Skipping variable loading for optimizer 'adam_47', because it has 22 variables whereas the saved optimizer has 2 variables. 
+    saveable.load_own_variables(store)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================= slowest 15 durations =============================
+117.21s call     tests/test_final_holdout.py::test_end_to_end_on_samples
+107.30s setup    tests/test_v2_analysis.py::test_scores_cover_every_window_and_match_the_report
+90.25s call     tests/test_selection.py::test_end_to_end_on_a_sample
+50.39s setup    tests/test_multiseed.py::test_a_trained_seed_is_never_overwritten
+46.56s setup    tests/test_compare_candidates.py::test_identity_and_row_counts
+26.87s setup    tests/test_synthetic_v2_sanity.py::test_sample_has_no_anomalies
+24.88s setup    tests/test_synthetic_v2.py::test_columns_and_order
+24.34s setup    tests/test_multiseed.py::test_report
+20.01s setup    tests/test_dataset_versions.py::test_v2_model_frame_has_no_metadata
+19.35s setup    tests/test_candidates.py::test_candidate_files
+18.23s setup    tests/test_v2_analysis.py::test_thresholds_reproduce_the_report
+17.09s call     tests/test_multiseed.py::test_the_same_seed_gives_the_same_weights
+15.31s setup    tests/test_holdout.py::test_alerts_use_only_the_fixed_cutoffs
+15.27s call     tests/test_new_customer_generator.py::test_extension_adds_no_transaction_column_and_no_model_feature
+14.96s call     tests/test_multiseed.py::test_report
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_model_sets.py:560: v2 evaluation scores / v2 data are not present locally
+SKIPPED [3] tests/test_multiseed.py:218: data/v2 has not been generated on this machine
+611 passed, 4 skipped, 312 warnings in 844.64s (0:14:04)
+exit code: 0
+Sat Oct 10 18:36:02 UTC 2026

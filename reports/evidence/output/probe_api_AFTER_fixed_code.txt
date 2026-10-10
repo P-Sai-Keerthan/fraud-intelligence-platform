@@ -1,0 +1,59 @@
+[pipeline] Loading trained models...
+[pipeline] model set 'v2_lstm_rf_seed14' from /home/user/fraud-intelligence-platform/backend/models/candidates_downstream/v2/seed_14/lstm_random_forest; LSTM risk score -> random forest; classifier inputs ['amount_zscore', 'hour_is_unusual', 'is_new_device', '
+[pipeline] Loading seed customer history for behavioral profiles...
+[pipeline] Loaded history for 500 customers.
+[startup] Restored 0 previously scored transaction(s) from the database.
+model_set: v2_lstm_rf_seed14 | customers in memory: 500
+== A. documented scenarios (README curl + dashboard quick scenarios)
+[200] README suspicious example
+    alert: Critical Risk | risk_score 15.49 | fraud_score 89.46 | similarity 0.26 | reasons: ['Foreign Location', 'New Device', 'Multiple Failed Logins', 'Amount Far Above Average']
+    profile: {'customer_id': 'CUST_0001', 'home_device': 'DEV_0001_A', 'home_location': 'Pune', 'n_transactions': 107}
+[200] typical purchase -> alert Low Risk fraud_score 6.01 similarity 56.83 reasons ['Elevated Behavioral Risk Score', 'High Transaction Velocity', 'Unusual Transaction Time', 'Unusual Merchant Category']
+== B. input-validation probes on /predict
+[200] tz-aware timestamp (ISO 'Z')  -> {"transaction_id":"TXN_0CB6368C32","customer_id":"CUST_0002","timestamp":"2026-07-01T10:00:00","amount":1500.0,"merchant_category":"grocery","device_id":"DEV_0001_A","location":"Mumbai","failed_logins_24h":0,"risk_score":
+    CUST_0002 db rows 0 -> 1 | memory rows 266 -> 267
+[200] tz-aware timestamp (+05:30)  -> {"transaction_id":"TXN_0B2730C419","customer_id":"CUST_0002","timestamp":"2026-07-01T04:30:00","amount":1500.0,"merchant_category":"grocery","device_id":"DEV_0001_A","location":"Mumbai","failed_logins_24h":0,"risk_score":3
+[422] amount = Infinity (non-standard JSON)  -> {"detail":[{"type":"finite_number","loc":["body","amount"],"msg":"Input should be a finite number","input":"inf"}]}
+    CUST_0003 db rows 0 | memory rows 77
+[422] amount = NaN  -> {"detail":[{"type":"finite_number","loc":["body","amount"],"msg":"Input should be a finite number","input":"nan"}]}
+[422] amount = 1e308  -> {"detail":[{"type":"less_than_equal","loc":["body","amount"],"msg":"Input should be less than or equal to 1000000000","input":1e+308}]}
+    CUST_0005 db rows 0 | memory rows 243
+[422] failed_logins_24h = 10**30  -> {"detail":[{"type":"less_than_equal","loc":["body","failed_logins_24h"],"msg":"Input should be less than or equal to 10000","input":1000000000000000000000000000000}]}
+    CUST_0006 db rows 0 | memory rows 97
+[422] customer_id = '' (empty)  -> {"detail":[{"type":"string_too_short","loc":["body","customer_id"],"msg":"String should have at least 1 character","input":""}]}
+[422] customer_id = whitespace  -> {"detail":[{"type":"string_too_short","loc":["body","customer_id"],"msg":"String should have at least 1 character","input":"   "}]}
+[422] customer_id 100,000 chars  -> {"detail":[{"type":"string_too_long","loc":["body","customer_id"],"msg":"String should have at most 64 characters","input":"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+[422] merchant_category = ''  -> {"detail":[{"type":"string_too_short","loc":["body","merchant_category"],"msg":"String should have at least 1 character","input":""}]}
+[422] device_id/location empty strings  -> {"detail":[{"type":"string_too_short","loc":["body","device_id"],"msg":"String should have at least 1 character","input":""},{"type":"string_too_short","loc":["body","location"],"msg":"String should have at least 1 ch
+[200] timestamp year 1900  -> {"transaction_id":"TXN_FE4A36DCDA","customer_id":"CUST_0001","timestamp":"1900-01-01T00:00:00","amount":1500.0,"merchant_category":"grocery","device_id":"DEV_0001_A","location":"Mumbai","failed_logins_24h":0,"risk_score":24.84,"fr
+[200] timestamp year 2999  -> {"transaction_id":"TXN_78A5211B40","customer_id":"CUST_0001","timestamp":"2999-01-01T00:00:00","amount":1500.0,"merchant_category":"grocery","device_id":"DEV_0001_A","location":"Mumbai","failed_logins_24h":0,"risk_score":98.99,"fr
+[422] malformed JSON  -> {"detail":[{"type":"json_invalid","loc":["body",1],"msg":"JSON decode error","input":{}}]}
+[422] amount non-numeric string  -> {"detail":[{"type":"float_parsing","loc":["body","amount"],"msg":"Input should be a valid number, unable to parse string as a number","input":"12abc"}]}
+[422] amount negative  -> {"detail":[{"type":"greater_than","loc":["body","amount"],"msg":"Input should be greater than 0","input":-5}]}
+    customers now known: 500 (started with 500 seed customers)
+== C. query-parameter bounds
+[422] GET /customers?limit=-1
+[422] GET /customers?limit=100000000
+[422] GET history?limit=-1
+[404] GET profile for unknown id  -> {"detail":"No transaction history for 'NOPE', so there is no home device or city to report."}
+[422] GET fraud-rings?min_customers=0
+== D. PDF endpoint
+[200] PDF for a real prediction: 4478 bytes, type application/pdf
+[200] forged scores for a REAL transaction_id accepted: True
+[200] transaction_id with non-latin-1 chars
+[200] transaction_id containing a quote -> Content-Disposition: attachment; filename="fraud_report_TXN___evil_1.pdf"
+[200] transaction_id 5000 chars
+== E. batch upload
+[200] header only (0 rows)  -> {"count":0,"summary":{"Low Risk":0,"Medium Risk":0,"High Risk":0,"Critical Risk":0},"results":[]}
+[200] UTF-8 BOM header  -> {"count":1,"summary":{"Low Risk":1,"Medium Risk":0,"High Risk":0,"Critical Risk":0},"results":[{"transaction_id":"TXN_AB05F0477E","customer_id":"CUST_0010","amount":100.0,"risk_score":19.62,"fraud_probability":0.05,"alert_level":"
+[400] capitalised column names  -> {"detail":"CSV is missing required columns: ['amount', 'customer_id', 'merchant_category']"}
+[200] duplicate column  -> {"count":1,"summary":{"Low Risk":1,"Medium Risk":0,"High Risk":0,"Critical Risk":0},"results":[{"transaction_id":"TXN_2C1FB06BAF","customer_id":"CUST_0010","amount":100.0,"risk_score":17.62,"fraud_probability":0.68,"alert_level":"
+[400] empty file  -> {"detail":"Could not parse CSV: No columns to parse from file"}
+[200] 3 valid rows  -> {"count":3,"summary":{"Low Risk":3,"Medium Risk":0,"High Risk":0,"Critical Risk":0},"results":[{"transaction_id":"TXN_4F884967C0","customer_id":"CUST_0010","amount":100.0,"risk_score":16.65,"fraud_probability":1.34,"alert_level":"
+[200] 40 valid rows  -> {"count":40,"summary":{"Low Risk":40,"Medium Risk":0,"High Risk":0,"Critical Risk":0},"results":[{"transaction_id":"TXN_8C2DD52BAE","customer_id":"CUST_0011","amount":100.0,"risk_score":12.55,"fraud_probability":1.88,"alert_level"
+    40 rows took 16.6s
+    CUST_0011 db rows: 40 | memory rows: 213
+== F. consistency: DB rows vs in-memory histories for every customer touched
+    customers where (scored rows in DB) != (rows added in memory): {}
+brand-new customer, ordinary first purchase -> similarity 1.93 deviation 98.07 alert Low Risk
+health: {'status': 'ok'}
