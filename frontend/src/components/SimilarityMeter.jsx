@@ -1,29 +1,25 @@
-export default function SimilarityMeter({ similarityPct, deviationPct }) {
+import { ScoreRing } from './RiskGauge'
+
+export default function SimilarityMeter({ similarityPct, deviationPct, loading = false }) {
   const hasData = similarityPct != null
   return (
-    <div>
-      <div className="flex justify-between items-baseline mb-2">
-        <span className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-          Behavioral Similarity
-        </span>
-        <span className="text-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
-          {hasData ? `${similarityPct.toFixed(1)}%` : '—'}
-        </span>
+    <div className="flex flex-col items-center text-center h-full">
+      <div className="eyebrow self-start">Behavioral Similarity</div>
+      <div className="my-3" style={{ opacity: loading ? 0.45 : 1, transition: 'opacity 0.2s ease' }}>
+        <ScoreRing value={hasData ? similarityPct : null} color="var(--brand)">
+          <span className="text-[30px] leading-none tnum" style={{ fontWeight: 600, color: 'var(--text-primary)' }}
+            aria-label={hasData ? `Behavioral similarity ${similarityPct.toFixed(1)} percent` : 'Behavioral similarity: no value yet'}>
+            {hasData ? similarityPct.toFixed(1) : '—'}
+            {hasData && <span className="text-base" style={{ color: 'var(--text-muted)' }}>%</span>}
+          </span>
+          <span className="mono text-[11px] mt-1" style={{ color: 'var(--text-faint)' }}>match</span>
+        </ScoreRing>
       </div>
-      <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
-        <div
-          className="h-full rounded-full transition-all duration-500"
-          style={{
-            width: `${hasData ? similarityPct : 0}%`,
-            background: 'linear-gradient(90deg, var(--risk-critical), var(--risk-medium), var(--brand))',
-          }}
-        />
-      </div>
-      {hasData && (
-        <p className="text-xs mt-1.5" style={{ color: 'var(--text-faint)' }}>
-          {deviationPct.toFixed(1)}% deviation from this customer's normal behavior
-        </p>
-      )}
+      <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+        {hasData && deviationPct != null
+          ? <><span className="tnum" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{deviationPct.toFixed(1)}%</span> deviation from this customer&apos;s normal behavior</>
+          : 'Match with this customer’s normal behavior'}
+      </p>
     </div>
   )
 }

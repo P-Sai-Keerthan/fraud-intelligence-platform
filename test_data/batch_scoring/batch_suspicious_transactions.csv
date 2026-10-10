@@ -1,0 +1,16 @@
+customer_id,amount,merchant_category,device_id,location,failed_logins_24h
+CUST_0032,48000,fashion,DEV_UNKNOWN_7197,Bangkok,4
+CUST_0163,3120,online_retail,DEV_0163_A,Hyderabad,2
+CUST_0054,124000,electronics,DEV_UNKNOWN_7208,Dubai,5
+CUST_0080,360,grocery,DEV_0080_A,Pune,0
+CUST_0093,71000,electronics,DEV_0093_A,Dubai,0
+CUST_0084,149999,travel,DEV_UNKNOWN_7750,London,3
+CUST_0096,4840,online_retail,DEV_0096_A,Mumbai,0
+CUST_0145,92000,electronics,DEV_UNKNOWN_5536,Hyderabad,5
+CUST_0168,3820,dining,DEV_UNKNOWN_4260,Chennai,1
+CUST_0090,85000,travel,DEV_UNKNOWN_8186,Singapore,4
+CUST_0078,56000,electronics,DEV_UNKNOWN_5760,Kochi,2
+CUST_0040,1400,electronics,DEV_0040_A,Pune,0
+CUST_0086,980,utilities,DEV_0086_A,Lucknow,0
+CUST_0167,39000,fashion,DEV_UNKNOWN_9187,Guwahati,3
+CUST_0108,67500,fashion,DEV_UNKNOWN_1103,Lagos,6

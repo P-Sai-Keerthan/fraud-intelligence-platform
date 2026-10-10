@@ -1,0 +1,3 @@
+# Generated data is reproducible from the generator + manifest.json; not committed (for now).
+*.csv
+*.npy

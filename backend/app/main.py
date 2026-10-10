@@ -8,57 +8,102 @@ Endpoints:
     POST /predict                     score a single transaction
     POST /predict/batch                score a CSV of transactions at once
     GET  /customers                    list known customer IDs (for demo/testing)
+    GET  /customer/{customer_id}/profile   a customer's usual (home) device and city
     GET  /customer/{customer_id}/history   fraud evolution timeline for a customer
     GET  /fraud-rings                   customers linked by a shared device/identifier
-    GET  /metrics                       held-out test-set model performance (precision/recall/F1/AUC-ROC)
+    GET  /metrics                       evaluation metrics of the loaded model set, labelled with it
+    GET  /metrics/report                full evaluation report of the loaded model set
+    GET  /model-info                    metadata of the loaded model set (version, data, features, thresholds)
     POST /report/pdf                    downloadable PDF explanation report for one prediction
     GET  /health                        basic health check
 """
 
 import io
+import math
+import re
+from contextlib import asynccontextmanager
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
-from .db.database import engine, get_db, Base
+from .config import cors_allow_origins
+from .db.database import engine, get_db, Base, SessionLocal
 from .db import models as db_models
 from .schemas import (
     TransactionInput, PredictionResponse, ExplanationReason,
-    CustomerHistoryResponse, TimelinePoint,
+    CustomerHistoryResponse, TimelinePoint, CustomerProfile,
     FraudRingsResponse, BatchPredictionResponse,
 )
 from .inference_pipeline import get_pipeline
-from .models.evaluate import evaluate_all
+from .db.migrations import ensure_schema
+from .model_metadata import candidate_evaluation, downstream_evaluation, final_holdout_evaluation
+from .models.evaluate import EvaluationReportMissing, evaluate_all, load_report
 from .report import build_pdf_report
 
-# create DB tables on startup if they don't exist
-Base.metadata.create_all(bind=engine)
+
+def _restore_history_from_db(pipeline) -> int:
+    """Replays every persisted scored transaction into the pipeline's
+    in-memory customer histories (see FraudIntelligencePipeline.restore_scored_history)."""
+    db = SessionLocal()
+    try:
+        rows = [
+            {
+                "transaction_id": r.transaction_id,
+                "customer_id": r.customer_id,
+                "timestamp": r.timestamp,
+                "amount": r.amount,
+                "merchant_category": r.merchant_category,
+                "device_id": r.device_id,
+                "location": r.location,
+                "failed_logins_24h": r.failed_logins_24h,
+            }
+            for r in db.query(db_models.Transaction).all()
+        ]
+    finally:
+        db.close()
+    return pipeline.restore_scored_history(rows)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # create DB tables if they don't exist
+    Base.metadata.create_all(bind=engine)
+    # add columns introduced after the table was first created (model-set provenance)
+    added = ensure_schema(engine)
+    if added:
+        print(f"[startup] Added database column(s): {', '.join(added)} (existing rows keep NULL).")
+    # forces the (potentially slow) model-loading step to happen once at
+    # startup rather than on the first incoming request
+    pipeline = get_pipeline()
+    # bring back what the models knew about each customer before the last restart
+    restored = _restore_history_from_db(pipeline)
+    print(f"[startup] Restored {restored} previously scored transaction(s) from the database.")
+    yield
+
 
 app = FastAPI(
     title="Explainable Fraud Intelligence Platform API",
     description="Behavioral Fraud DNA, real-time fraud detection, and explainable AI for banking transactions.",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
-# allow the React dashboard (running on a different port during development) to call this API
+# browser origins allowed to call this API directly -- configured with the
+# CORS_ALLOW_ORIGINS environment variable (see config.py / .env.example)
+CORS_ALLOW_ORIGINS = cors_allow_origins()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten this to your actual frontend origin before deploying publicly
-    allow_credentials=True,
+    allow_origins=CORS_ALLOW_ORIGINS,
+    # an allow-any-origin wildcard must not be combined with credentials
+    allow_credentials="*" not in CORS_ALLOW_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def load_models_on_startup():
-    # forces the (potentially slow) model-loading step to happen once at
-    # startup rather than on the first incoming request
-    get_pipeline()
 
 
 @app.get("/health")
@@ -89,6 +134,8 @@ def _persist_transaction(db: Session, result: dict):
         similarity_pct=result["similarity_pct"],
         deviation_pct=result["deviation_pct"],
         alert_level=result["alert_level"],
+        model_set=result["model_set"],
+        model_version=result["model_version"],
     )
     db.add(db_txn)
 
@@ -118,12 +165,28 @@ def predict_transaction(txn: TransactionInput, db: Session = Depends(get_db)):
     )
 
 
+@app.get("/customer/{customer_id}/profile", response_model=CustomerProfile)
+def get_customer_profile(customer_id: str):
+    """The customer's usual device and home city, derived from their own
+    transaction history. The dashboard uses these as the defaults for a
+    normal transaction, and batch scoring uses them for blank device_id /
+    location cells."""
+    profile = get_pipeline().get_customer_profile(customer_id)
+    if profile is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No transaction history for '{customer_id}', so there is no home device or city to report.",
+        )
+    return CustomerProfile(**profile)
+
+
 @app.get("/customer/{customer_id}/history", response_model=CustomerHistoryResponse)
 def get_customer_history(customer_id: str, limit: int = 100, db: Session = Depends(get_db)):
+    # the `limit` MOST RECENT scored transactions, newest first
     rows = (
         db.query(db_models.Transaction)
         .filter(db_models.Transaction.customer_id == customer_id)
-        .order_by(db_models.Transaction.timestamp)
+        .order_by(desc(db_models.Transaction.timestamp))
         .limit(limit)
         .all()
     )
@@ -162,23 +225,212 @@ def get_fraud_rings(min_customers: int = 2):
     return FraudRingsResponse(count=len(rings), rings=rings)
 
 
+@app.get("/model-info")
+def get_model_info():
+    """Metadata of the loaded model set: name and version (content checksums),
+    training dataset, feature version, whether an LSTM is used, what the scores
+    mean (not calibrated probabilities) and the alert/threshold configuration."""
+    return get_pipeline().model_metadata
+
+
+def _is_lstm_classifier(pipeline) -> bool:
+    manifest = pipeline.model_set.manifest
+    return manifest is not None and manifest.get("model_set_kind") == "lstm_classifier"
+
+
+def _model_context(pipeline) -> dict:
+    meta = pipeline.model_metadata
+    return {
+        "model_set": meta["model_set"],
+        "model_version": meta["model_version"],
+        "model_metadata": meta,
+        "alerting": meta["thresholds"],
+    }
+
+
 @app.get("/metrics")
 def get_metrics(refresh: bool = False):
-    """Held-out test-set performance for both trained models (precision,
-    recall, F1, AUC-ROC, confusion matrix) -- computed once and cached,
-    pass ?refresh=true to force recomputation."""
-    return evaluate_all(force_refresh=refresh)
+    """Evaluation metrics for the LOADED model set, labelled with it.
+
+    v2_lstm_rf_seed14 (the default, Step 4D): downstream_evaluation -- the model-
+    selection comparison on development data and the fresh hold-out confirmation,
+    copied from models/evaluation/downstream/*.json (docs/model_selection_report.md).
+
+    production (the previous default): the held-out time-split metrics of the corrected v1 evaluation
+    (the same lstm_risk_predictor / dnn_fraud_classifier entries as before,
+    served from models/evaluation/evaluation_report.json; ?refresh=true re-reads
+    it). They evaluate evaluation copies of the production architecture on v1,
+    as "evaluation" says.
+
+    candidate model sets: the v1 report does not evaluate them, so
+    lstm_risk_predictor / dnn_fraud_classifier are null, and the candidate's own
+    v2 test-period metrics from models/candidates/v2/comparison.json are given
+    separately under candidate_evaluation (only if that file describes exactly
+    the loaded weights). Scores are not calibrated probabilities."""
+    pipeline = get_pipeline()
+    context = _model_context(pipeline)
+    evaluation = dict(pipeline.model_metadata["evaluation"])
+    if _is_lstm_classifier(pipeline):
+        downstream = downstream_evaluation(pipeline.model_set)
+        evaluation["available"] = downstream["available"]
+        return {
+            "lstm_risk_predictor": None,
+            "dnn_fraud_classifier": None,
+            "v1_metrics_withheld": "the v1 evaluation report evaluates the previous default (v1 LSTM -> DNN), "
+                                   "not this model set",
+            **context,
+            "evaluation": evaluation,
+            "downstream_evaluation": downstream,
+        }
+    if pipeline.model_set.manifest is None:
+        try:
+            metrics = evaluate_all(force_refresh=refresh)
+            report = load_report()
+        except EvaluationReportMissing as e:
+            raise HTTPException(status_code=503, detail=str(e))
+        evaluation.update({"applies_to_loaded_model_set": True, "report_version": report.get("report_version"),
+                           "report_dataset": report.get("dataset")})
+        return {**metrics, **context, "evaluation": evaluation}
+    candidate = candidate_evaluation(pipeline.model_set)
+    evaluation["available"] = candidate["available"]
+    return {
+        "lstm_risk_predictor": None,
+        "dnn_fraud_classifier": None,
+        "v1_metrics_withheld": "the v1 evaluation report evaluates the production architecture on v1, "
+                               "not this model set",
+        **context,
+        "evaluation": evaluation,
+        "candidate_evaluation": candidate,
+        "final_holdout_evaluation": final_holdout_evaluation(pipeline.model_set),
+    }
+
+
+@app.get("/metrics/report")
+def get_metrics_report(refresh: bool = False):
+    """The complete evaluation report for the loaded model set.
+
+    production: the v1 evaluation report (methodology, saved split definitions,
+    primary and secondary results, baselines, first-fraud / episode metrics,
+    legacy random-split numbers), plus model_set / model_version keys.
+    candidate model sets: no v1 report; the candidate's comparison.json slice
+    (candidate_evaluation) and the model metadata."""
+    pipeline = get_pipeline()
+    context = _model_context(pipeline)
+    if _is_lstm_classifier(pipeline):
+        return {**context, "v1_report_withheld": "the v1 evaluation report does not evaluate this model set",
+                "downstream_evaluation": downstream_evaluation(pipeline.model_set)}
+    if pipeline.model_set.manifest is None:
+        try:
+            report = load_report(force_refresh=refresh)
+        except EvaluationReportMissing as e:
+            raise HTTPException(status_code=503, detail=str(e))
+        return {**report, **context}
+    return {
+        **context,
+        "v1_report_withheld": "the v1 evaluation report evaluates the production architecture on v1, "
+                              "not this model set",
+        "candidate_evaluation": candidate_evaluation(pipeline.model_set),
+        "final_holdout_evaluation": final_holdout_evaluation(pipeline.model_set),
+    }
+
+
+_DECIMAL_RE = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?")
+_WHOLE_NUMBER_RE = re.compile(r"\d+(\.0*)?")
+_MAX_REPORTED_ROW_ERRORS = 20
+
+
+def _validate_batch_rows(df: pd.DataFrame, pipeline) -> tuple[list[dict], list[str]]:
+    """Checks every CSV row up front and returns (transactions, errors).
+    Values are read as raw strings and are never coerced: a bad value is an
+    error naming its row and field. Rows are numbered from 1 (the first row
+    after the header). A blank device_id / location falls back to that
+    customer's usual device / home city (GET /customer/{id}/profile)."""
+    has_device = "device_id" in df.columns
+    has_location = "location" in df.columns
+    has_logins = "failed_logins_24h" in df.columns
+
+    txns, errors = [], []
+    for row_number, (_, row) in enumerate(df.iterrows(), start=1):
+        customer_id = row["customer_id"].strip()
+        where = f"row {row_number}" + (f" (customer_id={customer_id})" if customer_id else "")
+        row_errors = []
+
+        if not customer_id:
+            row_errors.append("customer_id is required")
+
+        raw_amount = row["amount"].strip()
+        amount = None
+        if not raw_amount:
+            row_errors.append("amount is required")
+        elif not _DECIMAL_RE.fullmatch(raw_amount):
+            row_errors.append(f"amount must be a number, got '{raw_amount}'")
+        else:
+            amount = float(raw_amount)
+            if not math.isfinite(amount):
+                row_errors.append(f"amount must be a finite number, got '{raw_amount}'")
+            elif amount <= 0:
+                row_errors.append(f"amount must be greater than 0, got '{raw_amount}'")
+
+        merchant_category = row["merchant_category"].strip()
+        if not merchant_category:
+            row_errors.append("merchant_category is required")
+
+        failed_logins = 0
+        raw_logins = row["failed_logins_24h"].strip() if has_logins else ""
+        if raw_logins:
+            if not _WHOLE_NUMBER_RE.fullmatch(raw_logins):
+                row_errors.append(f"failed_logins_24h must be a whole number >= 0, got '{raw_logins}'")
+            else:
+                failed_logins = int(float(raw_logins))
+
+        device_id = row["device_id"].strip() if has_device else ""
+        location = row["location"].strip() if has_location else ""
+        if customer_id and (not device_id or not location):
+            profile = pipeline.get_customer_profile(customer_id)
+            if profile is None:
+                missing = [f for f, v in (("device_id", device_id), ("location", location)) if not v]
+                row_errors.append(
+                    f"{' and '.join(missing)} required: this customer has no transaction "
+                    "history to take a home device/city from"
+                )
+            else:
+                device_id = device_id or profile["home_device"]
+                location = location or profile["home_location"]
+
+        if row_errors:
+            errors.append(f"{where}: " + "; ".join(row_errors))
+        else:
+            txns.append({
+                "customer_id": customer_id,
+                "amount": amount,
+                "merchant_category": merchant_category,
+                "device_id": device_id,
+                "location": location,
+                "failed_logins_24h": failed_logins,
+            })
+    return txns, errors
 
 
 @app.post("/predict/batch", response_model=BatchPredictionResponse)
 async def predict_batch(file: UploadFile = File(...), db: Session = Depends(get_db)):
     """Score every row of an uploaded CSV in one call. Required columns:
     customer_id, amount, merchant_category. Optional: device_id, location,
-    failed_logins_24h."""
-    pipeline = get_pipeline()
+    failed_logins_24h. The whole file is validated before anything is
+    scored: if any row is invalid, nothing is scored or saved and the 400
+    response lists the bad rows."""
     contents = await file.read()
+    # parsing, validation and model scoring are CPU-bound; run them on a
+    # worker thread so a large batch doesn't block the event loop (and every
+    # other request) until it finishes
+    return await run_in_threadpool(_score_batch_csv, contents, db)
+
+
+def _score_batch_csv(contents: bytes, db: Session) -> BatchPredictionResponse:
+    pipeline = get_pipeline()
     try:
-        df = pd.read_csv(io.BytesIO(contents))
+        # read every cell as a raw string so invalid values surface as
+        # validation errors instead of being silently coerced by pandas
+        df = pd.read_csv(io.BytesIO(contents), dtype=str, keep_default_na=False)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Could not parse CSV: {e}")
 
@@ -187,25 +439,20 @@ async def predict_batch(file: UploadFile = File(...), db: Session = Depends(get_
     if missing:
         raise HTTPException(status_code=400, detail=f"CSV is missing required columns: {sorted(missing)}")
 
+    txns, errors = _validate_batch_rows(df, pipeline)
+    if errors:
+        shown = errors[:_MAX_REPORTED_ROW_ERRORS]
+        more = len(errors) - len(shown)
+        detail = (
+            f"Invalid CSV data in {len(errors)} row(s); nothing was scored. "
+            + " | ".join(shown)
+            + (f" | ...and {more} more invalid row(s)" if more else "")
+        )
+        raise HTTPException(status_code=400, detail=detail)
+
     results = []
     summary = {"Low Risk": 0, "Medium Risk": 0, "High Risk": 0, "Critical Risk": 0}
-    for _, row in df.iterrows():
-        customer_id = str(row["customer_id"])
-        device_id = str(row["device_id"]) if "device_id" in df.columns and pd.notna(row.get("device_id")) else ""
-        location = str(row["location"]) if "location" in df.columns and pd.notna(row.get("location")) else ""
-        txn = {
-            "customer_id": customer_id,
-            "amount": float(row["amount"]),
-            "merchant_category": str(row["merchant_category"]),
-            # an omitted device/location isn't itself suspicious -- fall back
-            # to this customer's presumed home device/city, same convention
-            # the dashboard's manual scan form uses, so a minimal CSV
-            # (just customer_id/amount/category) doesn't get misread as
-            # "every row uses a brand-new device in a foreign city"
-            "device_id": device_id or f"DEV_{customer_id}_A",
-            "location": location or "Hyderabad",
-            "failed_logins_24h": int(row["failed_logins_24h"]) if "failed_logins_24h" in df.columns and pd.notna(row.get("failed_logins_24h")) else 0,
-        }
+    for txn in txns:
         result = pipeline.score_transaction(txn)
         _persist_transaction(db, result)
         summary[result["alert_level"]] = summary.get(result["alert_level"], 0) + 1
@@ -222,12 +469,31 @@ async def predict_batch(file: UploadFile = File(...), db: Session = Depends(get_
     return BatchPredictionResponse(count=len(results), summary=summary, results=results)
 
 
+def _provenance(transaction_id: str, db: Session) -> dict:
+    """Which model set scored this transaction, from its stored row (4C-2f-2).
+    Never inferred from the currently loaded model set."""
+    row = db.get(db_models.Transaction, transaction_id)
+    if row is None:
+        return {"recorded": False, "model_set": None, "model_version": None,
+                "reason": "transaction not found in the database"}
+    if row.model_set is None:
+        return {"recorded": False, "model_set": None, "model_version": None,
+                "reason": "scored before model-set provenance was recorded"}
+    provenance = {"recorded": True, "model_set": row.model_set, "model_version": row.model_version}
+    pipeline = get_pipeline()
+    if row.model_version == pipeline.model_version:
+        provenance["metadata"] = pipeline.model_metadata
+    return provenance
+
+
 @app.post("/report/pdf")
-def get_pdf_report(prediction: PredictionResponse):
+def get_pdf_report(prediction: PredictionResponse, db: Session = Depends(get_db)):
     """Generate a downloadable PDF explaining a single prediction result --
     takes exactly what POST /predict returns, so the frontend can request
-    a report for whatever is currently on screen."""
-    pdf_bytes = build_pdf_report(prediction.model_dump())
+    a report for whatever is currently on screen. The model set named in the
+    report (and its risk-score wording) is the one recorded with the
+    transaction in the database, not the currently loaded one."""
+    pdf_bytes = build_pdf_report(prediction.model_dump(), _provenance(prediction.transaction_id, db))
     filename = f"fraud_report_{prediction.transaction_id}.pdf"
     return StreamingResponse(
         io.BytesIO(pdf_bytes),

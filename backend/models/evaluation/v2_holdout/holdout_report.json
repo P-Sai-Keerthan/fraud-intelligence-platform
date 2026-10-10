@@ -1,0 +1,6969 @@
+{
+  "step": "4C-3E hold-out evaluation",
+  "fixed_inputs": {
+    "holdout_seeds": [
+      101,
+      102,
+      103,
+      104,
+      105
+    ],
+    "seeds_evaluated": [
+      101,
+      102,
+      103,
+      104,
+      105
+    ],
+    "training_seed": 42,
+    "cutoffs_score_0_1": {
+      "critical": {
+        "production": 0.9950721263885498,
+        "v2_dnn_lstm": 0.9680655598640442,
+        "v2_dnn_only": 0.9119433164596558
+      },
+      "policy_b": {
+        "production": 0.9680148363113403,
+        "v2_dnn_lstm": 0.76771479845047,
+        "v2_dnn_only": 0.7744449377059937
+      }
+    },
+    "cutoffs_source": "seed-42 validation period (4C-3B); not re-tuned on hold-out data; not probabilities",
+    "primary_population": "transactions with at least 10 earlier transactions of the same customer",
+    "secondary_population": "the primary population from 2026-06-01",
+    "margins": {
+      "recall": 0.05,
+      "legit_alerts_per_1000": 1.0,
+      "critical_recall": 0.05
+    },
+    "alert_budget_per_1000": 10.0,
+    "minimum_recall": 0.4,
+    "bootstrap": {
+      "resamples": 2000,
+      "seed": 42,
+      "unit": "customer component (ring victims and households kept together), resampled within each dataset",
+      "interval": "2.5 / 97.5 percentiles"
+    }
+  },
+  "model_sets": {
+    "production": {
+      "uses_lstm": true,
+      "dnn_input_columns": [
+        "amount_zscore",
+        "hour_is_unusual",
+        "is_new_device",
+        "is_new_location",
+        "is_foreign_location",
+        "failed_logins_24h",
+        "category_is_unusual",
+        "txn_velocity_1h",
+        "amount_pct_of_avg",
+        "risk_score"
+      ]
+    },
+    "v2_dnn_lstm": {
+      "uses_lstm": true,
+      "dnn_input_columns": [
+        "amount_zscore",
+        "hour_is_unusual",
+        "is_new_device",
+        "is_new_location",
+        "is_foreign_location",
+        "failed_logins_24h",
+        "category_is_unusual",
+        "txn_velocity_1h",
+        "amount_pct_of_avg",
+        "risk_score"
+      ]
+    },
+    "v2_dnn_only": {
+      "uses_lstm": false,
+      "dnn_input_columns": [
+        "amount_zscore",
+        "hour_is_unusual",
+        "is_new_device",
+        "is_new_location",
+        "is_foreign_location",
+        "failed_logins_24h",
+        "category_is_unusual",
+        "txn_velocity_1h",
+        "amount_pct_of_avg"
+      ]
+    }
+  },
+  "model_files_sha256": {
+    "production": {
+      "dnn_feature_mean.npy": "cb12c7e19545e838c185c3e3684f601c7ec3fdbd387add15d7d7f907befa75a8",
+      "dnn_feature_std.npy": "5f526f065ae0d635eecbabb0b9f636fc4dc63eed778ccb4a8e738fa5aacab155",
+      "dnn_fraud_model.keras": "4fd3ab2e190f7c5073d7d100c7f68114babf89b02b321e72a8fb4ebb3c6d3add",
+      "lstm_feature_mean.npy": "cd7d3fda6554f7f027d10faf5755a01a9fe2a7d0a67eb5a748d72682a3bcb7e6",
+      "lstm_feature_std.npy": "86b57e2ce8b31e366397d3a5b98cb9fbf44d07ecfabf717ad4647e539e927b34",
+      "lstm_risk_model.keras": "81c2ab738b6d109fa3ba94f4c8fa5f7303d6f8d114f7ec892e4f5f76abb3f588",
+      "shap_background.npy": "ac8ffe3b53434b13880af6a7c76b1746d5a9828701af04be14c54cef697b1519"
+    },
+    "candidates": {
+      "v2/comparison.json": "fa8c522c46b688f71cbda4027ef655f62c8c40932d47cf0ffd46a7ace7488e91",
+      "v2/dnn_lstm/dnn_feature_mean.npy": "cc7d0f6b0b4f1398ccd15c0c2801e66fadb824249e025224b687b9284702caf5",
+      "v2/dnn_lstm/dnn_feature_std.npy": "4e95ff16fcb391563f1f1658404bf5e6ac08f519c92c60dceb28e98a49feb4a3",
+      "v2/dnn_lstm/dnn_fraud_model.keras": "11327a6ace5f8c42040527bc4c8dcec71a0ae17b913dcb308ca206a34100bdf0",
+      "v2/dnn_lstm/lstm_feature_mean.npy": "fbfc1a0afd79ad236b27932198a6a6a6c1d6ac4b2e61b335db1269b9be91e90c",
+      "v2/dnn_lstm/lstm_feature_std.npy": "e3e7765d84d6b6d2f3ebc665c0798ef36d015cbf604acc53f00d8cd8aaff5a35",
+      "v2/dnn_lstm/lstm_risk_model.keras": "d768711523cef6597acf2db129be2ed6ab659fac14a61e4c00ea30320487425e",
+      "v2/dnn_lstm/manifest.json": "c9d033aedeb8318bbd65c65955194a49d55452db869eb26f104938449d005bee",
+      "v2/dnn_lstm/shap_background.npy": "4bb8cbd9bc81497b381e5673dce49e0eaca9641dbe05fd22100b09213b392a61",
+      "v2/dnn_only/dnn_feature_mean.npy": "2c16523aadb3be1a55a9cea8cea592726a3e9806f952414aa985d89eda3293c8",
+      "v2/dnn_only/dnn_feature_std.npy": "a5af72814b69b48901c30b0a8604d6a43fb07cce8e121c46c3fba26232cf968f",
+      "v2/dnn_only/dnn_fraud_model.keras": "a77a209b35828850c4ee117fd9fa24e9420aea30f3e0b5d1015f33a1e0880493",
+      "v2/dnn_only/manifest.json": "e3e8f1d256a13943d585967d086f4580776ccaec6f3fe485cbfdccc6196871a2",
+      "v2/dnn_only/shap_background.npy": "66f839bc18f11ab0f7b6f456a4c5557784d04af794ef9a26483855eef847aa8a",
+      "v2/training_run.json": "fab370d83d3827d2ec660d1c642e64c435f22514d5fff20411030ecc203f787e"
+    }
+  },
+  "datasets": {
+    "101": {
+      "seed": 101,
+      "generator_version": "2.0.1",
+      "sha256": "996ae5cf24415b6085e9d51e3130350065628c679541f094aa4257703a1ff1cc",
+      "matches_manifest": true,
+      "customers": 500,
+      "groups": 443,
+      "transactions": 101033,
+      "fraud_transactions": 486,
+      "fraud_episodes": 110,
+      "rings": 4,
+      "ring_victim_episodes": 16,
+      "fraud_transactions_with_fewer_than_10_earlier": 0,
+      "first_timestamp": "2026-01-12 00:00:18",
+      "last_timestamp": "2026-07-06 23:53:18"
+    },
+    "102": {
+      "seed": 102,
+      "generator_version": "2.0.1",
+      "sha256": "ea4dbb4ff12b8ab85101336c6b46b63b37141c869a9076a5b711eba9e658b375",
+      "matches_manifest": true,
+      "customers": 500,
+      "groups": 442,
+      "transactions": 104638,
+      "fraud_transactions": 484,
+      "fraud_episodes": 110,
+      "rings": 4,
+      "ring_victim_episodes": 16,
+      "fraud_transactions_with_fewer_than_10_earlier": 2,
+      "first_timestamp": "2026-01-12 00:01:01",
+      "last_timestamp": "2026-07-06 23:59:18"
+    },
+    "103": {
+      "seed": 103,
+      "generator_version": "2.0.1",
+      "sha256": "3321d13e3b7cf019f02b36a7176da5983b9f165d1c706a9d1d515773caa544c3",
+      "matches_manifest": true,
+      "customers": 500,
+      "groups": 442,
+      "transactions": 100485,
+      "fraud_transactions": 466,
+      "fraud_episodes": 110,
+      "rings": 4,
+      "ring_victim_episodes": 16,
+      "fraud_transactions_with_fewer_than_10_earlier": 0,
+      "first_timestamp": "2026-01-12 00:07:18",
+      "last_timestamp": "2026-07-06 23:56:16"
+    },
+    "104": {
+      "seed": 104,
+      "generator_version": "2.0.1",
+      "sha256": "b43c57b05dd2230948b63904b3317d3b91bd2ee100bbc0912c5f69749e2ce420",
+      "matches_manifest": true,
+      "customers": 500,
+      "groups": 441,
+      "transactions": 101636,
+      "fraud_transactions": 494,
+      "fraud_episodes": 110,
+      "rings": 4,
+      "ring_victim_episodes": 16,
+      "fraud_transactions_with_fewer_than_10_earlier": 0,
+      "first_timestamp": "2026-01-12 00:02:26",
+      "last_timestamp": "2026-07-06 23:58:46"
+    },
+    "105": {
+      "seed": 105,
+      "generator_version": "2.0.1",
+      "sha256": "2b75986489d8e082e56271099970ed1b447d3fca2cc1c2fd45d8b0de6404c71e",
+      "matches_manifest": true,
+      "customers": 500,
+      "groups": 443,
+      "transactions": 102238,
+      "fraud_transactions": 468,
+      "fraud_episodes": 110,
+      "rings": 4,
+      "ring_victim_episodes": 16,
+      "fraud_transactions_with_fewer_than_10_earlier": 0,
+      "first_timestamp": "2026-01-12 00:06:24",
+      "last_timestamp": "2026-07-06 23:51:07"
+    }
+  },
+  "pooled": {
+    "primary": {
+      "rows": 485030,
+      "fraud_transactions": 2396,
+      "legitimate_transactions": 482634,
+      "fraud_episodes": 550,
+      "first_fraud_transactions": 549,
+      "customers": 2500,
+      "groups": 2211,
+      "datasets": 5,
+      "models": {
+        "production": {
+          "counts": {
+            "true_positives": 709,
+            "false_positives": 5003,
+            "false_negatives": 1687,
+            "critical_true_positives": 383,
+            "critical_false_positives": 446,
+            "first_frauds_detected": 240,
+            "episodes_detected": 334
+          },
+          "metrics": {
+            "recall": {
+              "value": 0.29591,
+              "ci95": [
+                0.267333,
+                0.327673
+              ]
+            },
+            "precision": {
+              "value": 0.124125,
+              "ci95": [
+                0.10836,
+                0.138704
+              ]
+            },
+            "f1": {
+              "value": 0.174889,
+              "ci95": [
+                0.155428,
+                0.192471
+              ]
+            },
+            "legit_alerts_per_1000": {
+              "value": 10.314826,
+              "ci95": [
+                10.004355,
+                10.623605
+              ]
+            },
+            "false_positive_rate": {
+              "value": 0.010366,
+              "ci95": [
+                0.010059,
+                0.010676
+              ]
+            },
+            "critical_recall": {
+              "value": 0.15985,
+              "ci95": [
+                0.138071,
+                0.183497
+              ]
+            },
+            "critical_precision": {
+              "value": 0.462002,
+              "ci95": [
+                0.413611,
+                0.507195
+              ]
+            },
+            "critical_legit_alerts_per_1000": {
+              "value": 0.919531,
+              "ci95": [
+                0.833216,
+                1.00809
+              ]
+            },
+            "first_fraud_recall": {
+              "value": 0.437158,
+              "ci95": [
+                0.38867,
+                0.483636
+              ]
+            },
+            "episode_detection_rate": {
+              "value": 0.607273,
+              "ci95": [
+                0.562612,
+                0.650455
+              ]
+            },
+            "pr_auc": {
+              "value": 0.172288,
+              "ci95": [
+                0.147199,
+                0.200324
+              ]
+            },
+            "roc_auc": {
+              "value": 0.731775,
+              "ci95": [
+                0.705709,
+                0.758145
+              ]
+            }
+          },
+          "first_fraud_recall_wilson95": [
+            0.3962,
+            0.4789
+          ]
+        },
+        "v2_dnn_lstm": {
+          "counts": {
+            "true_positives": 1085,
+            "false_positives": 4321,
+            "false_negatives": 1311,
+            "critical_true_positives": 350,
+            "critical_false_positives": 254,
+            "first_frauds_detected": 224,
+            "episodes_detected": 300
+          },
+          "metrics": {
+            "recall": {
+              "value": 0.452838,
+              "ci95": [
+                0.409443,
+                0.494328
+              ]
+            },
+            "precision": {
+              "value": 0.200703,
+              "ci95": [
+                0.176927,
+                0.225003
+              ]
+            },
+            "f1": {
+              "value": 0.278134,
+              "ci95": [
+                0.249417,
+                0.305589
+              ]
+            },
+            "legit_alerts_per_1000": {
+              "value": 8.908727,
+              "ci95": [
+                8.285986,
+                9.52738
+              ]
+            },
+            "false_positive_rate": {
+              "value": 0.008953,
+              "ci95": [
+                0.008327,
+                0.009573
+              ]
+            },
+            "critical_recall": {
+              "value": 0.146077,
+              "ci95": [
+                0.117644,
+                0.175956
+              ]
+            },
+            "critical_precision": {
+              "value": 0.57947,
+              "ci95": [
+                0.497285,
+                0.660039
+              ]
+            },
+            "critical_legit_alerts_per_1000": {
+              "value": 0.523679,
+              "ci95": [
+                0.403814,
+                0.655831
+              ]
+            },
+            "first_fraud_recall": {
+              "value": 0.408015,
+              "ci95": [
+                0.36577,
+                0.452474
+              ]
+            },
+            "episode_detection_rate": {
+              "value": 0.545455,
+              "ci95": [
+                0.501817,
+                0.588336
+              ]
+            },
+            "pr_auc": {
+              "value": 0.252225,
+              "ci95": [
+                0.209366,
+                0.296504
+              ]
+            },
+            "roc_auc": {
+              "value": 0.928709,
+              "ci95": [
+                0.916005,
+                0.940844
+              ]
+            }
+          },
+          "first_fraud_recall_wilson95": [
+            0.3677,
+            0.4496
+          ]
+        },
+        "v2_dnn_only": {
+          "counts": {
+            "true_positives": 1006,
+            "false_positives": 4382,
+            "false_negatives": 1390,
+            "critical_true_positives": 330,
+            "critical_false_positives": 370,
+            "first_frauds_detected": 231,
+            "episodes_detected": 304
+          },
+          "metrics": {
+            "recall": {
+              "value": 0.419866,
+              "ci95": [
+                0.379729,
+                0.459946
+              ]
+            },
+            "precision": {
+              "value": 0.186711,
+              "ci95": [
+                0.163904,
+                0.20992
+              ]
+            },
+            "f1": {
+              "value": 0.258479,
+              "ci95": [
+                0.230805,
+                0.285507
+              ]
+            },
+            "legit_alerts_per_1000": {
+              "value": 9.034493,
+              "ci95": [
+                8.470282,
+                9.620479
+              ]
+            },
+            "false_positive_rate": {
+              "value": 0.009079,
+              "ci95": [
+                0.00851,
+                0.009669
+              ]
+            },
+            "critical_recall": {
+              "value": 0.13773,
+              "ci95": [
+                0.11444,
+                0.165949
+              ]
+            },
+            "critical_precision": {
+              "value": 0.471429,
+              "ci95": [
+                0.403248,
+                0.541439
+              ]
+            },
+            "critical_legit_alerts_per_1000": {
+              "value": 0.762839,
+              "ci95": [
+                0.631764,
+                0.906139
+              ]
+            },
+            "first_fraud_recall": {
+              "value": 0.420765,
+              "ci95": [
+                0.376181,
+                0.468126
+              ]
+            },
+            "episode_detection_rate": {
+              "value": 0.552727,
+              "ci95": [
+                0.505999,
+                0.599239
+              ]
+            },
+            "pr_auc": {
+              "value": 0.213443,
+              "ci95": [
+                0.177407,
+                0.254942
+              ]
+            },
+            "roc_auc": {
+              "value": 0.9027,
+              "ci95": [
+                0.891557,
+                0.913424
+              ]
+            }
+          },
+          "first_fraud_recall_wilson95": [
+            0.3802,
+            0.4625
+          ]
+        }
+      },
+      "paired_differences": {
+        "v2_dnn_lstm - v2_dnn_only": {
+          "recall": {
+            "difference": 0.032972,
+            "ci95": [
+              0.013974,
+              0.051265
+            ],
+            "excludes_zero": true
+          },
+          "precision": {
+            "difference": 0.013992,
+            "ci95": [
+              0.005958,
+              0.021788
+            ],
+            "excludes_zero": true
+          },
+          "f1": {
+            "difference": 0.019655,
+            "ci95": [
+              0.0088,
+              0.030243
+            ],
+            "excludes_zero": true
+          },
+          "legit_alerts_per_1000": {
+            "difference": -0.125765,
+            "ci95": [
+              -0.405275,
+              0.139275
+            ],
+            "excludes_zero": false
+          },
+          "false_positive_rate": {
+            "difference": -0.000126,
+            "ci95": [
+              -0.000407,
+              0.00014
+            ],
+            "excludes_zero": false
+          },
+          "critical_recall": {
+            "difference": 0.008347,
+            "ci95": [
+              -0.012746,
+              0.029272
+            ],
+            "excludes_zero": false
+          },
+          "critical_precision": {
+            "difference": 0.108042,
+            "ci95": [
+              0.057532,
+              0.161522
+            ],
+            "excludes_zero": true
+          },
+          "critical_legit_alerts_per_1000": {
+            "difference": -0.23916,
+            "ci95": [
+              -0.32972,
+              -0.15016
+            ],
+            "excludes_zero": true
+          },
+          "first_fraud_recall": {
+            "difference": -0.01275,
+            "ci95": [
+              -0.043798,
+              0.019169
+            ],
+            "excludes_zero": false
+          },
+          "episode_detection_rate": {
+            "difference": -0.007273,
+            "ci95": [
+              -0.044574,
+              0.028525
+            ],
+            "excludes_zero": false
+          },
+          "pr_auc": {
+            "difference": 0.038782,
+            "ci95": [
+              0.022778,
+              0.055401
+            ],
+            "excludes_zero": true
+          },
+          "roc_auc": {
+            "difference": 0.026009,
+            "ci95": [
+              0.017835,
+              0.033759
+            ],
+            "excludes_zero": true
+          }
+        },
+        "v2_dnn_lstm - production": {
+          "recall": {
+            "difference": 0.156928,
+            "ci95": [
+              0.116734,
+              0.196802
+            ],
+            "excludes_zero": true
+          },
+          "precision": {
+            "difference": 0.076578,
+            "ci95": [
+              0.058228,
+              0.09608
+            ],
+            "excludes_zero": true
+          },
+          "f1": {
+            "difference": 0.103245,
+            "ci95": [
+              0.07919,
+              0.127757
+            ],
+            "excludes_zero": true
+          },
+          "legit_alerts_per_1000": {
+            "difference": -1.406099,
+            "ci95": [
+              -1.972469,
+              -0.813078
+            ],
+            "excludes_zero": true
+          },
+          "false_positive_rate": {
+            "difference": -0.001413,
+            "ci95": [
+              -0.001982,
+              -0.000817
+            ],
+            "excludes_zero": true
+          },
+          "critical_recall": {
+            "difference": -0.013773,
+            "ci95": [
+              -0.047708,
+              0.019968
+            ],
+            "excludes_zero": false
+          },
+          "critical_precision": {
+            "difference": 0.117468,
+            "ci95": [
+              0.035138,
+              0.19821
+            ],
+            "excludes_zero": true
+          },
+          "critical_legit_alerts_per_1000": {
+            "difference": -0.395852,
+            "ci95": [
+              -0.528917,
+              -0.251368
+            ],
+            "excludes_zero": true
+          },
+          "first_fraud_recall": {
+            "difference": -0.029144,
+            "ci95": [
+              -0.078185,
+              0.018848
+            ],
+            "excludes_zero": false
+          },
+          "episode_detection_rate": {
+            "difference": -0.061818,
+            "ci95": [
+              -0.110466,
+              -0.014083
+            ],
+            "excludes_zero": true
+          },
+          "pr_auc": {
+            "difference": 0.079937,
+            "ci95": [
+              0.036135,
+              0.12312
+            ],
+            "excludes_zero": true
+          },
+          "roc_auc": {
+            "difference": 0.196934,
+            "ci95": [
+              0.172286,
+              0.221949
+            ],
+            "excludes_zero": true
+          }
+        },
+        "v2_dnn_only - production": {
+          "recall": {
+            "difference": 0.123957,
+            "ci95": [
+              0.084721,
+              0.160383
+            ],
+            "excludes_zero": true
+          },
+          "precision": {
+            "difference": 0.062587,
+            "ci95": [
+              0.045276,
+              0.079292
+            ],
+            "excludes_zero": true
+          },
+          "f1": {
+            "difference": 0.08359,
+            "ci95": [
+              0.061007,
+              0.105335
+            ],
+            "excludes_zero": true
+          },
+          "legit_alerts_per_1000": {
+            "difference": -1.280333,
+            "ci95": [
+              -1.797154,
+              -0.729099
+            ],
+            "excludes_zero": true
+          },
+          "false_positive_rate": {
+            "difference": -0.001287,
+            "ci95": [
+              -0.001806,
+              -0.000732
+            ],
+            "excludes_zero": true
+          },
+          "critical_recall": {
+            "difference": -0.02212,
+            "ci95": [
+              -0.05045,
+              0.007554
+            ],
+            "excludes_zero": false
+          },
+          "critical_precision": {
+            "difference": 0.009426,
+            "ci95": [
+              -0.061831,
+              0.079074
+            ],
+            "excludes_zero": false
+          },
+          "critical_legit_alerts_per_1000": {
+            "difference": -0.156691,
+            "ci95": [
+              -0.293432,
+              -0.00206
+            ],
+            "excludes_zero": true
+          },
+          "first_fraud_recall": {
+            "difference": -0.016393,
+            "ci95": [
+              -0.067129,
+              0.030857
+            ],
+            "excludes_zero": false
+          },
+          "episode_detection_rate": {
+            "difference": -0.054545,
+            "ci95": [
+              -0.102174,
+              -0.007444
+            ],
+            "excludes_zero": true
+          },
+          "pr_auc": {
+            "difference": 0.041155,
+            "ci95": [
+              0.003586,
+              0.077177
+            ],
+            "excludes_zero": true
+          },
+          "roc_auc": {
+            "difference": 0.170925,
+            "ci95": [
+              0.14712,
+              0.194857
+            ],
+            "excludes_zero": true
+          }
+        }
+      }
+    },
+    "secondary": {
+      "rows": 106948,
+      "fraud_transactions": 496,
+      "legitimate_transactions": 106452,
+      "fraud_episodes": 122,
+      "first_fraud_transactions": 121,
+      "customers": 2500,
+      "groups": 2211,
+      "datasets": 5,
+      "models": {
+        "production": {
+          "counts": {
+            "true_positives": 158,
+            "false_positives": 1013,
+            "false_negatives": 338,
+            "critical_true_positives": 81,
+            "critical_false_positives": 66,
+            "first_frauds_detected": 56,
+            "episodes_detected": 79
+          },
+          "metrics": {
+            "recall": {
+              "value": 0.318548,
+              "ci95": [
+                0.2521,
+                0.395232
+              ]
+            },
+            "precision": {
+              "value": 0.134927,
+              "ci95": [
+                0.100456,
+                0.173436
+              ]
+            },
+            "f1": {
+              "value": 0.189562,
+              "ci95": [
+                0.146651,
+                0.236398
+              ]
+            },
+            "legit_alerts_per_1000": {
+              "value": 9.471893,
+              "ci95": [
+                8.820551,
+                10.115946
+              ]
+            },
+            "false_positive_rate": {
+              "value": 0.009516,
+              "ci95": [
+                0.008861,
+                0.010161
+              ]
+            },
+            "critical_recall": {
+              "value": 0.163306,
+              "ci95": [
+                0.117638,
+                0.2127
+              ]
+            },
+            "critical_precision": {
+              "value": 0.55102,
+              "ci95": [
+                0.439649,
+                0.653339
+              ]
+            },
+            "critical_legit_alerts_per_1000": {
+              "value": 0.617122,
+              "ci95": [
+                0.462539,
+                0.786095
+              ]
+            },
+            "first_fraud_recall": {
+              "value": 0.46281,
+              "ci95": [
+                0.364403,
+                0.562967
+              ]
+            },
+            "episode_detection_rate": {
+              "value": 0.647541,
+              "ci95": [
+                0.55333,
+                0.740385
+              ]
+            },
+            "pr_auc": {
+              "value": 0.204371,
+              "ci95": [
+                0.146803,
+                0.267744
+              ]
+            },
+            "roc_auc": {
+              "value": 0.754922,
+              "ci95": [
+                0.700647,
+                0.807072
+              ]
+            }
+          },
+          "first_fraud_recall_wilson95": [
+            0.3765,
+            0.5514
+          ]
+        },
+        "v2_dnn_lstm": {
+          "counts": {
+            "true_positives": 225,
+            "false_positives": 858,
+            "false_negatives": 271,
+            "critical_true_positives": 58,
+            "critical_false_positives": 55,
+            "first_frauds_detected": 46,
+            "episodes_detected": 63
+          },
+          "metrics": {
+            "recall": {
+              "value": 0.453629,
+              "ci95": [
+                0.359028,
+                0.542862
+              ]
+            },
+            "precision": {
+              "value": 0.207756,
+              "ci95": [
+                0.154425,
+                0.262008
+              ]
+            },
+            "f1": {
+              "value": 0.284991,
+              "ci95": [
+                0.219528,
+                0.349551
+              ]
+            },
+            "legit_alerts_per_1000": {
+              "value": 8.02259,
+              "ci95": [
+                6.795761,
+                9.289183
+              ]
+            },
+            "false_positive_rate": {
+              "value": 0.00806,
+              "ci95": [
+                0.006822,
+                0.009334
+              ]
+            },
+            "critical_recall": {
+              "value": 0.116935,
+              "ci95": [
+                0.06072,
+                0.180087
+              ]
+            },
+            "critical_precision": {
+              "value": 0.513274,
+              "ci95": [
+                0.310338,
+                0.706599
+              ]
+            },
+            "critical_legit_alerts_per_1000": {
+              "value": 0.514269,
+              "ci95": [
+                0.25341,
+                0.829319
+              ]
+            },
+            "first_fraud_recall": {
+              "value": 0.380165,
+              "ci95": [
+                0.28682,
+                0.474456
+              ]
+            },
+            "episode_detection_rate": {
+              "value": 0.516393,
+              "ci95": [
+                0.419643,
+                0.609318
+              ]
+            },
+            "pr_auc": {
+              "value": 0.234927,
+              "ci95": [
+                0.148961,
+                0.331235
+              ]
+            },
+            "roc_auc": {
+              "value": 0.947613,
+              "ci95": [
+                0.927418,
+                0.964851
+              ]
+            }
+          },
+          "first_fraud_recall_wilson95": [
+            0.2986,
+            0.4691
+          ]
+        },
+        "v2_dnn_only": {
+          "counts": {
+            "true_positives": 184,
+            "false_positives": 862,
+            "false_negatives": 312,
+            "critical_true_positives": 66,
+            "critical_false_positives": 81,
+            "first_frauds_detected": 45,
+            "episodes_detected": 62
+          },
+          "metrics": {
+            "recall": {
+              "value": 0.370968,
+              "ci95": [
+                0.286573,
+                0.455086
+              ]
+            },
+            "precision": {
+              "value": 0.175908,
+              "ci95": [
+                0.127175,
+                0.227675
+              ]
+            },
+            "f1": {
+              "value": 0.238651,
+              "ci95": [
+                0.178128,
+                0.297073
+              ]
+            },
+            "legit_alerts_per_1000": {
+              "value": 8.059992,
+              "ci95": [
+                6.93542,
+                9.289852
+              ]
+            },
+            "false_positive_rate": {
+              "value": 0.008098,
+              "ci95": [
+                0.00697,
+                0.009331
+              ]
+            },
+            "critical_recall": {
+              "value": 0.133065,
+              "ci95": [
+                0.076609,
+                0.198368
+              ]
+            },
+            "critical_precision": {
+              "value": 0.44898,
+              "ci95": [
+                0.287876,
+                0.61749
+              ]
+            },
+            "critical_legit_alerts_per_1000": {
+              "value": 0.757377,
+              "ci95": [
+                0.475351,
+                1.07221
+              ]
+            },
+            "first_fraud_recall": {
+              "value": 0.371901,
+              "ci95": [
+                0.276768,
+                0.46668
+              ]
+            },
+            "episode_detection_rate": {
+              "value": 0.508197,
+              "ci95": [
+                0.406015,
+                0.61157
+              ]
+            },
+            "pr_auc": {
+              "value": 0.191491,
+              "ci95": [
+                0.11344,
+                0.277509
+              ]
+            },
+            "roc_auc": {
+              "value": 0.922114,
+              "ci95": [
+                0.904836,
+                0.937437
+              ]
+            }
+          },
+          "first_fraud_recall_wilson95": [
+            0.291,
+            0.4607
+          ]
+        }
+      },
+      "paired_differences": {
+        "v2_dnn_lstm - v2_dnn_only": {
+          "recall": {
+            "difference": 0.082661,
+            "ci95": [
+              0.038872,
+              0.132029
+            ],
+            "excludes_zero": true
+          },
+          "precision": {
+            "difference": 0.031848,
+            "ci95": [
+              0.012776,
+              0.052443
+            ],
+            "excludes_zero": true
+          },
+          "f1": {
+            "difference": 0.046339,
+            "ci95": [
+              0.020941,
+              0.074743
+            ],
+            "excludes_zero": true
+          },
+          "legit_alerts_per_1000": {
+            "difference": -0.037401,
+            "ci95": [
+              -0.569012,
+              0.487422
+            ],
+            "excludes_zero": false
+          },
+          "false_positive_rate": {
+            "difference": -3.8e-05,
+            "ci95": [
+              -0.000572,
+              0.00049
+            ],
+            "excludes_zero": false
+          },
+          "critical_recall": {
+            "difference": -0.016129,
+            "ci95": [
+              -0.055661,
+              0.017242
+            ],
+            "excludes_zero": false
+          },
+          "critical_precision": {
+            "difference": 0.064295,
+            "ci95": [
+              -0.057043,
+              0.180303
+            ],
+            "excludes_zero": false
+          },
+          "critical_legit_alerts_per_1000": {
+            "difference": -0.243109,
+            "ci95": [
+              -0.453833,
+              -0.038241
+            ],
+            "excludes_zero": true
+          },
+          "first_fraud_recall": {
+            "difference": 0.008264,
+            "ci95": [
+              -0.060878,
+              0.079214
+            ],
+            "excludes_zero": false
+          },
+          "episode_detection_rate": {
+            "difference": 0.008197,
+            "ci95": [
+              -0.074788,
+              0.088714
+            ],
+            "excludes_zero": false
+          },
+          "pr_auc": {
+            "difference": 0.043436,
+            "ci95": [
+              0.00986,
+              0.07863
+            ],
+            "excludes_zero": true
+          },
+          "roc_auc": {
+            "difference": 0.0255,
+            "ci95": [
+              0.009846,
+              0.041373
+            ],
+            "excludes_zero": true
+          }
+        },
+        "v2_dnn_lstm - production": {
+          "recall": {
+            "difference": 0.135081,
+            "ci95": [
+              0.031086,
+              0.235158
+            ],
+            "excludes_zero": true
+          },
+          "precision": {
+            "difference": 0.072829,
+            "ci95": [
+              0.027032,
+              0.119298
+            ],
+            "excludes_zero": true
+          },
+          "f1": {
+            "difference": 0.095428,
+            "ci95": [
+              0.034134,
+              0.155685
+            ],
+            "excludes_zero": true
+          },
+          "legit_alerts_per_1000": {
+            "difference": -1.449302,
+            "ci95": [
+              -2.600719,
+              -0.166075
+            ],
+            "excludes_zero": true
+          },
+          "false_positive_rate": {
+            "difference": -0.001456,
+            "ci95": [
+              -0.002611,
+              -0.000167
+            ],
+            "excludes_zero": true
+          },
+          "critical_recall": {
+            "difference": -0.046371,
+            "ci95": [
+              -0.115229,
+              0.022832
+            ],
+            "excludes_zero": false
+          },
+          "critical_precision": {
+            "difference": -0.037746,
+            "ci95": [
+              -0.220485,
+              0.152426
+            ],
+            "excludes_zero": false
+          },
+          "critical_legit_alerts_per_1000": {
+            "difference": -0.102854,
+            "ci95": [
+              -0.350066,
+              0.198984
+            ],
+            "excludes_zero": false
+          },
+          "first_fraud_recall": {
+            "difference": -0.082645,
+            "ci95": [
+              -0.205607,
+              0.038781
+            ],
+            "excludes_zero": false
+          },
+          "episode_detection_rate": {
+            "difference": -0.131148,
+            "ci95": [
+              -0.237043,
+              -0.017238
+            ],
+            "excludes_zero": true
+          },
+          "pr_auc": {
+            "difference": 0.030556,
+            "ci95": [
+              -0.055794,
+              0.117794
+            ],
+            "excludes_zero": false
+          },
+          "roc_auc": {
+            "difference": 0.192692,
+            "ci95": [
+              0.138791,
+              0.250968
+            ],
+            "excludes_zero": true
+          }
+        },
+        "v2_dnn_only - production": {
+          "recall": {
+            "difference": 0.052419,
+            "ci95": [
+              -0.048628,
+              0.145833
+            ],
+            "excludes_zero": false
+          },
+          "precision": {
+            "difference": 0.040981,
+            "ci95": [
+              -0.001145,
+              0.085479
+            ],
+            "excludes_zero": false
+          },
+          "f1": {
+            "difference": 0.049089,
+            "ci95": [
+              -0.00972,
+              0.104841
+            ],
+            "excludes_zero": false
+          },
+          "legit_alerts_per_1000": {
+            "difference": -1.411901,
+            "ci95": [
+              -2.515036,
+              -0.225042
+            ],
+            "excludes_zero": true
+          },
+          "false_positive_rate": {
+            "difference": -0.001418,
+            "ci95": [
+              -0.002525,
+              -0.000226
+            ],
+            "excludes_zero": true
+          },
+          "critical_recall": {
+            "difference": -0.030242,
+            "ci95": [
+              -0.101105,
+              0.042697
+            ],
+            "excludes_zero": false
+          },
+          "critical_precision": {
+            "difference": -0.102041,
+            "ci95": [
+              -0.261735,
+              0.055913
+            ],
+            "excludes_zero": false
+          },
+          "critical_legit_alerts_per_1000": {
+            "difference": 0.140255,
+            "ci95": [
+              -0.132549,
+              0.446514
+            ],
+            "excludes_zero": false
+          },
+          "first_fraud_recall": {
+            "difference": -0.090909,
+            "ci95": [
+              -0.224165,
+              0.033058
+            ],
+            "excludes_zero": false
+          },
+          "episode_detection_rate": {
+            "difference": -0.139344,
+            "ci95": [
+              -0.267638,
+              -0.007871
+            ],
+            "excludes_zero": true
+          },
+          "pr_auc": {
+            "difference": -0.01288,
+            "ci95": [
+              -0.095967,
+              0.071834
+            ],
+            "excludes_zero": false
+          },
+          "roc_auc": {
+            "difference": 0.167192,
+            "ci95": [
+              0.117376,
+              0.221792
+            ],
+            "excludes_zero": true
+          }
+        }
+      }
+    }
+  },
+  "per_seed_primary": {
+    "101": {
+      "rows": 96033,
+      "fraud_transactions": 486,
+      "legitimate_transactions": 95547,
+      "fraud_episodes": 110,
+      "first_fraud_transactions": 110,
+      "customers": 500,
+      "groups": 443,
+      "datasets": 1,
+      "models": {
+        "production": {
+          "counts": {
+            "true_positives": 150,
+            "false_positives": 980,
+            "false_negatives": 336,
+            "critical_true_positives": 86,
+            "critical_false_positives": 73,
+            "first_frauds_detected": 46,
+            "episodes_detected": 71
+          },
+          "metrics": {
+            "recall": {
+              "value": 0.308642,
+              "ci95": [
+                0.244629,
+                0.382031
+              ]
+            },
+            "precision": {
+              "value": 0.132743,
+              "ci95": [
+                0.097453,
+                0.167893
+              ]
+            },
+            "f1": {
+              "value": 0.185644,
+              "ci95": [
+                0.141565,
+                0.228306
+              ]
+            },
+            "legit_alerts_per_1000": {
+              "value": 10.204825,
+              "ci95": [
+                9.552793,
+                10.925822
+              ]
+            },
+            "false_positive_rate": {
+              "value": 0.010257,
+              "ci95": [
+                0.009597,
+                0.010974
+              ]
+            },
+            "critical_recall": {
+              "value": 0.176955,
+              "ci95": [
+                0.129374,
+                0.235294
+              ]
+            },
+            "critical_precision": {
+              "value": 0.540881,
+              "ci95": [
+                0.429626,
+                0.635777
+              ]
+            },
+            "critical_legit_alerts_per_1000": {
+              "value": 0.760155,
+              "ci95": [
+                0.591523,
+                0.934521
+              ]
+            },
+            "first_fraud_recall": {
+              "value": 0.418182,
+              "ci95": [
+                0.310069,
+                0.52381
+              ]
+            },
+            "episode_detection_rate": {
+              "value": 0.645455,
+              "ci95": [
+                0.545434,
+                0.735308
+              ]
+            },
+            "pr_auc": {
+              "value": 0.19583,
+              "ci95": [
+                0.135958,
+                0.265333
+              ]
+            },
+            "roc_auc": {
+              "value": 0.717136,
+              "ci95": [
+                0.64583,
+                0.78369
+              ]
+            }
+          },
+          "first_fraud_recall_wilson95": [
+            0.3303,
+            0.5116
+          ]
+        },
+        "v2_dnn_lstm": {
+          "counts": {
+            "true_positives": 208,
+            "false_positives": 872,
+            "false_negatives": 278,
+            "critical_true_positives": 65,
+            "critical_false_positives": 51,
+            "first_frauds_detected": 47,
+            "episodes_detected": 64
+          },
+          "metrics": {
+            "recall": {
+              "value": 0.427984,
+              "ci95": [
+                0.331381,
+                0.529813
+              ]
+            },
+            "precision": {
+              "value": 0.192593,
+              "ci95": [
+                0.141518,
+                0.247807
+              ]
+            },
+            "f1": {
+              "value": 0.265645,
+              "ci95": [
+                0.202682,
+                0.328411
+              ]
+            },
+            "legit_alerts_per_1000": {
+              "value": 9.080212,
+              "ci95": [
+                7.723616,
+                10.617809
+              ]
+            },
+            "false_positive_rate": {
+              "value": 0.009126,
+              "ci95": [
+                0.007767,
+                0.01067
+              ]
+            },
+            "critical_recall": {
+              "value": 0.133745,
+              "ci95": [
+                0.077318,
+                0.193694
+              ]
+            },
+            "critical_precision": {
+              "value": 0.560345,
+              "ci95": [
+                0.362303,
+                0.75
+              ]
+            },
+            "critical_legit_alerts_per_1000": {
+              "value": 0.531067,
+              "ci95": [
+                0.256558,
+                0.902724
+              ]
+            },
+            "first_fraud_recall": {
+              "value": 0.427273,
+              "ci95": [
+                0.32381,
+                0.533913
+              ]
+            },
+            "episode_detection_rate": {
+              "value": 0.581818,
+              "ci95": [
+                0.479581,
+                0.68
+              ]
+            },
+            "pr_auc": {
+              "value": 0.224401,
+              "ci95": [
+                0.142777,
+                0.333489
+              ]
+            },
+            "roc_auc": {
+              "value": 0.937458,
+              "ci95": [
+                0.914146,
+                0.959174
+              ]
+            }
+          },
+          "first_fraud_recall_wilson95": [
+            0.3388,
+            0.5206
+          ]
+        },
+        "v2_dnn_only": {
+          "counts": {
+            "true_positives": 192,
+            "false_positives": 869,
+            "false_negatives": 294,
+            "critical_true_positives": 51,
+            "critical_false_positives": 82,
+            "first_frauds_detected": 48,
+            "episodes_detected": 61
+          },
+          "metrics": {
+            "recall": {
+              "value": 0.395062,
+              "ci95": [
+                0.308582,
+                0.482776
+              ]
+            },
+            "precision": {
+              "value": 0.180961,
+              "ci95": [
+                0.132516,
+                0.231874
+              ]
+            },
+            "f1": {
+              "value": 0.248222,
+              "ci95": [
+                0.187748,
+                0.305781
+              ]
+            },
+            "legit_alerts_per_1000": {
+              "value": 9.048973,
+              "ci95": [
+                7.879796,
+                10.416789
+              ]
+            },
+            "false_positive_rate": {
+              "value": 0.009095,
+              "ci95": [
+                0.007918,
+                0.010468
+              ]
+            },
+            "critical_recall": {
+              "value": 0.104938,
+              "ci95": [
+                0.063376,
+                0.151112
+              ]
+            },
+            "critical_precision": {
+              "value": 0.383459,
+              "ci95": [
+                0.251604,
+                0.541675
+              ]
+            },
+            "critical_legit_alerts_per_1000": {
+              "value": 0.853873,
+              "ci95": [
+                0.527654,
+                1.283914
+              ]
+            },
+            "first_fraud_recall": {
+              "value": 0.436364,
+              "ci95": [
+                0.333261,
+                0.542863
+              ]
+            },
+            "episode_detection_rate": {
+              "value": 0.554545,
+              "ci95": [
+                0.453704,
+                0.652174
+              ]
+            },
+            "pr_auc": {
+              "value": 0.178534,
+              "ci95": [
+                0.120323,
+                0.258192
+              ]
+            },
+            "roc_auc": {
+              "value": 0.896801,
+              "ci95": [
+                0.871862,
+                0.921492
+              ]
+            }
+          },
+          "first_fraud_recall_wilson95": [
+            0.3474,
+            0.5296
+          ]
+        }
+      },
+      "paired_differences": {
+        "v2_dnn_lstm - v2_dnn_only": {
+          "recall": {
+            "difference": 0.032922,
+            "ci95": [
+              -0.002252,
+              0.071273
+            ],
+            "excludes_zero": false
+          },
+          "precision": {
+            "difference": 0.011631,
+            "ci95": [
+              -0.005232,
+              0.030748
+            ],
+            "excludes_zero": false
+          },
+          "f1": {
+            "difference": 0.017423,
+            "ci95": [
+              -0.004031,
+              0.042002
+            ],
+            "excludes_zero": false
+          },
+          "legit_alerts_per_1000": {
+            "difference": 0.031239,
+            "ci95": [
+              -0.615046,
+              0.686495
+            ],
+            "excludes_zero": false
+          },
+          "false_positive_rate": {
+            "difference": 3.1e-05,
+            "ci95": [
+              -0.000618,
+              0.00069
+            ],
+            "excludes_zero": false
+          },
+          "critical_recall": {
+            "difference": 0.028807,
+            "ci95": [
+              -0.020885,
+              0.07919
+            ],
+            "excludes_zero": false
+          },
+          "critical_precision": {
+            "difference": 0.176886,
+            "ci95": [
+              0.0492,
+              0.303424
+            ],
+            "excludes_zero": true
+          },
+          "critical_legit_alerts_per_1000": {
+            "difference": -0.322806,
+            "ci95": [
+              -0.464794,
+              -0.192781
+            ],
+            "excludes_zero": true
+          },
+          "first_fraud_recall": {
+            "difference": -0.009091,
+            "ci95": [
+              -0.073171,
+              0.060878
+            ],
+            "excludes_zero": false
+          },
+          "episode_detection_rate": {
+            "difference": 0.027273,
+            "ci95": [
+              -0.04041,
+              0.106402
+            ],
+            "excludes_zero": false
+          },
+          "pr_auc": {
+            "difference": 0.045867,
+            "ci95": [
+              0.003685,
+              0.092192
+            ],
+            "excludes_zero": true
+          },
+          "roc_auc": {
+            "difference": 0.040657,
+            "ci95": [
+              0.021701,
+              0.061515
+            ],
+            "excludes_zero": true
+          }
+        },
+        "v2_dnn_lstm - production": {
+          "recall": {
+            "difference": 0.119342,
+            "ci95": [
+              0.028248,
+              0.209106
+            ],
+            "excludes_zero": true
+          },
+          "precision": {
+            "difference": 0.059849,
+            "ci95": [
+              0.019662,
+              0.103586
+            ],
+            "excludes_zero": true
+          },
+          "f1": {
+            "difference": 0.080001,
+            "ci95": [
+              0.025082,
+              0.135163
+            ],
+            "excludes_zero": true
+          },
+          "legit_alerts_per_1000": {
+            "difference": -1.124613,
+            "ci95": [
+              -2.437464,
+              0.228462
+            ],
+            "excludes_zero": false
+          },
+          "false_positive_rate": {
+            "difference": -0.00113,
+            "ci95": [
+              -0.002449,
+              0.000229
+            ],
+            "excludes_zero": false
+          },
+          "critical_recall": {
+            "difference": -0.04321,
+            "ci95": [
+              -0.10804,
+              0.023171
+            ],
+            "excludes_zero": false
+          },
+          "critical_precision": {
+            "difference": 0.019464,
+            "ci95": [
+              -0.179427,
+              0.218148
+            ],
+            "excludes_zero": false
+          },
+          "critical_legit_alerts_per_1000": {
+            "difference": -0.229088,
+            "ci95": [
+              -0.561823,
+              0.169756
+            ],
+            "excludes_zero": false
+          },
+          "first_fraud_recall": {
+            "difference": 0.009091,
+            "ci95": [
+              -0.080808,
+              0.110258
+            ],
+            "excludes_zero": false
+          },
+          "episode_detection_rate": {
+            "difference": -0.063636,
+            "ci95": [
+              -0.173913,
+              0.060257
+            ],
+            "excludes_zero": false
+          },
+          "pr_auc": {
+            "difference": 0.028571,
+            "ci95": [
+              -0.060643,
+              0.126702
+            ],
+            "excludes_zero": false
+          },
+          "roc_auc": {
+            "difference": 0.220323,
+            "ci95": [
+              0.162348,
+              0.280288
+            ],
+            "excludes_zero": true
+          }
+        },
+        "v2_dnn_only - production": {
+          "recall": {
+            "difference": 0.08642,
+            "ci95": [
+              0.004855,
+              0.167601
+            ],
+            "excludes_zero": true
+          },
+          "precision": {
+            "difference": 0.048218,
+            "ci95": [
+              0.011927,
+              0.086176
+            ],
+            "excludes_zero": true
+          },
+          "f1": {
+            "difference": 0.062579,
+            "ci95": [
+              0.014031,
+              0.111577
+            ],
+            "excludes_zero": true
+          },
+          "legit_alerts_per_1000": {
+            "difference": -1.155853,
+            "ci95": [
+              -2.270002,
+              0.146555
+            ],
+            "excludes_zero": false
+          },
+          "false_positive_rate": {
+            "difference": -0.001162,
+            "ci95": [
+              -0.002283,
+              0.000147
+            ],
+            "excludes_zero": false
+          },
+          "critical_recall": {
+            "difference": -0.072016,
+            "ci95": [
+              -0.117656,
+              -0.027897
+            ],
+            "excludes_zero": true
+          },
+          "critical_precision": {
+            "difference": -0.157422,
+            "ci95": [
+              -0.289929,
+              -0.001605
+            ],
+            "excludes_zero": true
+          },
+          "critical_legit_alerts_per_1000": {
+            "difference": 0.093718,
+            "ci95": [
+              -0.278311,
+              0.527223
+            ],
+            "excludes_zero": false
+          },
+          "first_fraud_recall": {
+            "difference": 0.018182,
+            "ci95": [
+              -0.067241,
+              0.107143
+            ],
+            "excludes_zero": false
+          },
+          "episode_detection_rate": {
+            "difference": -0.090909,
+            "ci95": [
+              -0.188153,
+              0.010106
+            ],
+            "excludes_zero": false
+          },
+          "pr_auc": {
+            "difference": -0.017296,
+            "ci95": [
+              -0.083042,
+              0.053124
+            ],
+            "excludes_zero": false
+          },
+          "roc_auc": {
+            "difference": 0.179666,
+            "ci95": [
+              0.121753,
+              0.243119
+            ],
+            "excludes_zero": true
+          }
+        }
+      }
+    },
+    "102": {
+      "rows": 99638,
+      "fraud_transactions": 482,
+      "legitimate_transactions": 99156,
+      "fraud_episodes": 110,
+      "first_fraud_transactions": 109,
+      "customers": 500,
+      "groups": 442,
+      "datasets": 1,
+      "models": {
+        "production": {
+          "counts": {
+            "true_positives": 145,
+            "false_positives": 1052,
+            "false_negatives": 337,
+            "critical_true_positives": 80,
+            "critical_false_positives": 101,
+            "first_frauds_detected": 43,
+            "episodes_detected": 62
+          },
+          "metrics": {
+            "recall": {
+              "value": 0.30083,
+              "ci95": [
+                0.226696,
+                0.370867
+              ]
+            },
+            "precision": {
+              "value": 0.121136,
+              "ci95": [
+                0.086205,
+                0.15451
+              ]
+            },
+            "f1": {
+              "value": 0.172722,
+              "ci95": [
+                0.126262,
+                0.215032
+              ]
+            },
+            "legit_alerts_per_1000": {
+              "value": 10.558221,
+              "ci95": [
+                9.861239,
+                11.297441
+              ]
+            },
+            "false_positive_rate": {
+              "value": 0.01061,
+              "ci95": [
+                0.009908,
+                0.011354
+              ]
+            },
+            "critical_recall": {
+              "value": 0.165975,
+              "ci95": [
+                0.112778,
+                0.216458
+              ]
+            },
+            "critical_precision": {
+              "value": 0.441989,
+              "ci95": [
+                0.333333,
+                0.530073
+              ]
+            },
+            "critical_legit_alerts_per_1000": {
+              "value": 1.013669,
+              "ci95": [
+                0.810156,
+                1.224316
+              ]
+            },
+            "first_fraud_recall": {
+              "value": 0.394495,
+              "ci95": [
+                0.287004,
+                0.5
+              ]
+            },
+            "episode_detection_rate": {
+              "value": 0.563636,
+              "ci95": [
+                0.464912,
+                0.661017
+              ]
+            },
+            "pr_auc": {
+              "value": 0.175595,
+              "ci95": [
+                0.115047,
+                0.234805
+              ]
+            },
+            "roc_auc": {
+              "value": 0.735845,
+              "ci95": [
+                0.674768,
+                0.799335
+              ]
+            }
+          },
+          "first_fraud_recall_wilson95": [
+            0.3078,
+            0.4883
+          ]
+        },
+        "v2_dnn_lstm": {
+          "counts": {
+            "true_positives": 213,
+            "false_positives": 908,
+            "false_negatives": 269,
+            "critical_true_positives": 75,
+            "critical_false_positives": 50,
+            "first_frauds_detected": 40,
+            "episodes_detected": 54
+          },
+          "metrics": {
+            "recall": {
+              "value": 0.441909,
+              "ci95": [
+                0.339332,
+                0.539703
+              ]
+            },
+            "precision": {
+              "value": 0.190009,
+              "ci95": [
+                0.138136,
+                0.24545
+              ]
+            },
+            "f1": {
+              "value": 0.265752,
+              "ci95": [
+                0.199223,
+                0.327847
+              ]
+            },
+            "legit_alerts_per_1000": {
+              "value": 9.112989,
+              "ci95": [
+                7.637793,
+                10.646788
+              ]
+            },
+            "false_positive_rate": {
+              "value": 0.009157,
+              "ci95": [
+                0.007674,
+                0.010705
+              ]
+            },
+            "critical_recall": {
+              "value": 0.155602,
+              "ci95": [
+                0.08671,
+                0.231932
+              ]
+            },
+            "critical_precision": {
+              "value": 0.6,
+              "ci95": [
+                0.404214,
+                0.764311
+              ]
+            },
+            "critical_legit_alerts_per_1000": {
+              "value": 0.501817,
+              "ci95": [
+                0.269418,
+                0.795402
+              ]
+            },
+            "first_fraud_recall": {
+              "value": 0.366972,
+              "ci95": [
+                0.27619,
+                0.457954
+              ]
+            },
+            "episode_detection_rate": {
+              "value": 0.490909,
+              "ci95": [
+                0.397846,
+                0.581833
+              ]
+            },
+            "pr_auc": {
+              "value": 0.251622,
+              "ci95": [
+                0.154902,
+                0.354006
+              ]
+            },
+            "roc_auc": {
+              "value": 0.913069,
+              "ci95": [
+                0.882348,
+                0.942607
+              ]
+            }
+          },
+          "first_fraud_recall_wilson95": [
+            0.2825,
+            0.4605
+          ]
+        },
+        "v2_dnn_only": {
+          "counts": {
+            "true_positives": 204,
+            "false_positives": 928,
+            "false_negatives": 278,
+            "critical_true_positives": 63,
+            "critical_false_positives": 74,
+            "first_frauds_detected": 40,
+            "episodes_detected": 53
+          },
+          "metrics": {
+            "recall": {
+              "value": 0.423237,
+              "ci95": [
+                0.325099,
+                0.517712
+              ]
+            },
+            "precision": {
+              "value": 0.180212,
+              "ci95": [
+                0.129078,
+                0.235521
+              ]
+            },
+            "f1": {
+              "value": 0.252788,
+              "ci95": [
+                0.187118,
+                0.315986
+              ]
+            },
+            "legit_alerts_per_1000": {
+              "value": 9.313716,
+              "ci95": [
+                7.940358,
+                10.75713
+              ]
+            },
+            "false_positive_rate": {
+              "value": 0.009359,
+              "ci95": [
+                0.007976,
+                0.010809
+              ]
+            },
+            "critical_recall": {
+              "value": 0.130705,
+              "ci95": [
+                0.074898,
+                0.196823
+              ]
+            },
+            "critical_precision": {
+              "value": 0.459854,
+              "ci95": [
+                0.3,
+                0.613177
+              ]
+            },
+            "critical_legit_alerts_per_1000": {
+              "value": 0.742689,
+              "ci95": [
+                0.497146,
+                1.011312
+              ]
+            },
+            "first_fraud_recall": {
+              "value": 0.366972,
+              "ci95": [
+                0.271845,
+                0.463947
+              ]
+            },
+            "episode_detection_rate": {
+              "value": 0.481818,
+              "ci95": [
+                0.37901,
+                0.588262
+              ]
+            },
+            "pr_auc": {
+              "value": 0.213671,
+              "ci95": [
+                0.127927,
+                0.308981
+              ]
+            },
+            "roc_auc": {
+              "value": 0.905757,
+              "ci95": [
+                0.8811,
+                0.929124
+              ]
+            }
+          },
+          "first_fraud_recall_wilson95": [
+            0.2825,
+            0.4605
+          ]
+        }
+      },
+      "paired_differences": {
+        "v2_dnn_lstm - v2_dnn_only": {
+          "recall": {
+            "difference": 0.018672,
+            "ci95": [
+              -0.016796,
+              0.056614
+            ],
+            "excludes_zero": false
+          },
+          "precision": {
+            "difference": 0.009797,
+            "ci95": [
+              -0.004575,
+              0.02637
+            ],
+            "excludes_zero": false
+          },
+          "f1": {
+            "difference": 0.012964,
+            "ci95": [
+              -0.006509,
+              0.034179
+            ],
+            "excludes_zero": false
+          },
+          "legit_alerts_per_1000": {
+            "difference": -0.200727,
+            "ci95": [
+              -0.77929,
+              0.341171
+            ],
+            "excludes_zero": false
+          },
+          "false_positive_rate": {
+            "difference": -0.000202,
+            "ci95": [
+              -0.000782,
+              0.000343
+            ],
+            "excludes_zero": false
+          },
+          "critical_recall": {
+            "difference": 0.024896,
+            "ci95": [
+              -0.011742,
+              0.067775
+            ],
+            "excludes_zero": false
+          },
+          "critical_precision": {
+            "difference": 0.140146,
+            "ci95": [
+              0.021498,
+              0.271251
+            ],
+            "excludes_zero": true
+          },
+          "critical_legit_alerts_per_1000": {
+            "difference": -0.240872,
+            "ci95": [
+              -0.48168,
+              0.009938
+            ],
+            "excludes_zero": false
+          },
+          "first_fraud_recall": {
+            "difference": 0.0,
+            "ci95": [
+              -0.077778,
+              0.079557
+            ],
+            "excludes_zero": false
+          },
+          "episode_detection_rate": {
+            "difference": 0.009091,
+            "ci95": [
+              -0.08046,
+              0.106563
+            ],
+            "excludes_zero": false
+          },
+          "pr_auc": {
+            "difference": 0.037951,
+            "ci95": [
+              0.006738,
+              0.073905
+            ],
+            "excludes_zero": true
+          },
+          "roc_auc": {
+            "difference": 0.007311,
+            "ci95": [
+              -0.009505,
+              0.024188
+            ],
+            "excludes_zero": false
+          }
+        },
+        "v2_dnn_lstm - production": {
+          "recall": {
+            "difference": 0.141079,
+            "ci95": [
+              0.056469,
+              0.220423
+            ],
+            "excludes_zero": true
+          },
+          "precision": {
+            "difference": 0.068873,
+            "ci95": [
+              0.034354,
+              0.109776
+            ],
+            "excludes_zero": true
+          },
+          "f1": {
+            "difference": 0.09303,
+            "ci95": [
+              0.046642,
+              0.143443
+            ],
+            "excludes_zero": true
+          },
+          "legit_alerts_per_1000": {
+            "difference": -1.445232,
+            "ci95": [
+              -2.882471,
+              -0.019899
+            ],
+            "excludes_zero": true
+          },
+          "false_positive_rate": {
+            "difference": -0.001452,
+            "ci95": [
+              -0.002897,
+              -2e-05
+            ],
+            "excludes_zero": true
+          },
+          "critical_recall": {
+            "difference": -0.010373,
+            "ci95": [
+              -0.083493,
+              0.069035
+            ],
+            "excludes_zero": false
+          },
+          "critical_precision": {
+            "difference": 0.158011,
+            "ci95": [
+              -0.004678,
+              0.317485
+            ],
+            "excludes_zero": false
+          },
+          "critical_legit_alerts_per_1000": {
+            "difference": -0.511853,
+            "ci95": [
+              -0.75727,
+              -0.248066
+            ],
+            "excludes_zero": true
+          },
+          "first_fraud_recall": {
+            "difference": -0.027523,
+            "ci95": [
+              -0.159672,
+              0.108915
+            ],
+            "excludes_zero": false
+          },
+          "episode_detection_rate": {
+            "difference": -0.072727,
+            "ci95": [
+              -0.192674,
+              0.045066
+            ],
+            "excludes_zero": false
+          },
+          "pr_auc": {
+            "difference": 0.076027,
+            "ci95": [
+              -0.015326,
+              0.176591
+            ],
+            "excludes_zero": false
+          },
+          "roc_auc": {
+            "difference": 0.177224,
+            "ci95": [
+              0.118378,
+              0.234675
+            ],
+            "excludes_zero": true
+          }
+        },
+        "v2_dnn_only - production": {
+          "recall": {
+            "difference": 0.122407,
+            "ci95": [
+              0.030407,
+              0.205081
+            ],
+            "excludes_zero": true
+          },
+          "precision": {
+            "difference": 0.059076,
+            "ci95": [
+              0.022147,
+              0.098205
+            ],
+            "excludes_zero": true
+          },
+          "f1": {
+            "difference": 0.080066,
+            "ci95": [
+              0.028264,
+              0.129463
+            ],
+            "excludes_zero": true
+          },
+          "legit_alerts_per_1000": {
+            "difference": -1.244505,
+            "ci95": [
+              -2.542094,
+              0.075972
+            ],
+            "excludes_zero": false
+          },
+          "false_positive_rate": {
+            "difference": -0.001251,
+            "ci95": [
+              -0.002554,
+              7.6e-05
+            ],
+            "excludes_zero": false
+          },
+          "critical_recall": {
+            "difference": -0.03527,
+            "ci95": [
+              -0.102369,
+              0.037215
+            ],
+            "excludes_zero": false
+          },
+          "critical_precision": {
+            "difference": 0.017865,
+            "ci95": [
+              -0.131528,
+              0.166033
+            ],
+            "excludes_zero": false
+          },
+          "critical_legit_alerts_per_1000": {
+            "difference": -0.270981,
+            "ci95": [
+              -0.520686,
+              0.0
+            ],
+            "excludes_zero": false
+          },
+          "first_fraud_recall": {
+            "difference": -0.027523,
+            "ci95": [
+              -0.17434,
+              0.108938
+            ],
+            "excludes_zero": false
+          },
+          "episode_detection_rate": {
+            "difference": -0.081818,
+            "ci95": [
+              -0.219347,
+              0.036614
+            ],
+            "excludes_zero": false
+          },
+          "pr_auc": {
+            "difference": 0.038076,
+            "ci95": [
+              -0.047939,
+              0.12934
+            ],
+            "excludes_zero": false
+          },
+          "roc_auc": {
+            "difference": 0.169912,
+            "ci95": [
+              0.112565,
+              0.224391
+            ],
+            "excludes_zero": true
+          }
+        }
+      }
+    },
+    "103": {
+      "rows": 95485,
+      "fraud_transactions": 466,
+      "legitimate_transactions": 95019,
+      "fraud_episodes": 110,
+      "first_fraud_transactions": 110,
+      "customers": 500,
+      "groups": 442,
+      "datasets": 1,
+      "models": {
+        "production": {
+          "counts": {
+            "true_positives": 144,
+            "false_positives": 966,
+            "false_negatives": 322,
+            "critical_true_positives": 82,
+            "critical_false_positives": 89,
+            "first_frauds_detected": 50,
+            "episodes_detected": 69
+          },
+          "metrics": {
+            "recall": {
+              "value": 0.309013,
+              "ci95": [
+                0.247497,
+                0.377574
+              ]
+            },
+            "precision": {
+              "value": 0.12973,
+              "ci95": [
+                0.098562,
+                0.162283
+              ]
+            },
+            "f1": {
+              "value": 0.182741,
+              "ci95": [
+                0.142564,
+                0.221836
+              ]
+            },
+            "legit_alerts_per_1000": {
+              "value": 10.116772,
+              "ci95": [
+                9.388077,
+                10.890521
+              ]
+            },
+            "false_positive_rate": {
+              "value": 0.010166,
+              "ci95": [
+                0.009431,
+                0.010939
+              ]
+            },
+            "critical_recall": {
+              "value": 0.175966,
+              "ci95": [
+                0.129973,
+                0.232765
+              ]
+            },
+            "critical_precision": {
+              "value": 0.479532,
+              "ci95": [
+                0.379994,
+                0.570516
+              ]
+            },
+            "critical_legit_alerts_per_1000": {
+              "value": 0.932084,
+              "ci95": [
+                0.744509,
+                1.139007
+              ]
+            },
+            "first_fraud_recall": {
+              "value": 0.454545,
+              "ci95": [
+                0.356436,
+                0.555556
+              ]
+            },
+            "episode_detection_rate": {
+              "value": 0.627273,
+              "ci95": [
+                0.527976,
+                0.725667
+              ]
+            },
+            "pr_auc": {
+              "value": 0.184937,
+              "ci95": [
+                0.132129,
+                0.24601
+              ]
+            },
+            "roc_auc": {
+              "value": 0.734603,
+              "ci95": [
+                0.675186,
+                0.790511
+              ]
+            }
+          },
+          "first_fraud_recall_wilson95": [
+            0.3646,
+            0.5476
+          ]
+        },
+        "v2_dnn_lstm": {
+          "counts": {
+            "true_positives": 248,
+            "false_positives": 858,
+            "false_negatives": 218,
+            "critical_true_positives": 66,
+            "critical_false_positives": 32,
+            "first_frauds_detected": 50,
+            "episodes_detected": 63
+          },
+          "metrics": {
+            "recall": {
+              "value": 0.532189,
+              "ci95": [
+                0.440325,
+                0.625032
+              ]
+            },
+            "precision": {
+              "value": 0.224231,
+              "ci95": [
+                0.173072,
+                0.276938
+              ]
+            },
+            "f1": {
+              "value": 0.315522,
+              "ci95": [
+                0.253732,
+                0.37472
+              ]
+            },
+            "legit_alerts_per_1000": {
+              "value": 8.985705,
+              "ci95": [
+                7.859169,
+                10.243287
+              ]
+            },
+            "false_positive_rate": {
+              "value": 0.00903,
+              "ci95": [
+                0.0079,
+                0.010291
+              ]
+            },
+            "critical_recall": {
+              "value": 0.141631,
+              "ci95": [
+                0.085645,
+                0.210045
+              ]
+            },
+            "critical_precision": {
+              "value": 0.673469,
+              "ci95": [
+                0.50526,
+                0.817393
+              ]
+            },
+            "critical_legit_alerts_per_1000": {
+              "value": 0.335131,
+              "ci95": [
+                0.172898,
+                0.522821
+              ]
+            },
+            "first_fraud_recall": {
+              "value": 0.454545,
+              "ci95": [
+                0.360462,
+                0.550011
+              ]
+            },
+            "episode_detection_rate": {
+              "value": 0.572727,
+              "ci95": [
+                0.480374,
+                0.666667
+              ]
+            },
+            "pr_auc": {
+              "value": 0.326671,
+              "ci95": [
+                0.227827,
+                0.441191
+              ]
+            },
+            "roc_auc": {
+              "value": 0.94521,
+              "ci95": [
+                0.922026,
+                0.963707
+              ]
+            }
+          },
+          "first_fraud_recall_wilson95": [
+            0.3646,
+            0.5476
+          ]
+        },
+        "v2_dnn_only": {
+          "counts": {
+            "true_positives": 223,
+            "false_positives": 839,
+            "false_negatives": 243,
+            "critical_true_positives": 66,
+            "critical_false_positives": 63,
+            "first_frauds_detected": 48,
+            "episodes_detected": 69
+          },
+          "metrics": {
+            "recall": {
+              "value": 0.478541,
+              "ci95": [
+                0.387566,
+                0.57047
+              ]
+            },
+            "precision": {
+              "value": 0.209981,
+              "ci95": [
+                0.162485,
+                0.261226
+              ]
+            },
+            "f1": {
+              "value": 0.291885,
+              "ci95": [
+                0.232417,
+                0.351218
+              ]
+            },
+            "legit_alerts_per_1000": {
+              "value": 8.78672,
+              "ci95": [
+                7.759184,
+                9.862806
+              ]
+            },
+            "false_positive_rate": {
+              "value": 0.00883,
+              "ci95": [
+                0.007795,
+                0.00991
+              ]
+            },
+            "critical_recall": {
+              "value": 0.141631,
+              "ci95": [
+                0.090165,
+                0.204456
+              ]
+            },
+            "critical_precision": {
+              "value": 0.511628,
+              "ci95": [
+                0.372868,
+                0.64539
+              ]
+            },
+            "critical_legit_alerts_per_1000": {
+              "value": 0.659789,
+              "ci95": [
+                0.45374,
+                0.89214
+              ]
+            },
+            "first_fraud_recall": {
+              "value": 0.436364,
+              "ci95": [
+                0.335706,
+                0.548085
+              ]
+            },
+            "episode_detection_rate": {
+              "value": 0.627273,
+              "ci95": [
+                0.52222,
+                0.726415
+              ]
+            },
+            "pr_auc": {
+              "value": 0.248651,
+              "ci95": [
+                0.167309,
+                0.341026
+              ]
+            },
+            "roc_auc": {
+              "value": 0.918658,
+              "ci95": [
+                0.895594,
+                0.941265
+              ]
+            }
+          },
+          "first_fraud_recall_wilson95": [
+            0.3474,
+            0.5296
+          ]
+        }
+      },
+      "paired_differences": {
+        "v2_dnn_lstm - v2_dnn_only": {
+          "recall": {
+            "difference": 0.053648,
+            "ci95": [
+              0.004209,
+              0.103037
+            ],
+            "excludes_zero": true
+          },
+          "precision": {
+            "difference": 0.01425,
+            "ci95": [
+              -0.006635,
+              0.035288
+            ],
+            "excludes_zero": false
+          },
+          "f1": {
+            "difference": 0.023637,
+            "ci95": [
+              -0.005185,
+              0.052352
+            ],
+            "excludes_zero": false
+          },
+          "legit_alerts_per_1000": {
+            "difference": 0.198984,
+            "ci95": [
+              -0.418317,
+              0.85511
+            ],
+            "excludes_zero": false
+          },
+          "false_positive_rate": {
+            "difference": 0.0002,
+            "ci95": [
+              -0.000421,
+              0.000859
+            ],
+            "excludes_zero": false
+          },
+          "critical_recall": {
+            "difference": 0.0,
+            "ci95": [
+              -0.032262,
+              0.03586
+            ],
+            "excludes_zero": false
+          },
+          "critical_precision": {
+            "difference": 0.161841,
+            "ci95": [
+              0.044681,
+              0.268023
+            ],
+            "excludes_zero": true
+          },
+          "critical_legit_alerts_per_1000": {
+            "difference": -0.324658,
+            "ci95": [
+              -0.50361,
+              -0.140054
+            ],
+            "excludes_zero": true
+          },
+          "first_fraud_recall": {
+            "difference": 0.018182,
+            "ci95": [
+              -0.054545,
+              0.090909
+            ],
+            "excludes_zero": false
+          },
+          "episode_detection_rate": {
+            "difference": -0.054545,
+            "ci95": [
+              -0.133346,
+              0.021345
+            ],
+            "excludes_zero": false
+          },
+          "pr_auc": {
+            "difference": 0.07802,
+            "ci95": [
+              0.036893,
+              0.124118
+            ],
+            "excludes_zero": true
+          },
+          "roc_auc": {
+            "difference": 0.026552,
+            "ci95": [
+              0.009517,
+              0.04386
+            ],
+            "excludes_zero": true
+          }
+        },
+        "v2_dnn_lstm - production": {
+          "recall": {
+            "difference": 0.223176,
+            "ci95": [
+              0.126015,
+              0.313135
+            ],
+            "excludes_zero": true
+          },
+          "precision": {
+            "difference": 0.094502,
+            "ci95": [
+              0.05408,
+              0.135869
+            ],
+            "excludes_zero": true
+          },
+          "f1": {
+            "difference": 0.132781,
+            "ci95": [
+              0.07811,
+              0.186776
+            ],
+            "excludes_zero": true
+          },
+          "legit_alerts_per_1000": {
+            "difference": -1.131068,
+            "ci95": [
+              -2.293542,
+              0.032831
+            ],
+            "excludes_zero": false
+          },
+          "false_positive_rate": {
+            "difference": -0.001137,
+            "ci95": [
+              -0.002305,
+              3.3e-05
+            ],
+            "excludes_zero": false
+          },
+          "critical_recall": {
+            "difference": -0.034335,
+            "ci95": [
+              -0.10225,
+              0.036735
+            ],
+            "excludes_zero": false
+          },
+          "critical_precision": {
+            "difference": 0.193937,
+            "ci95": [
+              0.032633,
+              0.344639
+            ],
+            "excludes_zero": true
+          },
+          "critical_legit_alerts_per_1000": {
+            "difference": -0.596952,
+            "ci95": [
+              -0.831803,
+              -0.368263
+            ],
+            "excludes_zero": true
+          },
+          "first_fraud_recall": {
+            "difference": 0.0,
+            "ci95": [
+              -0.113833,
+              0.119266
+            ],
+            "excludes_zero": false
+          },
+          "episode_detection_rate": {
+            "difference": -0.054545,
+            "ci95": [
+              -0.162415,
+              0.049034
+            ],
+            "excludes_zero": false
+          },
+          "pr_auc": {
+            "difference": 0.141734,
+            "ci95": [
+              0.042792,
+              0.252893
+            ],
+            "excludes_zero": true
+          },
+          "roc_auc": {
+            "difference": 0.210607,
+            "ci95": [
+              0.155874,
+              0.268172
+            ],
+            "excludes_zero": true
+          }
+        },
+        "v2_dnn_only - production": {
+          "recall": {
+            "difference": 0.169528,
+            "ci95": [
+              0.083078,
+              0.249304
+            ],
+            "excludes_zero": true
+          },
+          "precision": {
+            "difference": 0.080251,
+            "ci95": [
+              0.043126,
+              0.118808
+            ],
+            "excludes_zero": true
+          },
+          "f1": {
+            "difference": 0.109144,
+            "ci95": [
+              0.05914,
+              0.1578
+            ],
+            "excludes_zero": true
+          },
+          "legit_alerts_per_1000": {
+            "difference": -1.330052,
+            "ci95": [
+              -2.387044,
+              -0.293118
+            ],
+            "excludes_zero": true
+          },
+          "false_positive_rate": {
+            "difference": -0.001337,
+            "ci95": [
+              -0.0024,
+              -0.000294
+            ],
+            "excludes_zero": true
+          },
+          "critical_recall": {
+            "difference": -0.034335,
+            "ci95": [
+              -0.097715,
+              0.030906
+            ],
+            "excludes_zero": false
+          },
+          "critical_precision": {
+            "difference": 0.032096,
+            "ci95": [
+              -0.102597,
+              0.174749
+            ],
+            "excludes_zero": false
+          },
+          "critical_legit_alerts_per_1000": {
+            "difference": -0.272294,
+            "ci95": [
+              -0.549736,
+              0.010477
+            ],
+            "excludes_zero": false
+          },
+          "first_fraud_recall": {
+            "difference": -0.018182,
+            "ci95": [
+              -0.116071,
+              0.088625
+            ],
+            "excludes_zero": false
+          },
+          "episode_detection_rate": {
+            "difference": 0.0,
+            "ci95": [
+              -0.09093,
+              0.098088
+            ],
+            "excludes_zero": false
+          },
+          "pr_auc": {
+            "difference": 0.063714,
+            "ci95": [
+              -0.016811,
+              0.155318
+            ],
+            "excludes_zero": false
+          },
+          "roc_auc": {
+            "difference": 0.184055,
+            "ci95": [
+              0.128528,
+              0.243584
+            ],
+            "excludes_zero": true
+          }
+        }
+      }
+    },
+    "104": {
+      "rows": 96636,
+      "fraud_transactions": 494,
+      "legitimate_transactions": 96142,
+      "fraud_episodes": 110,
+      "first_fraud_transactions": 110,
+      "customers": 500,
+      "groups": 441,
+      "datasets": 1,
+      "models": {
+        "production": {
+          "counts": {
+            "true_positives": 129,
+            "false_positives": 1002,
+            "false_negatives": 365,
+            "critical_true_positives": 68,
+            "critical_false_positives": 96,
+            "first_frauds_detected": 50,
+            "episodes_detected": 61
+          },
+          "metrics": {
+            "recall": {
+              "value": 0.261134,
+              "ci95": [
+                0.205284,
+                0.323329
+              ]
+            },
+            "precision": {
+              "value": 0.114058,
+              "ci95": [
+                0.084244,
+                0.146391
+              ]
+            },
+            "f1": {
+              "value": 0.158769,
+              "ci95": [
+                0.12202,
+                0.196573
+              ]
+            },
+            "legit_alerts_per_1000": {
+              "value": 10.368807,
+              "ci95": [
+                9.683818,
+                11.131413
+              ]
+            },
+            "false_positive_rate": {
+              "value": 0.010422,
+              "ci95": [
+                0.009736,
+                0.01119
+              ]
+            },
+            "critical_recall": {
+              "value": 0.137652,
+              "ci95": [
+                0.097774,
+                0.182769
+              ]
+            },
+            "critical_precision": {
+              "value": 0.414634,
+              "ci95": [
+                0.3125,
+                0.516667
+              ]
+            },
+            "critical_legit_alerts_per_1000": {
+              "value": 0.993419,
+              "ci95": [
+                0.796875,
+                1.193931
+              ]
+            },
+            "first_fraud_recall": {
+              "value": 0.454545,
+              "ci95": [
+                0.36,
+                0.550473
+              ]
+            },
+            "episode_detection_rate": {
+              "value": 0.554545,
+              "ci95": [
+                0.459958,
+                0.647632
+              ]
+            },
+            "pr_auc": {
+              "value": 0.146472,
+              "ci95": [
+                0.097601,
+                0.201625
+              ]
+            },
+            "roc_auc": {
+              "value": 0.715964,
+              "ci95": [
+                0.658445,
+                0.76938
+              ]
+            }
+          },
+          "first_fraud_recall_wilson95": [
+            0.3646,
+            0.5476
+          ]
+        },
+        "v2_dnn_lstm": {
+          "counts": {
+            "true_positives": 207,
+            "false_positives": 804,
+            "false_negatives": 287,
+            "critical_true_positives": 59,
+            "critical_false_positives": 69,
+            "first_frauds_detected": 41,
+            "episodes_detected": 58
+          },
+          "metrics": {
+            "recall": {
+              "value": 0.419028,
+              "ci95": [
+                0.33067,
+                0.507797
+              ]
+            },
+            "precision": {
+              "value": 0.204748,
+              "ci95": [
+                0.155653,
+                0.25831
+              ]
+            },
+            "f1": {
+              "value": 0.275083,
+              "ci95": [
+                0.216578,
+                0.334151
+              ]
+            },
+            "legit_alerts_per_1000": {
+              "value": 8.319881,
+              "ci95": [
+                7.051075,
+                9.694431
+              ]
+            },
+            "false_positive_rate": {
+              "value": 0.008363,
+              "ci95": [
+                0.007085,
+                0.009746
+              ]
+            },
+            "critical_recall": {
+              "value": 0.119433,
+              "ci95": [
+                0.064807,
+                0.179808
+              ]
+            },
+            "critical_precision": {
+              "value": 0.460938,
+              "ci95": [
+                0.286884,
+                0.638097
+              ]
+            },
+            "critical_legit_alerts_per_1000": {
+              "value": 0.71402,
+              "ci95": [
+                0.383279,
+                1.096677
+              ]
+            },
+            "first_fraud_recall": {
+              "value": 0.372727,
+              "ci95": [
+                0.274802,
+                0.4706
+              ]
+            },
+            "episode_detection_rate": {
+              "value": 0.527273,
+              "ci95": [
+                0.423067,
+                0.631093
+              ]
+            },
+            "pr_auc": {
+              "value": 0.202556,
+              "ci95": [
+                0.135142,
+                0.289191
+              ]
+            },
+            "roc_auc": {
+              "value": 0.912764,
+              "ci95": [
+                0.882505,
+                0.941536
+              ]
+            }
+          },
+          "first_fraud_recall_wilson95": [
+            0.2881,
+            0.4659
+          ]
+        },
+        "v2_dnn_only": {
+          "counts": {
+            "true_positives": 192,
+            "false_positives": 866,
+            "false_negatives": 302,
+            "critical_true_positives": 61,
+            "critical_false_positives": 87,
+            "first_frauds_detected": 48,
+            "episodes_detected": 62
+          },
+          "metrics": {
+            "recall": {
+              "value": 0.388664,
+              "ci95": [
+                0.306358,
+                0.474477
+              ]
+            },
+            "precision": {
+              "value": 0.181474,
+              "ci95": [
+                0.136356,
+                0.231703
+              ]
+            },
+            "f1": {
+              "value": 0.247423,
+              "ci95": [
+                0.192383,
+                0.301986
+              ]
+            },
+            "legit_alerts_per_1000": {
+              "value": 8.961464,
+              "ci95": [
+                7.811469,
+                10.220023
+              ]
+            },
+            "false_positive_rate": {
+              "value": 0.009008,
+              "ci95": [
+                0.007853,
+                0.010268
+              ]
+            },
+            "critical_recall": {
+              "value": 0.123482,
+              "ci95": [
+                0.079059,
+                0.17772
+              ]
+            },
+            "critical_precision": {
+              "value": 0.412162,
+              "ci95": [
+                0.27683,
+                0.554895
+              ]
+            },
+            "critical_legit_alerts_per_1000": {
+              "value": 0.900286,
+              "ci95": [
+                0.570875,
+                1.284927
+              ]
+            },
+            "first_fraud_recall": {
+              "value": 0.436364,
+              "ci95": [
+                0.339995,
+                0.538477
+              ]
+            },
+            "episode_detection_rate": {
+              "value": 0.563636,
+              "ci95": [
+                0.464551,
+                0.666667
+              ]
+            },
+            "pr_auc": {
+              "value": 0.174406,
+              "ci95": [
+                0.118201,
+                0.249054
+              ]
+            },
+            "roc_auc": {
+              "value": 0.88597,
+              "ci95": [
+                0.859372,
+                0.911673
+              ]
+            }
+          },
+          "first_fraud_recall_wilson95": [
+            0.3474,
+            0.5296
+          ]
+        }
+      },
+      "paired_differences": {
+        "v2_dnn_lstm - v2_dnn_only": {
+          "recall": {
+            "difference": 0.030364,
+            "ci95": [
+              -0.011136,
+              0.074671
+            ],
+            "excludes_zero": false
+          },
+          "precision": {
+            "difference": 0.023273,
+            "ci95": [
+              0.003529,
+              0.04402
+            ],
+            "excludes_zero": true
+          },
+          "f1": {
+            "difference": 0.02766,
+            "ci95": [
+              0.002666,
+              0.053557
+            ],
+            "excludes_zero": true
+          },
+          "legit_alerts_per_1000": {
+            "difference": -0.641583,
+            "ci95": [
+              -1.204512,
+              -0.049939
+            ],
+            "excludes_zero": true
+          },
+          "false_positive_rate": {
+            "difference": -0.000645,
+            "ci95": [
+              -0.001211,
+              -5e-05
+            ],
+            "excludes_zero": true
+          },
+          "critical_recall": {
+            "difference": -0.004049,
+            "ci95": [
+              -0.040856,
+              0.044042
+            ],
+            "excludes_zero": false
+          },
+          "critical_precision": {
+            "difference": 0.048775,
+            "ci95": [
+              -0.050002,
+              0.165644
+            ],
+            "excludes_zero": false
+          },
+          "critical_legit_alerts_per_1000": {
+            "difference": -0.186266,
+            "ci95": [
+              -0.404614,
+              0.010158
+            ],
+            "excludes_zero": false
+          },
+          "first_fraud_recall": {
+            "difference": -0.063636,
+            "ci95": [
+              -0.138621,
+              0.008623
+            ],
+            "excludes_zero": false
+          },
+          "episode_detection_rate": {
+            "difference": -0.036364,
+            "ci95": [
+              -0.112071,
+              0.037392
+            ],
+            "excludes_zero": false
+          },
+          "pr_auc": {
+            "difference": 0.02815,
+            "ci95": [
+              0.000473,
+              0.058608
+            ],
+            "excludes_zero": true
+          },
+          "roc_auc": {
+            "difference": 0.026795,
+            "ci95": [
+              0.010154,
+              0.043495
+            ],
+            "excludes_zero": true
+          }
+        },
+        "v2_dnn_lstm - production": {
+          "recall": {
+            "difference": 0.157895,
+            "ci95": [
+              0.065293,
+              0.247708
+            ],
+            "excludes_zero": true
+          },
+          "precision": {
+            "difference": 0.090689,
+            "ci95": [
+              0.047048,
+              0.136453
+            ],
+            "excludes_zero": true
+          },
+          "f1": {
+            "difference": 0.116314,
+            "ci95": [
+              0.059179,
+              0.171286
+            ],
+            "excludes_zero": true
+          },
+          "legit_alerts_per_1000": {
+            "difference": -2.048926,
+            "ci95": [
+              -3.386391,
+              -0.745066
+            ],
+            "excludes_zero": true
+          },
+          "false_positive_rate": {
+            "difference": -0.002059,
+            "ci95": [
+              -0.003405,
+              -0.000749
+            ],
+            "excludes_zero": true
+          },
+          "critical_recall": {
+            "difference": -0.018219,
+            "ci95": [
+              -0.082001,
+              0.051001
+            ],
+            "excludes_zero": false
+          },
+          "critical_precision": {
+            "difference": 0.046303,
+            "ci95": [
+              -0.130769,
+              0.230743
+            ],
+            "excludes_zero": false
+          },
+          "critical_legit_alerts_per_1000": {
+            "difference": -0.279399,
+            "ci95": [
+              -0.616984,
+              0.108255
+            ],
+            "excludes_zero": false
+          },
+          "first_fraud_recall": {
+            "difference": -0.081818,
+            "ci95": [
+              -0.181843,
+              0.029156
+            ],
+            "excludes_zero": false
+          },
+          "episode_detection_rate": {
+            "difference": -0.027273,
+            "ci95": [
+              -0.122137,
+              0.07302
+            ],
+            "excludes_zero": false
+          },
+          "pr_auc": {
+            "difference": 0.056084,
+            "ci95": [
+              -0.02107,
+              0.139368
+            ],
+            "excludes_zero": false
+          },
+          "roc_auc": {
+            "difference": 0.1968,
+            "ci95": [
+              0.143652,
+              0.252105
+            ],
+            "excludes_zero": true
+          }
+        },
+        "v2_dnn_only - production": {
+          "recall": {
+            "difference": 0.12753,
+            "ci95": [
+              0.048931,
+              0.204456
+            ],
+            "excludes_zero": true
+          },
+          "precision": {
+            "difference": 0.067416,
+            "ci95": [
+              0.031795,
+              0.105413
+            ],
+            "excludes_zero": true
+          },
+          "f1": {
+            "difference": 0.088653,
+            "ci95": [
+              0.041824,
+              0.136182
+            ],
+            "excludes_zero": true
+          },
+          "legit_alerts_per_1000": {
+            "difference": -1.407343,
+            "ci95": [
+              -2.602646,
+              -0.217683
+            ],
+            "excludes_zero": true
+          },
+          "false_positive_rate": {
+            "difference": -0.001415,
+            "ci95": [
+              -0.002616,
+              -0.000219
+            ],
+            "excludes_zero": true
+          },
+          "critical_recall": {
+            "difference": -0.01417,
+            "ci95": [
+              -0.063439,
+              0.037046
+            ],
+            "excludes_zero": false
+          },
+          "critical_precision": {
+            "difference": -0.002472,
+            "ci95": [
+              -0.133414,
+              0.134902
+            ],
+            "excludes_zero": false
+          },
+          "critical_legit_alerts_per_1000": {
+            "difference": -0.093133,
+            "ci95": [
+              -0.420534,
+              0.285787
+            ],
+            "excludes_zero": false
+          },
+          "first_fraud_recall": {
+            "difference": -0.018182,
+            "ci95": [
+              -0.110117,
+              0.075
+            ],
+            "excludes_zero": false
+          },
+          "episode_detection_rate": {
+            "difference": 0.009091,
+            "ci95": [
+              -0.081314,
+              0.104785
+            ],
+            "excludes_zero": false
+          },
+          "pr_auc": {
+            "difference": 0.027934,
+            "ci95": [
+              -0.038553,
+              0.100562
+            ],
+            "excludes_zero": false
+          },
+          "roc_auc": {
+            "difference": 0.170005,
+            "ci95": [
+              0.119098,
+              0.225372
+            ],
+            "excludes_zero": true
+          }
+        }
+      }
+    },
+    "105": {
+      "rows": 97238,
+      "fraud_transactions": 468,
+      "legitimate_transactions": 96770,
+      "fraud_episodes": 110,
+      "first_fraud_transactions": 110,
+      "customers": 500,
+      "groups": 443,
+      "datasets": 1,
+      "models": {
+        "production": {
+          "counts": {
+            "true_positives": 141,
+            "false_positives": 1003,
+            "false_negatives": 327,
+            "critical_true_positives": 67,
+            "critical_false_positives": 87,
+            "first_frauds_detected": 51,
+            "episodes_detected": 71
+          },
+          "metrics": {
+            "recall": {
+              "value": 0.301282,
+              "ci95": [
+                0.230231,
+                0.373183
+              ]
+            },
+            "precision": {
+              "value": 0.123252,
+              "ci95": [
+                0.089544,
+                0.155362
+              ]
+            },
+            "f1": {
+              "value": 0.174938,
+              "ci95": [
+                0.131143,
+                0.214907
+              ]
+            },
+            "legit_alerts_per_1000": {
+              "value": 10.314897,
+              "ci95": [
+                9.593654,
+                11.033309
+              ]
+            },
+            "false_positive_rate": {
+              "value": 0.010365,
+              "ci95": [
+                0.009638,
+                0.01109
+              ]
+            },
+            "critical_recall": {
+              "value": 0.143162,
+              "ci95": [
+                0.094202,
+                0.198068
+              ]
+            },
+            "critical_precision": {
+              "value": 0.435065,
+              "ci95": [
+                0.313707,
+                0.541906
+              ]
+            },
+            "critical_legit_alerts_per_1000": {
+              "value": 0.894712,
+              "ci95": [
+                0.693886,
+                1.118252
+              ]
+            },
+            "first_fraud_recall": {
+              "value": 0.463636,
+              "ci95": [
+                0.350417,
+                0.565657
+              ]
+            },
+            "episode_detection_rate": {
+              "value": 0.645455,
+              "ci95": [
+                0.546509,
+                0.736842
+              ]
+            },
+            "pr_auc": {
+              "value": 0.162103,
+              "ci95": [
+                0.103878,
+                0.222202
+              ]
+            },
+            "roc_auc": {
+              "value": 0.756487,
+              "ci95": [
+                0.70614,
+                0.803956
+              ]
+            }
+          },
+          "first_fraud_recall_wilson95": [
+            0.3732,
+            0.5565
+          ]
+        },
+        "v2_dnn_lstm": {
+          "counts": {
+            "true_positives": 209,
+            "false_positives": 879,
+            "false_negatives": 259,
+            "critical_true_positives": 85,
+            "critical_false_positives": 52,
+            "first_frauds_detected": 46,
+            "episodes_detected": 61
+          },
+          "metrics": {
+            "recall": {
+              "value": 0.446581,
+              "ci95": [
+                0.348231,
+                0.541354
+              ]
+            },
+            "precision": {
+              "value": 0.192096,
+              "ci95": [
+                0.140676,
+                0.24615
+              ]
+            },
+            "f1": {
+              "value": 0.268638,
+              "ci95": [
+                0.203651,
+                0.332003
+              ]
+            },
+            "legit_alerts_per_1000": {
+              "value": 9.039676,
+              "ci95": [
+                7.780093,
+                10.353601
+              ]
+            },
+            "false_positive_rate": {
+              "value": 0.009083,
+              "ci95": [
+                0.007812,
+                0.010406
+              ]
+            },
+            "critical_recall": {
+              "value": 0.181624,
+              "ci95": [
+                0.104368,
+                0.263722
+              ]
+            },
+            "critical_precision": {
+              "value": 0.620438,
+              "ci95": [
+                0.438015,
+                0.774657
+              ]
+            },
+            "critical_legit_alerts_per_1000": {
+              "value": 0.53477,
+              "ci95": [
+                0.299576,
+                0.81749
+              ]
+            },
+            "first_fraud_recall": {
+              "value": 0.418182,
+              "ci95": [
+                0.325581,
+                0.505065
+              ]
+            },
+            "episode_detection_rate": {
+              "value": 0.554545,
+              "ci95": [
+                0.46362,
+                0.641321
+              ]
+            },
+            "pr_auc": {
+              "value": 0.277256,
+              "ci95": [
+                0.174112,
+                0.37877
+              ]
+            },
+            "roc_auc": {
+              "value": 0.936262,
+              "ci95": [
+                0.906439,
+                0.959827
+              ]
+            }
+          },
+          "first_fraud_recall_wilson95": [
+            0.3303,
+            0.5116
+          ]
+        },
+        "v2_dnn_only": {
+          "counts": {
+            "true_positives": 195,
+            "false_positives": 880,
+            "false_negatives": 273,
+            "critical_true_positives": 89,
+            "critical_false_positives": 64,
+            "first_frauds_detected": 47,
+            "episodes_detected": 59
+          },
+          "metrics": {
+            "recall": {
+              "value": 0.416667,
+              "ci95": [
+                0.322075,
+                0.51544
+              ]
+            },
+            "precision": {
+              "value": 0.181395,
+              "ci95": [
+                0.128558,
+                0.235245
+              ]
+            },
+            "f1": {
+              "value": 0.252754,
+              "ci95": [
+                0.187031,
+                0.316056
+              ]
+            },
+            "legit_alerts_per_1000": {
+              "value": 9.04996,
+              "ci95": [
+                7.890168,
+                10.348232
+              ]
+            },
+            "false_positive_rate": {
+              "value": 0.009094,
+              "ci95": [
+                0.007923,
+                0.010403
+              ]
+            },
+            "critical_recall": {
+              "value": 0.190171,
+              "ci95": [
+                0.121896,
+                0.26702
+              ]
+            },
+            "critical_precision": {
+              "value": 0.581699,
+              "ci95": [
+                0.427773,
+                0.711453
+              ]
+            },
+            "critical_legit_alerts_per_1000": {
+              "value": 0.658179,
+              "ci95": [
+                0.433911,
+                0.906824
+              ]
+            },
+            "first_fraud_recall": {
+              "value": 0.427273,
+              "ci95": [
+                0.333268,
+                0.522727
+              ]
+            },
+            "episode_detection_rate": {
+              "value": 0.536364,
+              "ci95": [
+                0.438771,
+                0.634151
+              ]
+            },
+            "pr_auc": {
+              "value": 0.262245,
+              "ci95": [
+                0.1663,
+                0.361814
+              ]
+            },
+            "roc_auc": {
+              "value": 0.907565,
+              "ci95": [
+                0.882705,
+                0.930273
+              ]
+            }
+          },
+          "first_fraud_recall_wilson95": [
+            0.3388,
+            0.5206
+          ]
+        }
+      },
+      "paired_differences": {
+        "v2_dnn_lstm - v2_dnn_only": {
+          "recall": {
+            "difference": 0.029915,
+            "ci95": [
+              -0.00227,
+              0.062992
+            ],
+            "excludes_zero": false
+          },
+          "precision": {
+            "difference": 0.0107,
+            "ci95": [
+              -0.003683,
+              0.024714
+            ],
+            "excludes_zero": false
+          },
+          "f1": {
+            "difference": 0.015883,
+            "ci95": [
+              -0.002699,
+              0.033942
+            ],
+            "excludes_zero": false
+          },
+          "legit_alerts_per_1000": {
+            "difference": -0.010284,
+            "ci95": [
+              -0.589865,
+              0.600509
+            ],
+            "excludes_zero": false
+          },
+          "false_positive_rate": {
+            "difference": -1e-05,
+            "ci95": [
+              -0.000593,
+              0.000603
+            ],
+            "excludes_zero": false
+          },
+          "critical_recall": {
+            "difference": -0.008547,
+            "ci95": [
+              -0.068878,
+              0.060767
+            ],
+            "excludes_zero": false
+          },
+          "critical_precision": {
+            "difference": 0.038739,
+            "ci95": [
+              -0.075062,
+              0.147919
+            ],
+            "excludes_zero": false
+          },
+          "critical_legit_alerts_per_1000": {
+            "difference": -0.123409,
+            "ci95": [
+              -0.298208,
+              0.073332
+            ],
+            "excludes_zero": false
+          },
+          "first_fraud_recall": {
+            "difference": -0.009091,
+            "ci95": [
+              -0.075274,
+              0.054696
+            ],
+            "excludes_zero": false
+          },
+          "episode_detection_rate": {
+            "difference": 0.018182,
+            "ci95": [
+              -0.068966,
+              0.102811
+            ],
+            "excludes_zero": false
+          },
+          "pr_auc": {
+            "difference": 0.015011,
+            "ci95": [
+              -0.022792,
+              0.057962
+            ],
+            "excludes_zero": false
+          },
+          "roc_auc": {
+            "difference": 0.028697,
+            "ci95": [
+              0.009765,
+              0.047711
+            ],
+            "excludes_zero": true
+          }
+        },
+        "v2_dnn_lstm - production": {
+          "recall": {
+            "difference": 0.145299,
+            "ci95": [
+              0.06138,
+              0.228177
+            ],
+            "excludes_zero": true
+          },
+          "precision": {
+            "difference": 0.068844,
+            "ci95": [
+              0.031816,
+              0.109657
+            ],
+            "excludes_zero": true
+          },
+          "f1": {
+            "difference": 0.0937,
+            "ci95": [
+              0.044306,
+              0.146188
+            ],
+            "excludes_zero": true
+          },
+          "legit_alerts_per_1000": {
+            "difference": -1.275222,
+            "ci95": [
+              -2.610714,
+              0.059352
+            ],
+            "excludes_zero": false
+          },
+          "false_positive_rate": {
+            "difference": -0.001281,
+            "ci95": [
+              -0.002623,
+              6e-05
+            ],
+            "excludes_zero": false
+          },
+          "critical_recall": {
+            "difference": 0.038462,
+            "ci95": [
+              -0.057554,
+              0.132833
+            ],
+            "excludes_zero": false
+          },
+          "critical_precision": {
+            "difference": 0.185373,
+            "ci95": [
+              -0.002565,
+              0.357416
+            ],
+            "excludes_zero": false
+          },
+          "critical_legit_alerts_per_1000": {
+            "difference": -0.359942,
+            "ci95": [
+              -0.615736,
+              -0.091542
+            ],
+            "excludes_zero": true
+          },
+          "first_fraud_recall": {
+            "difference": -0.045455,
+            "ci95": [
+              -0.123716,
+              0.041248
+            ],
+            "excludes_zero": false
+          },
+          "episode_detection_rate": {
+            "difference": -0.090909,
+            "ci95": [
+              -0.180851,
+              0.0
+            ],
+            "excludes_zero": false
+          },
+          "pr_auc": {
+            "difference": 0.115153,
+            "ci95": [
+              0.010858,
+              0.219187
+            ],
+            "excludes_zero": true
+          },
+          "roc_auc": {
+            "difference": 0.179775,
+            "ci95": [
+              0.132119,
+              0.230905
+            ],
+            "excludes_zero": true
+          }
+        },
+        "v2_dnn_only - production": {
+          "recall": {
+            "difference": 0.115385,
+            "ci95": [
+              0.026693,
+              0.208028
+            ],
+            "excludes_zero": true
+          },
+          "precision": {
+            "difference": 0.058144,
+            "ci95": [
+              0.021393,
+              0.100837
+            ],
+            "excludes_zero": true
+          },
+          "f1": {
+            "difference": 0.077816,
+            "ci95": [
+              0.026149,
+              0.132039
+            ],
+            "excludes_zero": true
+          },
+          "legit_alerts_per_1000": {
+            "difference": -1.264938,
+            "ci95": [
+              -2.465006,
+              0.000263
+            ],
+            "excludes_zero": false
+          },
+          "false_positive_rate": {
+            "difference": -0.001271,
+            "ci95": [
+              -0.002476,
+              0.0
+            ],
+            "excludes_zero": false
+          },
+          "critical_recall": {
+            "difference": 0.047009,
+            "ci95": [
+              -0.032638,
+              0.130901
+            ],
+            "excludes_zero": false
+          },
+          "critical_precision": {
+            "difference": 0.146634,
+            "ci95": [
+              -0.00449,
+              0.298605
+            ],
+            "excludes_zero": false
+          },
+          "critical_legit_alerts_per_1000": {
+            "difference": -0.236533,
+            "ci95": [
+              -0.472439,
+              0.02068
+            ],
+            "excludes_zero": false
+          },
+          "first_fraud_recall": {
+            "difference": -0.036364,
+            "ci95": [
+              -0.126316,
+              0.065433
+            ],
+            "excludes_zero": false
+          },
+          "episode_detection_rate": {
+            "difference": -0.109091,
+            "ci95": [
+              -0.211009,
+              0.0
+            ],
+            "excludes_zero": false
+          },
+          "pr_auc": {
+            "difference": 0.100142,
+            "ci95": [
+              0.00368,
+              0.19738
+            ],
+            "excludes_zero": true
+          },
+          "roc_auc": {
+            "difference": 0.151078,
+            "ci95": [
+              0.106717,
+              0.197085
+            ],
+            "excludes_zero": true
+          }
+        }
+      }
+    }
+  },
+  "fraud_types_primary": {
+    "account_takeover": {
+      "episodes": 110,
+      "fraud_transactions": 570,
+      "production": {
+        "fraud_caught": 244,
+        "recall": 0.4281,
+        "episodes_detected": 92
+      },
+      "v2_dnn_lstm": {
+        "fraud_caught": 313,
+        "recall": 0.5491,
+        "episodes_detected": 84
+      },
+      "v2_dnn_only": {
+        "fraud_caught": 303,
+        "recall": 0.5316,
+        "episodes_detected": 89
+      }
+    },
+    "card_testing_cashout": {
+      "episodes": 85,
+      "fraud_transactions": 605,
+      "production": {
+        "fraud_caught": 79,
+        "recall": 0.1306,
+        "episodes_detected": 36
+      },
+      "v2_dnn_lstm": {
+        "fraud_caught": 352,
+        "recall": 0.5818,
+        "episodes_detected": 68
+      },
+      "v2_dnn_only": {
+        "fraud_caught": 310,
+        "recall": 0.5124,
+        "episodes_detected": 69
+      }
+    },
+    "device_takeover": {
+      "episodes": 55,
+      "fraud_transactions": 125,
+      "production": {
+        "fraud_caught": 54,
+        "recall": 0.432,
+        "episodes_detected": 32
+      },
+      "v2_dnn_lstm": {
+        "fraud_caught": 20,
+        "recall": 0.16,
+        "episodes_detected": 12
+      },
+      "v2_dnn_only": {
+        "fraud_caught": 34,
+        "recall": 0.272,
+        "episodes_detected": 24
+      }
+    },
+    "high_value_single": {
+      "episodes": 55,
+      "fraud_transactions": 78,
+      "production": {
+        "fraud_caught": 58,
+        "recall": 0.7436,
+        "episodes_detected": 44
+      },
+      "v2_dnn_lstm": {
+        "fraud_caught": 36,
+        "recall": 0.4615,
+        "episodes_detected": 28
+      },
+      "v2_dnn_only": {
+        "fraud_caught": 42,
+        "recall": 0.5385,
+        "episodes_detected": 34
+      }
+    },
+    "normal_looking": {
+      "episodes": 55,
+      "fraud_transactions": 137,
+      "production": {
+        "fraud_caught": 2,
+        "recall": 0.0146,
+        "episodes_detected": 2
+      },
+      "v2_dnn_lstm": {
+        "fraud_caught": 1,
+        "recall": 0.0073,
+        "episodes_detected": 1
+      },
+      "v2_dnn_only": {
+        "fraud_caught": 0,
+        "recall": 0.0,
+        "episodes_detected": 0
+      }
+    },
+    "ring": {
+      "episodes": 80,
+      "fraud_transactions": 176,
+      "production": {
+        "fraud_caught": 122,
+        "recall": 0.6932,
+        "episodes_detected": 63
+      },
+      "v2_dnn_lstm": {
+        "fraud_caught": 121,
+        "recall": 0.6875,
+        "episodes_detected": 60
+      },
+      "v2_dnn_only": {
+        "fraud_caught": 96,
+        "recall": 0.5455,
+        "episodes_detected": 48
+      }
+    },
+    "stolen_card_online": {
+      "episodes": 110,
+      "fraud_transactions": 705,
+      "production": {
+        "fraud_caught": 150,
+        "recall": 0.2128,
+        "episodes_detected": 65
+      },
+      "v2_dnn_lstm": {
+        "fraud_caught": 242,
+        "recall": 0.3433,
+        "episodes_detected": 47
+      },
+      "v2_dnn_only": {
+        "fraud_caught": 221,
+        "recall": 0.3135,
+        "episodes_detected": 40
+      }
+    }
+  },
+  "rings": {
+    "policy_b": {
+      "rings": 20,
+      "victim_episodes": 80,
+      "ring_fraud_transactions": 176,
+      "summary": {
+        "production": {
+          "ring_level": {
+            "rings_with_at_least_one_victim_alerted": {
+              "k": 20,
+              "n": 20,
+              "rate": 1.0,
+              "wilson95": [
+                0.8389,
+                1.0
+              ]
+            },
+            "rings_with_at_least_two_victims_alerted": {
+              "k": 17,
+              "n": 20,
+              "rate": 0.85,
+              "wilson95": [
+                0.6396,
+                0.9476
+              ]
+            },
+            "median_hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "victim_level": {
+            "victim_episodes_detected": {
+              "k": 63,
+              "n": 80,
+              "rate": 0.7875,
+              "wilson95": [
+                0.6858,
+                0.8629
+              ]
+            },
+            "victim_first_frauds_detected": {
+              "k": 56,
+              "n": 80,
+              "rate": 0.7,
+              "wilson95": [
+                0.5923,
+                0.7894
+              ]
+            }
+          },
+          "transaction_level": {
+            "ring_fraud_caught": {
+              "k": 122,
+              "n": 176,
+              "rate": 0.6932,
+              "wilson95": [
+                0.6215,
+                0.7566
+              ]
+            },
+            "non_ring_fraud_caught": {
+              "k": 587,
+              "n": 2220,
+              "rate": 0.2644,
+              "wilson95": [
+                0.2465,
+                0.2832
+              ]
+            }
+          }
+        },
+        "v2_dnn_lstm": {
+          "ring_level": {
+            "rings_with_at_least_one_victim_alerted": {
+              "k": 20,
+              "n": 20,
+              "rate": 1.0,
+              "wilson95": [
+                0.8389,
+                1.0
+              ]
+            },
+            "rings_with_at_least_two_victims_alerted": {
+              "k": 18,
+              "n": 20,
+              "rate": 0.9,
+              "wilson95": [
+                0.699,
+                0.9721
+              ]
+            },
+            "median_hours_from_first_fraud_to_first_alert": 0.33
+          },
+          "victim_level": {
+            "victim_episodes_detected": {
+              "k": 60,
+              "n": 80,
+              "rate": 0.75,
+              "wilson95": [
+                0.6452,
+                0.8319
+              ]
+            },
+            "victim_first_frauds_detected": {
+              "k": 43,
+              "n": 80,
+              "rate": 0.5375,
+              "wilson95": [
+                0.429,
+                0.6425
+              ]
+            }
+          },
+          "transaction_level": {
+            "ring_fraud_caught": {
+              "k": 121,
+              "n": 176,
+              "rate": 0.6875,
+              "wilson95": [
+                0.6156,
+                0.7514
+              ]
+            },
+            "non_ring_fraud_caught": {
+              "k": 964,
+              "n": 2220,
+              "rate": 0.4342,
+              "wilson95": [
+                0.4137,
+                0.4549
+              ]
+            }
+          }
+        },
+        "v2_dnn_only": {
+          "ring_level": {
+            "rings_with_at_least_one_victim_alerted": {
+              "k": 18,
+              "n": 20,
+              "rate": 0.9,
+              "wilson95": [
+                0.699,
+                0.9721
+              ]
+            },
+            "rings_with_at_least_two_victims_alerted": {
+              "k": 15,
+              "n": 20,
+              "rate": 0.75,
+              "wilson95": [
+                0.5313,
+                0.8881
+              ]
+            },
+            "median_hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "victim_level": {
+            "victim_episodes_detected": {
+              "k": 48,
+              "n": 80,
+              "rate": 0.6,
+              "wilson95": [
+                0.4905,
+                0.7004
+              ]
+            },
+            "victim_first_frauds_detected": {
+              "k": 42,
+              "n": 80,
+              "rate": 0.525,
+              "wilson95": [
+                0.417,
+                0.6308
+              ]
+            }
+          },
+          "transaction_level": {
+            "ring_fraud_caught": {
+              "k": 96,
+              "n": 176,
+              "rate": 0.5455,
+              "wilson95": [
+                0.4717,
+                0.6173
+              ]
+            },
+            "non_ring_fraud_caught": {
+              "k": 910,
+              "n": 2220,
+              "rate": 0.4099,
+              "wilson95": [
+                0.3896,
+                0.4305
+              ]
+            }
+          }
+        }
+      },
+      "paired_differences": {
+        "v2_dnn_lstm - v2_dnn_only": {
+          "victim_episode_detection_rate": {
+            "difference": 0.15,
+            "ci95": [
+              0.0241,
+              0.2841
+            ],
+            "excludes_zero": true
+          },
+          "ring_fraud_transaction_recall": {
+            "difference": 0.142,
+            "ci95": [
+              0.0621,
+              0.2169
+            ],
+            "excludes_zero": true
+          }
+        },
+        "v2_dnn_lstm - production": {
+          "victim_episode_detection_rate": {
+            "difference": -0.0375,
+            "ci95": [
+              -0.1688,
+              0.1111
+            ],
+            "excludes_zero": false
+          },
+          "ring_fraud_transaction_recall": {
+            "difference": -0.0057,
+            "ci95": [
+              -0.1258,
+              0.1026
+            ],
+            "excludes_zero": false
+          }
+        },
+        "v2_dnn_only - production": {
+          "victim_episode_detection_rate": {
+            "difference": -0.1875,
+            "ci95": [
+              -0.3376,
+              -0.0513
+            ],
+            "excludes_zero": true
+          },
+          "ring_fraud_transaction_recall": {
+            "difference": -0.1477,
+            "ci95": [
+              -0.2858,
+              -0.0246
+            ],
+            "excludes_zero": true
+          }
+        }
+      },
+      "per_ring": [
+        {
+          "seed": 101,
+          "ring": 1,
+          "victims": 5,
+          "fraud_transactions": 13,
+          "first_fraud_transactions": 5,
+          "production": {
+            "fraud_caught": 11,
+            "victims_alerted": 5,
+            "first_frauds_caught": 5,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 12,
+            "victims_alerted": 5,
+            "first_frauds_caught": 5,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 11,
+            "victims_alerted": 5,
+            "first_frauds_caught": 5,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          }
+        },
+        {
+          "seed": 101,
+          "ring": 2,
+          "victims": 4,
+          "fraud_transactions": 10,
+          "first_fraud_transactions": 4,
+          "production": {
+            "fraud_caught": 3,
+            "victims_alerted": 1,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 27.35
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 4,
+            "victims_alerted": 4,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 5.83
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 1,
+            "victims_alerted": 1,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 28.7
+          }
+        },
+        {
+          "seed": 101,
+          "ring": 3,
+          "victims": 4,
+          "fraud_transactions": 5,
+          "first_fraud_transactions": 4,
+          "production": {
+            "fraud_caught": 5,
+            "victims_alerted": 4,
+            "first_frauds_caught": 4,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 4,
+            "victims_alerted": 3,
+            "first_frauds_caught": 3,
+            "hours_from_first_fraud_to_first_alert": 2.98
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 4,
+            "victims_alerted": 3,
+            "first_frauds_caught": 3,
+            "hours_from_first_fraud_to_first_alert": 2.98
+          }
+        },
+        {
+          "seed": 101,
+          "ring": 4,
+          "victims": 3,
+          "fraud_transactions": 5,
+          "first_fraud_transactions": 3,
+          "production": {
+            "fraud_caught": 4,
+            "victims_alerted": 3,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 3.03
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 3,
+            "victims_alerted": 2,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 3.03
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 4,
+            "victims_alerted": 2,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          }
+        },
+        {
+          "seed": 102,
+          "ring": 1,
+          "victims": 3,
+          "fraud_transactions": 8,
+          "first_fraud_transactions": 3,
+          "production": {
+            "fraud_caught": 6,
+            "victims_alerted": 2,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 4.85
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 6,
+            "victims_alerted": 2,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 8,
+            "victims_alerted": 3,
+            "first_frauds_caught": 3,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          }
+        },
+        {
+          "seed": 102,
+          "ring": 2,
+          "victims": 3,
+          "fraud_transactions": 6,
+          "first_fraud_transactions": 3,
+          "production": {
+            "fraud_caught": 4,
+            "victims_alerted": 2,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 4,
+            "victims_alerted": 1,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 4,
+            "victims_alerted": 2,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          }
+        },
+        {
+          "seed": 102,
+          "ring": 3,
+          "victims": 4,
+          "fraud_transactions": 6,
+          "first_fraud_transactions": 4,
+          "production": {
+            "fraud_caught": 1,
+            "victims_alerted": 1,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 34.39
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 4,
+            "victims_alerted": 4,
+            "first_frauds_caught": 3,
+            "hours_from_first_fraud_to_first_alert": 1.11
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 1,
+            "victims_alerted": 1,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 34.39
+          }
+        },
+        {
+          "seed": 102,
+          "ring": 4,
+          "victims": 6,
+          "fraud_transactions": 11,
+          "first_fraud_transactions": 6,
+          "production": {
+            "fraud_caught": 11,
+            "victims_alerted": 6,
+            "first_frauds_caught": 6,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 4,
+            "victims_alerted": 3,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 27.34
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          }
+        },
+        {
+          "seed": 103,
+          "ring": 1,
+          "victims": 5,
+          "fraud_transactions": 11,
+          "first_fraud_transactions": 5,
+          "production": {
+            "fraud_caught": 9,
+            "victims_alerted": 5,
+            "first_frauds_caught": 4,
+            "hours_from_first_fraud_to_first_alert": 5.33
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 7,
+            "victims_alerted": 4,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 5.94
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 6,
+            "victims_alerted": 4,
+            "first_frauds_caught": 3,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          }
+        },
+        {
+          "seed": 103,
+          "ring": 2,
+          "victims": 3,
+          "fraud_transactions": 6,
+          "first_fraud_transactions": 3,
+          "production": {
+            "fraud_caught": 5,
+            "victims_alerted": 3,
+            "first_frauds_caught": 3,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 5,
+            "victims_alerted": 3,
+            "first_frauds_caught": 3,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 5,
+            "victims_alerted": 3,
+            "first_frauds_caught": 3,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          }
+        },
+        {
+          "seed": 103,
+          "ring": 3,
+          "victims": 5,
+          "fraud_transactions": 12,
+          "first_fraud_transactions": 5,
+          "production": {
+            "fraud_caught": 5,
+            "victims_alerted": 2,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 26.15
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 5,
+            "victims_alerted": 3,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 3,
+            "victims_alerted": 1,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": 27.65
+          }
+        },
+        {
+          "seed": 103,
+          "ring": 4,
+          "victims": 3,
+          "fraud_transactions": 9,
+          "first_fraud_transactions": 3,
+          "production": {
+            "fraud_caught": 8,
+            "victims_alerted": 3,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 7,
+            "victims_alerted": 2,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 1.98
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 6,
+            "victims_alerted": 2,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 3.19
+          }
+        },
+        {
+          "seed": 104,
+          "ring": 1,
+          "victims": 4,
+          "fraud_transactions": 9,
+          "first_fraud_transactions": 4,
+          "production": {
+            "fraud_caught": 7,
+            "victims_alerted": 4,
+            "first_frauds_caught": 4,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 7,
+            "victims_alerted": 4,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 7,
+            "victims_alerted": 4,
+            "first_frauds_caught": 3,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          }
+        },
+        {
+          "seed": 104,
+          "ring": 2,
+          "victims": 5,
+          "fraud_transactions": 15,
+          "first_fraud_transactions": 5,
+          "production": {
+            "fraud_caught": 6,
+            "victims_alerted": 3,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 11,
+            "victims_alerted": 3,
+            "first_frauds_caught": 3,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 6,
+            "victims_alerted": 3,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          }
+        },
+        {
+          "seed": 104,
+          "ring": 3,
+          "victims": 4,
+          "fraud_transactions": 7,
+          "first_fraud_transactions": 4,
+          "production": {
+            "fraud_caught": 3,
+            "victims_alerted": 1,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 7.95
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 1,
+            "victims_alerted": 1,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": 9.07
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          }
+        },
+        {
+          "seed": 104,
+          "ring": 4,
+          "victims": 3,
+          "fraud_transactions": 6,
+          "first_fraud_transactions": 3,
+          "production": {
+            "fraud_caught": 4,
+            "victims_alerted": 3,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 6,
+            "victims_alerted": 3,
+            "first_frauds_caught": 3,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 5,
+            "victims_alerted": 3,
+            "first_frauds_caught": 3,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          }
+        },
+        {
+          "seed": 105,
+          "ring": 1,
+          "victims": 3,
+          "fraud_transactions": 8,
+          "first_fraud_transactions": 3,
+          "production": {
+            "fraud_caught": 6,
+            "victims_alerted": 3,
+            "first_frauds_caught": 3,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 6,
+            "victims_alerted": 2,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 5.59
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 6,
+            "victims_alerted": 2,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 5.59
+          }
+        },
+        {
+          "seed": 105,
+          "ring": 2,
+          "victims": 4,
+          "fraud_transactions": 8,
+          "first_fraud_transactions": 4,
+          "production": {
+            "fraud_caught": 6,
+            "victims_alerted": 4,
+            "first_frauds_caught": 4,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 6,
+            "victims_alerted": 3,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 0.65
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 4,
+            "victims_alerted": 2,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 41.44
+          }
+        },
+        {
+          "seed": 105,
+          "ring": 3,
+          "victims": 5,
+          "fraud_transactions": 12,
+          "first_fraud_transactions": 5,
+          "production": {
+            "fraud_caught": 9,
+            "victims_alerted": 4,
+            "first_frauds_caught": 4,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 11,
+            "victims_alerted": 4,
+            "first_frauds_caught": 4,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 11,
+            "victims_alerted": 5,
+            "first_frauds_caught": 5,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          }
+        },
+        {
+          "seed": 105,
+          "ring": 4,
+          "victims": 4,
+          "fraud_transactions": 9,
+          "first_fraud_transactions": 4,
+          "production": {
+            "fraud_caught": 9,
+            "victims_alerted": 4,
+            "first_frauds_caught": 4,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 8,
+            "victims_alerted": 4,
+            "first_frauds_caught": 3,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 4,
+            "victims_alerted": 2,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 8.52
+          }
+        }
+      ]
+    },
+    "critical": {
+      "rings": 20,
+      "victim_episodes": 80,
+      "ring_fraud_transactions": 176,
+      "summary": {
+        "production": {
+          "ring_level": {
+            "rings_with_at_least_one_victim_alerted": {
+              "k": 18,
+              "n": 20,
+              "rate": 0.9,
+              "wilson95": [
+                0.699,
+                0.9721
+              ]
+            },
+            "rings_with_at_least_two_victims_alerted": {
+              "k": 14,
+              "n": 20,
+              "rate": 0.7,
+              "wilson95": [
+                0.481,
+                0.8545
+              ]
+            },
+            "median_hours_from_first_fraud_to_first_alert": 0.99
+          },
+          "victim_level": {
+            "victim_episodes_detected": {
+              "k": 43,
+              "n": 80,
+              "rate": 0.5375,
+              "wilson95": [
+                0.429,
+                0.6425
+              ]
+            },
+            "victim_first_frauds_detected": {
+              "k": 34,
+              "n": 80,
+              "rate": 0.425,
+              "wilson95": [
+                0.3226,
+                0.5343
+              ]
+            }
+          },
+          "transaction_level": {
+            "ring_fraud_caught": {
+              "k": 77,
+              "n": 176,
+              "rate": 0.4375,
+              "wilson95": [
+                0.3663,
+                0.5114
+              ]
+            },
+            "non_ring_fraud_caught": {
+              "k": 306,
+              "n": 2220,
+              "rate": 0.1378,
+              "wilson95": [
+                0.1241,
+                0.1528
+              ]
+            }
+          }
+        },
+        "v2_dnn_lstm": {
+          "ring_level": {
+            "rings_with_at_least_one_victim_alerted": {
+              "k": 9,
+              "n": 20,
+              "rate": 0.45,
+              "wilson95": [
+                0.2582,
+                0.6579
+              ]
+            },
+            "rings_with_at_least_two_victims_alerted": {
+              "k": 5,
+              "n": 20,
+              "rate": 0.25,
+              "wilson95": [
+                0.1119,
+                0.4687
+              ]
+            },
+            "median_hours_from_first_fraud_to_first_alert": 4.4
+          },
+          "victim_level": {
+            "victim_episodes_detected": {
+              "k": 18,
+              "n": 80,
+              "rate": 0.225,
+              "wilson95": [
+                0.1473,
+                0.3279
+              ]
+            },
+            "victim_first_frauds_detected": {
+              "k": 7,
+              "n": 80,
+              "rate": 0.0875,
+              "wilson95": [
+                0.043,
+                0.1698
+              ]
+            }
+          },
+          "transaction_level": {
+            "ring_fraud_caught": {
+              "k": 22,
+              "n": 176,
+              "rate": 0.125,
+              "wilson95": [
+                0.084,
+                0.182
+              ]
+            },
+            "non_ring_fraud_caught": {
+              "k": 328,
+              "n": 2220,
+              "rate": 0.1477,
+              "wilson95": [
+                0.1336,
+                0.1631
+              ]
+            }
+          }
+        },
+        "v2_dnn_only": {
+          "ring_level": {
+            "rings_with_at_least_one_victim_alerted": {
+              "k": 10,
+              "n": 20,
+              "rate": 0.5,
+              "wilson95": [
+                0.2993,
+                0.7007
+              ]
+            },
+            "rings_with_at_least_two_victims_alerted": {
+              "k": 8,
+              "n": 20,
+              "rate": 0.4,
+              "wilson95": [
+                0.2188,
+                0.6134
+              ]
+            },
+            "median_hours_from_first_fraud_to_first_alert": 2.73
+          },
+          "victim_level": {
+            "victim_episodes_detected": {
+              "k": 23,
+              "n": 80,
+              "rate": 0.2875,
+              "wilson95": [
+                0.1999,
+                0.3946
+              ]
+            },
+            "victim_first_frauds_detected": {
+              "k": 16,
+              "n": 80,
+              "rate": 0.2,
+              "wilson95": [
+                0.127,
+                0.3005
+              ]
+            }
+          },
+          "transaction_level": {
+            "ring_fraud_caught": {
+              "k": 31,
+              "n": 176,
+              "rate": 0.1761,
+              "wilson95": [
+                0.127,
+                0.2392
+              ]
+            },
+            "non_ring_fraud_caught": {
+              "k": 299,
+              "n": 2220,
+              "rate": 0.1347,
+              "wilson95": [
+                0.1211,
+                0.1495
+              ]
+            }
+          }
+        }
+      },
+      "paired_differences": {
+        "v2_dnn_lstm - v2_dnn_only": {
+          "victim_episode_detection_rate": {
+            "difference": -0.0625,
+            "ci95": [
+              -0.1447,
+              0.0125
+            ],
+            "excludes_zero": false
+          },
+          "ring_fraud_transaction_recall": {
+            "difference": -0.0511,
+            "ci95": [
+              -0.0955,
+              -0.0119
+            ],
+            "excludes_zero": true
+          }
+        },
+        "v2_dnn_lstm - production": {
+          "victim_episode_detection_rate": {
+            "difference": -0.3125,
+            "ci95": [
+              -0.4026,
+              -0.2105
+            ],
+            "excludes_zero": true
+          },
+          "ring_fraud_transaction_recall": {
+            "difference": -0.3125,
+            "ci95": [
+              -0.4124,
+              -0.2123
+            ],
+            "excludes_zero": true
+          }
+        },
+        "v2_dnn_only - production": {
+          "victim_episode_detection_rate": {
+            "difference": -0.25,
+            "ci95": [
+              -0.3457,
+              -0.1486
+            ],
+            "excludes_zero": true
+          },
+          "ring_fraud_transaction_recall": {
+            "difference": -0.2614,
+            "ci95": [
+              -0.3607,
+              -0.1552
+            ],
+            "excludes_zero": true
+          }
+        }
+      },
+      "per_ring": [
+        {
+          "seed": 101,
+          "ring": 1,
+          "victims": 5,
+          "fraud_transactions": 13,
+          "first_fraud_transactions": 5,
+          "production": {
+            "fraud_caught": 10,
+            "victims_alerted": 5,
+            "first_frauds_caught": 5,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 6,
+            "victims_alerted": 4,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 1.25
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 6,
+            "victims_alerted": 3,
+            "first_frauds_caught": 3,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          }
+        },
+        {
+          "seed": 101,
+          "ring": 2,
+          "victims": 4,
+          "fraud_transactions": 10,
+          "first_fraud_transactions": 4,
+          "production": {
+            "fraud_caught": 2,
+            "victims_alerted": 1,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 27.35
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          }
+        },
+        {
+          "seed": 101,
+          "ring": 3,
+          "victims": 4,
+          "fraud_transactions": 5,
+          "first_fraud_transactions": 4,
+          "production": {
+            "fraud_caught": 4,
+            "victims_alerted": 3,
+            "first_frauds_caught": 3,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 2,
+            "victims_alerted": 2,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 2.98
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 2,
+            "victims_alerted": 2,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 2.98
+          }
+        },
+        {
+          "seed": 101,
+          "ring": 4,
+          "victims": 3,
+          "fraud_transactions": 5,
+          "first_fraud_transactions": 3,
+          "production": {
+            "fraud_caught": 2,
+            "victims_alerted": 2,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 4.4
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 1,
+            "victims_alerted": 1,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": 4.4
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 2,
+            "victims_alerted": 2,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 4.4
+          }
+        },
+        {
+          "seed": 102,
+          "ring": 1,
+          "victims": 3,
+          "fraud_transactions": 8,
+          "first_fraud_transactions": 3,
+          "production": {
+            "fraud_caught": 6,
+            "victims_alerted": 2,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 4.85
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 1,
+            "victims_alerted": 1,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": 6.31
+          }
+        },
+        {
+          "seed": 102,
+          "ring": 2,
+          "victims": 3,
+          "fraud_transactions": 6,
+          "first_fraud_transactions": 3,
+          "production": {
+            "fraud_caught": 3,
+            "victims_alerted": 1,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          }
+        },
+        {
+          "seed": 102,
+          "ring": 3,
+          "victims": 4,
+          "fraud_transactions": 6,
+          "first_fraud_transactions": 4,
+          "production": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          }
+        },
+        {
+          "seed": 102,
+          "ring": 4,
+          "victims": 6,
+          "fraud_transactions": 11,
+          "first_fraud_transactions": 6,
+          "production": {
+            "fraud_caught": 5,
+            "victims_alerted": 3,
+            "first_frauds_caught": 3,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          }
+        },
+        {
+          "seed": 103,
+          "ring": 1,
+          "victims": 5,
+          "fraud_transactions": 11,
+          "first_fraud_transactions": 5,
+          "production": {
+            "fraud_caught": 6,
+            "victims_alerted": 3,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 6.67
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          }
+        },
+        {
+          "seed": 103,
+          "ring": 2,
+          "victims": 3,
+          "fraud_transactions": 6,
+          "first_fraud_transactions": 3,
+          "production": {
+            "fraud_caught": 4,
+            "victims_alerted": 3,
+            "first_frauds_caught": 3,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 2,
+            "victims_alerted": 2,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 6.13
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 4,
+            "victims_alerted": 3,
+            "first_frauds_caught": 3,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          }
+        },
+        {
+          "seed": 103,
+          "ring": 3,
+          "victims": 5,
+          "fraud_transactions": 12,
+          "first_fraud_transactions": 5,
+          "production": {
+            "fraud_caught": 1,
+            "victims_alerted": 1,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": 29.11
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          }
+        },
+        {
+          "seed": 103,
+          "ring": 4,
+          "victims": 3,
+          "fraud_transactions": 9,
+          "first_fraud_transactions": 3,
+          "production": {
+            "fraud_caught": 6,
+            "victims_alerted": 2,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 1.98
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 1,
+            "victims_alerted": 1,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": 38.92
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 2,
+            "victims_alerted": 1,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 34.42
+          }
+        },
+        {
+          "seed": 104,
+          "ring": 1,
+          "victims": 4,
+          "fraud_transactions": 9,
+          "first_fraud_transactions": 4,
+          "production": {
+            "fraud_caught": 4,
+            "victims_alerted": 3,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 2,
+            "victims_alerted": 1,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 18.61
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 4,
+            "victims_alerted": 3,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          }
+        },
+        {
+          "seed": 104,
+          "ring": 2,
+          "victims": 5,
+          "fraud_transactions": 15,
+          "first_fraud_transactions": 5,
+          "production": {
+            "fraud_caught": 3,
+            "victims_alerted": 2,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": 41.88
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          }
+        },
+        {
+          "seed": 104,
+          "ring": 3,
+          "victims": 4,
+          "fraud_transactions": 7,
+          "first_fraud_transactions": 4,
+          "production": {
+            "fraud_caught": 1,
+            "victims_alerted": 1,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 7.95
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          }
+        },
+        {
+          "seed": 104,
+          "ring": 4,
+          "victims": 3,
+          "fraud_transactions": 6,
+          "first_fraud_transactions": 3,
+          "production": {
+            "fraud_caught": 2,
+            "victims_alerted": 2,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 3,
+            "victims_alerted": 3,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 2,
+            "victims_alerted": 2,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          }
+        },
+        {
+          "seed": 105,
+          "ring": 1,
+          "victims": 3,
+          "fraud_transactions": 8,
+          "first_fraud_transactions": 3,
+          "production": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          }
+        },
+        {
+          "seed": 105,
+          "ring": 2,
+          "victims": 4,
+          "fraud_transactions": 8,
+          "first_fraud_transactions": 4,
+          "production": {
+            "fraud_caught": 3,
+            "victims_alerted": 2,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 44.52
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 2,
+            "victims_alerted": 1,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 44.52
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 4,
+            "victims_alerted": 2,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 41.44
+          }
+        },
+        {
+          "seed": 105,
+          "ring": 3,
+          "victims": 5,
+          "fraud_transactions": 12,
+          "first_fraud_transactions": 5,
+          "production": {
+            "fraud_caught": 8,
+            "victims_alerted": 4,
+            "first_frauds_caught": 4,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 3,
+            "victims_alerted": 3,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": 2.48
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 4,
+            "victims_alerted": 4,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 2.48
+          }
+        },
+        {
+          "seed": 105,
+          "ring": 4,
+          "victims": 4,
+          "fraud_transactions": 9,
+          "first_fraud_transactions": 4,
+          "production": {
+            "fraud_caught": 7,
+            "victims_alerted": 3,
+            "first_frauds_caught": 3,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          }
+        }
+      ]
+    },
+    "secondary_policy_b": {
+      "rings": 5,
+      "victim_episodes": 20,
+      "ring_fraud_transactions": 42,
+      "summary": {
+        "production": {
+          "ring_level": {
+            "rings_with_at_least_one_victim_alerted": {
+              "k": 5,
+              "n": 5,
+              "rate": 1.0,
+              "wilson95": [
+                0.5655,
+                1.0
+              ]
+            },
+            "rings_with_at_least_two_victims_alerted": {
+              "k": 4,
+              "n": 5,
+              "rate": 0.8,
+              "wilson95": [
+                0.3755,
+                0.9638
+              ]
+            },
+            "median_hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "victim_level": {
+            "victim_episodes_detected": {
+              "k": 17,
+              "n": 20,
+              "rate": 0.85,
+              "wilson95": [
+                0.6396,
+                0.9476
+              ]
+            },
+            "victim_first_frauds_detected": {
+              "k": 15,
+              "n": 20,
+              "rate": 0.75,
+              "wilson95": [
+                0.5313,
+                0.8881
+              ]
+            }
+          },
+          "transaction_level": {
+            "ring_fraud_caught": {
+              "k": 35,
+              "n": 42,
+              "rate": 0.8333,
+              "wilson95": [
+                0.694,
+                0.9168
+              ]
+            },
+            "non_ring_fraud_caught": {
+              "k": 123,
+              "n": 454,
+              "rate": 0.2709,
+              "wilson95": [
+                0.2321,
+                0.3136
+              ]
+            }
+          }
+        },
+        "v2_dnn_lstm": {
+          "ring_level": {
+            "rings_with_at_least_one_victim_alerted": {
+              "k": 5,
+              "n": 5,
+              "rate": 1.0,
+              "wilson95": [
+                0.5655,
+                1.0
+              ]
+            },
+            "rings_with_at_least_two_victims_alerted": {
+              "k": 4,
+              "n": 5,
+              "rate": 0.8,
+              "wilson95": [
+                0.3755,
+                0.9638
+              ]
+            },
+            "median_hours_from_first_fraud_to_first_alert": 1.98
+          },
+          "victim_level": {
+            "victim_episodes_detected": {
+              "k": 13,
+              "n": 20,
+              "rate": 0.65,
+              "wilson95": [
+                0.4329,
+                0.8188
+              ]
+            },
+            "victim_first_frauds_detected": {
+              "k": 9,
+              "n": 20,
+              "rate": 0.45,
+              "wilson95": [
+                0.2582,
+                0.6579
+              ]
+            }
+          },
+          "transaction_level": {
+            "ring_fraud_caught": {
+              "k": 26,
+              "n": 42,
+              "rate": 0.619,
+              "wilson95": [
+                0.4681,
+                0.75
+              ]
+            },
+            "non_ring_fraud_caught": {
+              "k": 199,
+              "n": 454,
+              "rate": 0.4383,
+              "wilson95": [
+                0.3934,
+                0.4843
+              ]
+            }
+          }
+        },
+        "v2_dnn_only": {
+          "ring_level": {
+            "rings_with_at_least_one_victim_alerted": {
+              "k": 3,
+              "n": 5,
+              "rate": 0.6,
+              "wilson95": [
+                0.2307,
+                0.8824
+              ]
+            },
+            "rings_with_at_least_two_victims_alerted": {
+              "k": 3,
+              "n": 5,
+              "rate": 0.6,
+              "wilson95": [
+                0.2307,
+                0.8824
+              ]
+            },
+            "median_hours_from_first_fraud_to_first_alert": 3.19
+          },
+          "victim_level": {
+            "victim_episodes_detected": {
+              "k": 7,
+              "n": 20,
+              "rate": 0.35,
+              "wilson95": [
+                0.1812,
+                0.5671
+              ]
+            },
+            "victim_first_frauds_detected": {
+              "k": 6,
+              "n": 20,
+              "rate": 0.3,
+              "wilson95": [
+                0.1455,
+                0.519
+              ]
+            }
+          },
+          "transaction_level": {
+            "ring_fraud_caught": {
+              "k": 15,
+              "n": 42,
+              "rate": 0.3571,
+              "wilson95": [
+                0.2299,
+                0.5083
+              ]
+            },
+            "non_ring_fraud_caught": {
+              "k": 169,
+              "n": 454,
+              "rate": 0.3722,
+              "wilson95": [
+                0.329,
+                0.4176
+              ]
+            }
+          }
+        }
+      },
+      "paired_differences": {
+        "v2_dnn_lstm - v2_dnn_only": {
+          "victim_episode_detection_rate": {
+            "difference": 0.3,
+            "ci95": [
+              0.0625,
+              0.4583
+            ],
+            "excludes_zero": true
+          },
+          "ring_fraud_transaction_recall": {
+            "difference": 0.2619,
+            "ci95": [
+              0.1315,
+              0.3696
+            ],
+            "excludes_zero": true
+          }
+        },
+        "v2_dnn_lstm - production": {
+          "victim_episode_detection_rate": {
+            "difference": -0.2,
+            "ci95": [
+              -0.4,
+              0.0
+            ],
+            "excludes_zero": false
+          },
+          "ring_fraud_transaction_recall": {
+            "difference": -0.2143,
+            "ci95": [
+              -0.4651,
+              0.0882
+            ],
+            "excludes_zero": false
+          }
+        },
+        "v2_dnn_only - production": {
+          "victim_episode_detection_rate": {
+            "difference": -0.5,
+            "ci95": [
+              -0.8077,
+              -0.1765
+            ],
+            "excludes_zero": true
+          },
+          "ring_fraud_transaction_recall": {
+            "difference": -0.4762,
+            "ci95": [
+              -0.7843,
+              -0.1111
+            ],
+            "excludes_zero": true
+          }
+        }
+      },
+      "per_ring": [
+        {
+          "seed": 102,
+          "ring": 4,
+          "victims": 6,
+          "fraud_transactions": 11,
+          "first_fraud_transactions": 6,
+          "production": {
+            "fraud_caught": 11,
+            "victims_alerted": 6,
+            "first_frauds_caught": 6,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 4,
+            "victims_alerted": 3,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 27.34
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          }
+        },
+        {
+          "seed": 103,
+          "ring": 4,
+          "victims": 3,
+          "fraud_transactions": 9,
+          "first_fraud_transactions": 3,
+          "production": {
+            "fraud_caught": 8,
+            "victims_alerted": 3,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 7,
+            "victims_alerted": 2,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 1.98
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 6,
+            "victims_alerted": 2,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 3.19
+          }
+        },
+        {
+          "seed": 104,
+          "ring": 3,
+          "victims": 4,
+          "fraud_transactions": 7,
+          "first_fraud_transactions": 4,
+          "production": {
+            "fraud_caught": 3,
+            "victims_alerted": 1,
+            "first_frauds_caught": 1,
+            "hours_from_first_fraud_to_first_alert": 7.95
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 1,
+            "victims_alerted": 1,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": 9.07
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 0,
+            "victims_alerted": 0,
+            "first_frauds_caught": 0,
+            "hours_from_first_fraud_to_first_alert": null
+          }
+        },
+        {
+          "seed": 104,
+          "ring": 4,
+          "victims": 3,
+          "fraud_transactions": 6,
+          "first_fraud_transactions": 3,
+          "production": {
+            "fraud_caught": 4,
+            "victims_alerted": 3,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 6,
+            "victims_alerted": 3,
+            "first_frauds_caught": 3,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 5,
+            "victims_alerted": 3,
+            "first_frauds_caught": 3,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          }
+        },
+        {
+          "seed": 105,
+          "ring": 4,
+          "victims": 4,
+          "fraud_transactions": 9,
+          "first_fraud_transactions": 4,
+          "production": {
+            "fraud_caught": 9,
+            "victims_alerted": 4,
+            "first_frauds_caught": 4,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_lstm": {
+            "fraud_caught": 8,
+            "victims_alerted": 4,
+            "first_frauds_caught": 3,
+            "hours_from_first_fraud_to_first_alert": 0.0
+          },
+          "v2_dnn_only": {
+            "fraud_caught": 4,
+            "victims_alerted": 2,
+            "first_frauds_caught": 2,
+            "hours_from_first_fraud_to_first_alert": 8.52
+          }
+        }
+      ]
+    },
+    "shared_device_rule": {
+      "per_dataset": {
+        "101": {
+          "devices_flagged": 52,
+          "by_kind": {
+            "ring": 5,
+            "other_fraud": 0,
+            "legitimate_only": 47
+          },
+          "rings": 4,
+          "rings_with_a_flagged_ring_device": 4
+        },
+        "102": {
+          "devices_flagged": 53,
+          "by_kind": {
+            "ring": 5,
+            "other_fraud": 1,
+            "legitimate_only": 47
+          },
+          "rings": 4,
+          "rings_with_a_flagged_ring_device": 4
+        },
+        "103": {
+          "devices_flagged": 56,
+          "by_kind": {
+            "ring": 5,
+            "other_fraud": 1,
+            "legitimate_only": 50
+          },
+          "rings": 4,
+          "rings_with_a_flagged_ring_device": 3
+        },
+        "104": {
+          "devices_flagged": 42,
+          "by_kind": {
+            "ring": 3,
+            "other_fraud": 1,
+            "legitimate_only": 38
+          },
+          "rings": 4,
+          "rings_with_a_flagged_ring_device": 3
+        },
+        "105": {
+          "devices_flagged": 53,
+          "by_kind": {
+            "ring": 4,
+            "other_fraud": 1,
+            "legitimate_only": 48
+          },
+          "rings": 4,
+          "rings_with_a_flagged_ring_device": 4
+        }
+      },
+      "note": "the live rule (a device used by 2+ customers); it is the same for every model set"
+    }
+  },
+  "early_history": {
+    "policy_b": {
+      "0": {
+        "legitimate_transactions": 2500,
+        "fraud_transactions": 0,
+        "first_fraud_transactions": 0,
+        "production": {
+          "legitimate_alerts": 0,
+          "legit_alerts_per_1000": 0.0,
+          "fraud_caught": 0,
+          "first_frauds_caught": 0
+        },
+        "v2_dnn_lstm": {
+          "legitimate_alerts": 0,
+          "legit_alerts_per_1000": 0.0,
+          "fraud_caught": 0,
+          "first_frauds_caught": 0
+        },
+        "v2_dnn_only": {
+          "legitimate_alerts": 0,
+          "legit_alerts_per_1000": 0.0,
+          "fraud_caught": 0,
+          "first_frauds_caught": 0
+        }
+      },
+      "1": {
+        "legitimate_transactions": 2500,
+        "fraud_transactions": 0,
+        "first_fraud_transactions": 0,
+        "production": {
+          "legitimate_alerts": 703,
+          "legit_alerts_per_1000": 281.2,
+          "fraud_caught": 0,
+          "first_frauds_caught": 0
+        },
+        "v2_dnn_lstm": {
+          "legitimate_alerts": 98,
+          "legit_alerts_per_1000": 39.2,
+          "fraud_caught": 0,
+          "first_frauds_caught": 0
+        },
+        "v2_dnn_only": {
+          "legitimate_alerts": 133,
+          "legit_alerts_per_1000": 53.2,
+          "fraud_caught": 0,
+          "first_frauds_caught": 0
+        }
+      },
+      "2": {
+        "legitimate_transactions": 2500,
+        "fraud_transactions": 0,
+        "first_fraud_transactions": 0,
+        "production": {
+          "legitimate_alerts": 423,
+          "legit_alerts_per_1000": 169.2,
+          "fraud_caught": 0,
+          "first_frauds_caught": 0
+        },
+        "v2_dnn_lstm": {
+          "legitimate_alerts": 56,
+          "legit_alerts_per_1000": 22.4,
+          "fraud_caught": 0,
+          "first_frauds_caught": 0
+        },
+        "v2_dnn_only": {
+          "legitimate_alerts": 70,
+          "legit_alerts_per_1000": 28.0,
+          "fraud_caught": 0,
+          "first_frauds_caught": 0
+        }
+      },
+      "3-9": {
+        "legitimate_transactions": 17498,
+        "fraud_transactions": 2,
+        "first_fraud_transactions": 1,
+        "production": {
+          "legitimate_alerts": 778,
+          "legit_alerts_per_1000": 44.46,
+          "fraud_caught": 1,
+          "first_frauds_caught": 1
+        },
+        "v2_dnn_lstm": {
+          "legitimate_alerts": 203,
+          "legit_alerts_per_1000": 11.6,
+          "fraud_caught": 2,
+          "first_frauds_caught": 1
+        },
+        "v2_dnn_only": {
+          "legitimate_alerts": 321,
+          "legit_alerts_per_1000": 18.34,
+          "fraud_caught": 2,
+          "first_frauds_caught": 1
+        }
+      },
+      "all": {
+        "legitimate_transactions": 24998,
+        "fraud_transactions": 2,
+        "first_fraud_transactions": 1,
+        "production": {
+          "legitimate_alerts": 1904,
+          "legit_alerts_per_1000": 76.17,
+          "fraud_caught": 1,
+          "first_frauds_caught": 1
+        },
+        "v2_dnn_lstm": {
+          "legitimate_alerts": 357,
+          "legit_alerts_per_1000": 14.28,
+          "fraud_caught": 2,
+          "first_frauds_caught": 1
+        },
+        "v2_dnn_only": {
+          "legitimate_alerts": 524,
+          "legit_alerts_per_1000": 20.96,
+          "fraud_caught": 2,
+          "first_frauds_caught": 1
+        }
+      }
+    },
+    "critical": {
+      "0": {
+        "legitimate_transactions": 2500,
+        "fraud_transactions": 0,
+        "first_fraud_transactions": 0,
+        "production": {
+          "legitimate_alerts": 0,
+          "legit_alerts_per_1000": 0.0,
+          "fraud_caught": 0,
+          "first_frauds_caught": 0
+        },
+        "v2_dnn_lstm": {
+          "legitimate_alerts": 0,
+          "legit_alerts_per_1000": 0.0,
+          "fraud_caught": 0,
+          "first_frauds_caught": 0
+        },
+        "v2_dnn_only": {
+          "legitimate_alerts": 0,
+          "legit_alerts_per_1000": 0.0,
+          "fraud_caught": 0,
+          "first_frauds_caught": 0
+        }
+      },
+      "1": {
+        "legitimate_transactions": 2500,
+        "fraud_transactions": 0,
+        "first_fraud_transactions": 0,
+        "production": {
+          "legitimate_alerts": 291,
+          "legit_alerts_per_1000": 116.4,
+          "fraud_caught": 0,
+          "first_frauds_caught": 0
+        },
+        "v2_dnn_lstm": {
+          "legitimate_alerts": 3,
+          "legit_alerts_per_1000": 1.2,
+          "fraud_caught": 0,
+          "first_frauds_caught": 0
+        },
+        "v2_dnn_only": {
+          "legitimate_alerts": 5,
+          "legit_alerts_per_1000": 2.0,
+          "fraud_caught": 0,
+          "first_frauds_caught": 0
+        }
+      },
+      "2": {
+        "legitimate_transactions": 2500,
+        "fraud_transactions": 0,
+        "first_fraud_transactions": 0,
+        "production": {
+          "legitimate_alerts": 109,
+          "legit_alerts_per_1000": 43.6,
+          "fraud_caught": 0,
+          "first_frauds_caught": 0
+        },
+        "v2_dnn_lstm": {
+          "legitimate_alerts": 0,
+          "legit_alerts_per_1000": 0.0,
+          "fraud_caught": 0,
+          "first_frauds_caught": 0
+        },
+        "v2_dnn_only": {
+          "legitimate_alerts": 2,
+          "legit_alerts_per_1000": 0.8,
+          "fraud_caught": 0,
+          "first_frauds_caught": 0
+        }
+      },
+      "3-9": {
+        "legitimate_transactions": 17498,
+        "fraud_transactions": 2,
+        "first_fraud_transactions": 1,
+        "production": {
+          "legitimate_alerts": 148,
+          "legit_alerts_per_1000": 8.46,
+          "fraud_caught": 1,
+          "first_frauds_caught": 1
+        },
+        "v2_dnn_lstm": {
+          "legitimate_alerts": 1,
+          "legit_alerts_per_1000": 0.06,
+          "fraud_caught": 1,
+          "first_frauds_caught": 1
+        },
+        "v2_dnn_only": {
+          "legitimate_alerts": 13,
+          "legit_alerts_per_1000": 0.74,
+          "fraud_caught": 2,
+          "first_frauds_caught": 1
+        }
+      },
+      "all": {
+        "legitimate_transactions": 24998,
+        "fraud_transactions": 2,
+        "first_fraud_transactions": 1,
+        "production": {
+          "legitimate_alerts": 548,
+          "legit_alerts_per_1000": 21.92,
+          "fraud_caught": 1,
+          "first_frauds_caught": 1
+        },
+        "v2_dnn_lstm": {
+          "legitimate_alerts": 4,
+          "legit_alerts_per_1000": 0.16,
+          "fraud_caught": 1,
+          "first_frauds_caught": 1
+        },
+        "v2_dnn_only": {
+          "legitimate_alerts": 20,
+          "legit_alerts_per_1000": 0.8,
+          "fraud_caught": 2,
+          "first_frauds_caught": 1
+        }
+      }
+    }
+  },
+  "decision_rule": {
+    "population": "primary (at least 10 earlier transactions), all hold-out datasets pooled",
+    "candidate_tie_break": {
+      "difference": "v2_dnn_lstm - v2_dnn_only",
+      "conditions": {
+        "recall_at_least_matches": {
+          "test": "lower bound of the 95% interval of the recall difference > -0.05",
+          "ci95": [
+            0.013974,
+            0.051265
+          ],
+          "holds": true
+        },
+        "alert_burden_at_least_matches": {
+          "test": "upper bound of the 95% interval of the legitimate-alert difference < +1.0 per 1,000",
+          "ci95": [
+            -0.405275,
+            0.139275
+          ],
+          "holds": true
+        },
+        "critical_tier_not_worse": {
+          "test": "lower bound of the 95% interval of the Critical-tier recall difference > -0.05",
+          "ci95": [
+            -0.012746,
+            0.029272
+          ],
+          "holds": true
+        }
+      },
+      "all_conditions_hold": true,
+      "primary_endpoints_separated": [
+        "recall"
+      ],
+      "outcome": "v2_dnn_lstm remains the provisional lead",
+      "provisional_lead": "v2_dnn_lstm"
+    },
+    "against_production": {
+      "rule": "legitimate alerts per 1,000: upper bound <= 10.0; recall >= 0.4; lower bound of the recall interval above production's point estimate",
+      "candidates": {
+        "v2_dnn_lstm": {
+          "legit_alerts_per_1000": {
+            "value": 8.908727,
+            "ci95": [
+              8.285986,
+              9.52738
+            ]
+          },
+          "recall": {
+            "value": 0.452838,
+            "ci95": [
+              0.409443,
+              0.494328
+            ]
+          },
+          "production_recall": 0.29591,
+          "within_alert_budget": true,
+          "recall_at_least_minimum": true,
+          "recall_lower_bound_above_production": true,
+          "eligible_on_this_evidence": true
+        },
+        "v2_dnn_only": {
+          "legit_alerts_per_1000": {
+            "value": 9.034493,
+            "ci95": [
+              8.470282,
+              9.620479
+            ]
+          },
+          "recall": {
+            "value": 0.419866,
+            "ci95": [
+              0.379729,
+              0.459946
+            ]
+          },
+          "production_recall": 0.29591,
+          "within_alert_budget": true,
+          "recall_at_least_minimum": true,
+          "recall_lower_bound_above_production": true,
+          "eligible_on_this_evidence": true
+        }
+      },
+      "any_candidate_eligible": true
+    },
+    "primary_endpoint_intervals_excluding_zero": [
+      {
+        "pair": "v2_dnn_lstm - v2_dnn_only",
+        "endpoint": "recall",
+        "difference": 0.032972,
+        "ci95": [
+          0.013974,
+          0.051265
+        ]
+      },
+      {
+        "pair": "v2_dnn_lstm - production",
+        "endpoint": "recall",
+        "difference": 0.156928,
+        "ci95": [
+          0.116734,
+          0.196802
+        ]
+      },
+      {
+        "pair": "v2_dnn_lstm - production",
+        "endpoint": "legit_alerts_per_1000",
+        "difference": -1.406099,
+        "ci95": [
+          -1.972469,
+          -0.813078
+        ]
+      },
+      {
+        "pair": "v2_dnn_only - production",
+        "endpoint": "recall",
+        "difference": 0.123957,
+        "ci95": [
+          0.084721,
+          0.160383
+        ]
+      },
+      {
+        "pair": "v2_dnn_only - production",
+        "endpoint": "legit_alerts_per_1000",
+        "difference": -1.280333,
+        "ci95": [
+          -1.797154,
+          -0.729099
+        ]
+      }
+    ],
+    "multiplicity_note": "three primary endpoints and three pairs of model sets give nine primary comparisons; about one in twenty such 95% intervals excludes zero by chance",
+    "promotion": "none. This rule reports evidence only; MODEL_SET stays production."
+  },
+  "gates": {
+    "fraud_episodes_primary": {
+      "value": 550,
+      "required": 100,
+      "met": true
+    },
+    "fraud_episodes_secondary": {
+      "value": 122,
+      "required": 100,
+      "met": true
+    },
+    "independent_data_seeds": {
+      "value": 5,
+      "required": 5,
+      "met": true
+    },
+    "rings_primary": {
+      "value": 20,
+      "required": 20,
+      "met": true
+    },
+    "new_customer_fraud": {
+      "value": 2,
+      "required": 100,
+      "met": false,
+      "note": "fraud with fewer than 10 earlier transactions is not represented in these datasets; it needs the generator extension and is evaluated separately"
+    }
+  },
+  "state": {
+    "model_set_default": "production",
+    "promotion": "none",
+    "models_trained": "none",
+    "thresholds_changed": "none"
+  }
+}

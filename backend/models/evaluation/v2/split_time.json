@@ -1,0 +1,44 @@
+{
+  "method": "time-based (out-of-time)",
+  "order": "customer_id, timestamp, transaction_id",
+  "episode_rule": "explicit fraud_episode_id from the dataset; a fraud ring's episodes form one group; each group's span includes its warning period",
+  "boundary_rule": "targets between the episode groups at 60% and 80% of group start times; moved to the midnight within +/-14 days that the fewest groups straddle; straddling groups move whole to the later split",
+  "train_before": "2026-05-03 00:00:00",
+  "validation_before": "2026-06-01 00:00:00",
+  "test_from": "2026-06-01 00:00:00",
+  "episodes_total": 110,
+  "episode_groups_total": 98,
+  "episodes_moved": [],
+  "splits": {
+    "train": {
+      "transactions": 63840,
+      "fraud_transactions": 291,
+      "fraud_rate_pct": 0.456,
+      "fraud_episodes": 68,
+      "customers": 500,
+      "first_timestamp": "2026-01-12 00:02:36",
+      "last_timestamp": "2026-05-02 23:58:54",
+      "transaction_ids_sha256": "55d085dd4f1f9ecb3ab9cd479f3ca5b5eb9f0769916ca498b45170aa3a48f857"
+    },
+    "validation": {
+      "transactions": 16315,
+      "fraud_transactions": 119,
+      "fraud_rate_pct": 0.729,
+      "fraud_episodes": 28,
+      "customers": 500,
+      "first_timestamp": "2026-05-03 00:02:35",
+      "last_timestamp": "2026-05-31 23:59:24",
+      "transaction_ids_sha256": "6f3af9523d738d069602d45ecfb824548a60cdbde385880d6adef46471c68414"
+    },
+    "test": {
+      "transactions": 21142,
+      "fraud_transactions": 61,
+      "fraud_rate_pct": 0.289,
+      "fraud_episodes": 14,
+      "customers": 500,
+      "first_timestamp": "2026-06-01 00:02:17",
+      "last_timestamp": "2026-07-06 23:59:17",
+      "transaction_ids_sha256": "e2d1e2cf733810d2c56ba850d82a7ff74803c3350de0a97b7423535a1a9c1ffa"
+    }
+  }
+}

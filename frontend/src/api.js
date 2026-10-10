@@ -6,6 +6,12 @@ const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
 
 export const api = axios.create({ baseURL, timeout: 15000 })
 
+// Liveness of the backend (GET /health), used by the header status indicator.
+export async function getHealth() {
+  const { data } = await api.get('/health', { timeout: 5000 })
+  return data
+}
+
 export async function predictTransaction(payload) {
   const { data } = await api.post('/predict', payload)
   return data
@@ -13,6 +19,11 @@ export async function predictTransaction(payload) {
 
 export async function getCustomerHistory(customerId) {
   const { data } = await api.get(`/customer/${customerId}/history`)
+  return data
+}
+
+export async function getCustomerProfile(customerId) {
+  const { data } = await api.get(`/customer/${customerId}/profile`)
   return data
 }
 
@@ -26,6 +37,11 @@ export async function getMetrics() {
   return data
 }
 
+export async function getModelInfo() {
+  const { data } = await api.get('/model-info')
+  return data
+}
+
 export async function getFraudRings() {
   const { data } = await api.get('/fraud-rings')
   return data
@@ -34,8 +50,11 @@ export async function getFraudRings() {
 export async function predictBatch(file) {
   const formData = new FormData()
   formData.append('file', file)
+  // A batch is scored row by row (model + SHAP for each), so it routinely takes
+  // longer than the 15 s default above; allow up to 5 minutes for this call only.
   const { data } = await api.post('/predict/batch', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 300000,
   })
   return data
 }

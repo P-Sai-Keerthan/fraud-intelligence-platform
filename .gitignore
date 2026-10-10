@@ -5,10 +5,12 @@ __pycache__/
 venv/
 env/
 .venv/
+.pytest_cache/
 
 # Backend runtime artifacts
 backend/fraud_platform.db
 backend/*.db
+backend/.env
 
 # Node / frontend
 frontend/node_modules/
@@ -33,3 +35,9 @@ frontend/.env.local
 # backend/models/saved/*.keras
 # data/*.csv
 # data/*.npy
+
+# Step 4C-3E hold-out evaluation datasets: reproducible from the generator and a seed, never committed
+data/v2_holdout/
+
+# Step 4D: intermediate arrays of the downstream-classifier benchmark (recomputed by the pipeline)
+backend/models/evaluation/downstream/cache/

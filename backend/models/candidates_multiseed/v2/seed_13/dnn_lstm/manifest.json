@@ -1,0 +1,264 @@
+{
+  "candidate": "dnn_lstm",
+  "dataset": {
+    "version": "v2",
+    "file": "transactions_with_features.csv",
+    "sha256": "a09d06114ce7c0dec4b93ff9946ab9506f5c7d25317bb95396b596f2f7b1ef08",
+    "generator_version": "2.0.1"
+  },
+  "split": {
+    "file": "split_time.json",
+    "sha256": "701301ae8d9fdb2a2c4a9f1d31f6753f2c402db905602a83e949dd98e690efcc",
+    "method": "time-based (out-of-time)",
+    "train_before": "2026-05-03 00:00:00",
+    "validation_before": "2026-06-01 00:00:00",
+    "rows_used": {
+      "train": 58840,
+      "validation": 16315
+    },
+    "fraud_used": {
+      "train": 291,
+      "validation": 119
+    },
+    "test_rows_used": 0
+  },
+  "features": {
+    "columns": [
+      "amount_zscore",
+      "hour_is_unusual",
+      "is_new_device",
+      "is_new_location",
+      "is_foreign_location",
+      "failed_logins_24h",
+      "category_is_unusual",
+      "txn_velocity_1h",
+      "amount_pct_of_avg"
+    ],
+    "count": 9,
+    "sha256": "78f61bd7db8565c694e8a76c0157d3282d25edfa4332a2b1f6e5cdee1052ed3e"
+  },
+  "seed": 13,
+  "sequence_length": 10,
+  "clipping": {
+    "dnn_training": "none (scaled only)",
+    "dnn_scoring": "scaled inputs clipped to +-6 (as in 4C-2d and production inference)",
+    "lstm": "scaled only, never clipped"
+  },
+  "recipe": "app/evaluation/stacking.py fit_lstm / fit_dnn / stacked_risk_scores, called as in app/evaluation/run.py evaluate_split (4C-2d)",
+  "versions": {
+    "python": "3.13.13",
+    "tensorflow": "2.21.0",
+    "scikit_learn": "1.8.0",
+    "numpy": "2.4.4",
+    "pandas": "3.0.2"
+  },
+  "model": {
+    "type": "LSTM risk score -> DNN",
+    "architecture": "production architectures: app/models/lstm_model.build_lstm_model, app/models/dnn_model.build_dnn_model (unchanged)",
+    "dnn_input_columns": [
+      "amount_zscore",
+      "hour_is_unusual",
+      "is_new_device",
+      "is_new_location",
+      "is_foreign_location",
+      "failed_logins_24h",
+      "category_is_unusual",
+      "txn_velocity_1h",
+      "amount_pct_of_avg",
+      "risk_score"
+    ],
+    "dnn_input_shape": [
+      null,
+      10
+    ],
+    "dnn_layers": [
+      {
+        "type": "InputLayer"
+      },
+      {
+        "type": "Dense",
+        "units": 64,
+        "activation": "relu"
+      },
+      {
+        "type": "BatchNormalization"
+      },
+      {
+        "type": "Dropout",
+        "rate": 0.3
+      },
+      {
+        "type": "Dense",
+        "units": 32,
+        "activation": "relu"
+      },
+      {
+        "type": "Dropout",
+        "rate": 0.2
+      },
+      {
+        "type": "Dense",
+        "units": 16,
+        "activation": "relu"
+      },
+      {
+        "type": "Dense",
+        "units": 1,
+        "activation": "sigmoid"
+      }
+    ],
+    "dnn_parameters": 3585,
+    "dnn_weights_sha256": "b39332c0c873460034bdb801b763f8f89074d57e4286ac57d9e19a11b1105e03",
+    "dnn_training": {
+      "rows": 58840,
+      "fraud": 291,
+      "early_stop_rows": 8826,
+      "early_stop_fraud": 76,
+      "monitor": "val_auc",
+      "epochs_run": 8,
+      "class_weight": {
+        "0": 1.0,
+        "1": 201.19931271477662
+      },
+      "epochs_max": 40,
+      "batch_size": 128,
+      "early_stopping": "val_auc (val_loss if no fraud), patience 5, best weights restored, on the chronologically last 15% of the training rows"
+    },
+    "lstm_input_shape": [
+      null,
+      10,
+      9
+    ],
+    "lstm_layers": [
+      {
+        "type": "InputLayer"
+      },
+      {
+        "type": "Masking",
+        "mask_value": 0.0
+      },
+      {
+        "type": "LSTM",
+        "units": 64,
+        "activation": "tanh",
+        "return_sequences": true
+      },
+      {
+        "type": "Dropout",
+        "rate": 0.3
+      },
+      {
+        "type": "LSTM",
+        "units": 32,
+        "activation": "tanh",
+        "return_sequences": false
+      },
+      {
+        "type": "Dropout",
+        "rate": 0.2
+      },
+      {
+        "type": "Dense",
+        "units": 16,
+        "activation": "relu"
+      },
+      {
+        "type": "Dense",
+        "units": 1,
+        "activation": "sigmoid"
+      }
+    ],
+    "lstm_parameters": 31905,
+    "lstm_weights_sha256": "151ec43d7b6539a011710c2f231095f02efa24af8bef958f4daa3c92031a93de",
+    "lstm_training": {
+      "rows": 58840,
+      "fraud": 291,
+      "early_stop_rows": 8826,
+      "early_stop_fraud": 76,
+      "monitor": "val_auc",
+      "epochs_run": 7,
+      "class_weight": {
+        "0": 1.0,
+        "1": 201.19931271477662
+      },
+      "epochs_max": 30,
+      "batch_size": 64
+    },
+    "risk_score": "LSTM probability x 100, rounded to 2 decimals; DNN training rows get out-of-fold scores from 3 customer-grouped folds",
+    "out_of_fold_models": [
+      {
+        "rows": 39248,
+        "fraud": 193,
+        "early_stop_rows": 5887,
+        "early_stop_fraud": 49,
+        "monitor": "val_auc",
+        "epochs_run": 13
+      },
+      {
+        "rows": 39216,
+        "fraud": 193,
+        "early_stop_rows": 5882,
+        "early_stop_fraud": 60,
+        "monitor": "val_auc",
+        "epochs_run": 7
+      },
+      {
+        "rows": 39216,
+        "fraud": 196,
+        "early_stop_rows": 5882,
+        "early_stop_fraud": 43,
+        "monitor": "val_auc",
+        "epochs_run": 9
+      }
+    ]
+  },
+  "scalers": {
+    "dnn_mean": "dnn_feature_mean.npy",
+    "dnn_std": "dnn_feature_std.npy",
+    "lstm_mean": "lstm_feature_mean.npy",
+    "lstm_std": "lstm_feature_std.npy",
+    "sha256": {
+      "dnn_feature_mean.npy": "b131a55f42d755ff7c5b8077648cbf867ed127cf5e5a2d342e3f0b0cb8c6c608",
+      "dnn_feature_std.npy": "299ca48bd1c1cc067e28be371d86a5f2bb03574e998f1f0139fd8876c2213fcb",
+      "lstm_feature_mean.npy": "fbfc1a0afd79ad236b27932198a6a6a6c1d6ac4b2e61b335db1269b9be91e90c",
+      "lstm_feature_std.npy": "e3e7765d84d6b6d2f3ebc665c0798ef36d015cbf604acc53f00d8cd8aaff5a35"
+    }
+  },
+  "thresholds": {
+    "f1_optimal": 0.8531447052955627,
+    "source": "validation split only (F1-maximizing; metrics.select_threshold)",
+    "fpr_operating_points": {
+      "0.001": 0.923201084136963,
+      "0.01": 0.8327313661575318,
+      "0.05": 0.5522745847702027
+    },
+    "fpr_operating_points_source": "validation split only (lowest threshold with validation FPR <= target)"
+  },
+  "threshold_score_scale": "DNN output (0-1); /predict shows it x100 as fraud_probability",
+  "shap_background": {
+    "file": "shap_background.npy",
+    "rows": 200,
+    "seed": 13,
+    "source": "training rows, scaled and clipped to +-6 like scoring inputs"
+  },
+  "files": {
+    "dnn_fraud_model.keras": "d002518b69e456f5063bbc9306c31a33bec872239a9902a6084009df8224f390",
+    "dnn_feature_mean.npy": "b131a55f42d755ff7c5b8077648cbf867ed127cf5e5a2d342e3f0b0cb8c6c608",
+    "dnn_feature_std.npy": "299ca48bd1c1cc067e28be371d86a5f2bb03574e998f1f0139fd8876c2213fcb",
+    "shap_background.npy": "b1ba9bc010571e7d6d3757d9cf821a8a953fd436387a1cca88898a448575ceca",
+    "lstm_risk_model.keras": "f358fd65073288636ff2184b85dbba573879a439e4bed68f979018ba9ebdd428",
+    "lstm_feature_mean.npy": "fbfc1a0afd79ad236b27932198a6a6a6c1d6ac4b2e61b335db1269b9be91e90c",
+    "lstm_feature_std.npy": "e3e7765d84d6b6d2f3ebc665c0798ef36d015cbf604acc53f00d8cd8aaff5a35"
+  },
+  "file_checksum_note": ".keras archives embed their save time (metadata.json) and Keras's auto-generated layer names (config.json), so their file SHA-256 differs between otherwise identical runs; dnn_weights_sha256 / lstm_weights_sha256 are the reproducible identity of the trained weights. The .npy files are byte-identical between runs.",
+  "lstm_thresholds": {
+    "f1_optimal": 0.9655083417892456,
+    "source": "validation split only (F1-maximizing; metrics.select_threshold)",
+    "fpr_operating_points": {
+      "0.001": 0.9846454262733461,
+      "0.01": 0.9330056309700013,
+      "0.05": 0.547832489013672
+    },
+    "fpr_operating_points_source": "validation split only (lowest threshold with validation FPR <= target)"
+  }
+}

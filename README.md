@@ -1,9 +1,48 @@
 # Explainable Fraud Intelligence Platform
 
 An AI-powered banking fraud intelligence system that builds a **Behavioral
-Fraud DNA** profile per customer, predicts risk *before* fraud happens
-(LSTM), detects fraud in real time on individual transactions (DNN), and
-explains every decision (SHAP).
+Fraud DNA** profile per customer, scores individual transactions in real
+time, and explains every decision (SHAP). The LSTM processes the customer's
+previous 10 transactions as a sequence to capture temporal behavioral
+patterns, and produces a temporal risk signal (the Risk Score). A **random
+forest** combines that signal with the 9 behavioral features of the current
+transaction into the Fraud Score.
+
+**Model:** `LSTM + Random Forest` (model set `v2_lstm_rf_seed14`, the
+default). The random forest replaced the earlier DNN classifier after a
+pre-registered comparison of four classifiers (DNN, logistic regression,
+random forest, histogram gradient boosting), chosen on fraud-specific
+metrics (PR-AUC first, never accuracy) on development data and confirmed
+once on a fresh hold-out: PR-AUC 0.464 against 0.328 for the DNN with the
+same LSTM, recall 0.645 against 0.548 at a validation-chosen budget of
+about 10 legitimate alerts per 1,000. The method, every number and the
+limitations are in **`docs/model_selection_report.md`**. The earlier
+"100% accuracy" of the DNN came from an easy synthetic dataset (v1), where
+one feature alone separates fraud perfectly, and from class imbalance; no
+leakage was found.
+
+The Fraud Score is a model score from 0 to 100, **not a calibrated
+probability**. All data is synthetic, and no result here describes
+real-world banking performance.
+
+We do not claim that the LSTM predicts fraud before it happens. The
+original research hypothesis was that its signal would rise before the
+first fraudulent transaction; the evaluation does not support that. On the
+v1 dataset the LSTM flags 0 of 16 first-fraud transactions and adds no
+measurable value to the DNN (`docs/EVALUATION.md`). On the harder synthetic
+v2 data, the LSTM + DNN design catches more fraud transactions overall
+than a DNN without the LSTM, but it is *worse* at detecting the first fraud
+of an episode (`docs/step4c3e-stage-c-final-evaluation.md`). The defensible
+claim is temporal behavioral risk detection.
+
+The models that run by default were trained on the synthetic v2 data, while
+the customer histories the dashboard shows are the v1 seed data
+(`data/transactions_with_features.csv`). The previous default model set
+(v1 LSTM -> DNN, `MODEL_SET=production`) is unchanged and can still be
+loaded by name.
+
+The state of the current build (model sets, test results, startup commands,
+known limitations) is summarised in `docs/final-demo-verification.md`.
 
 This repository is fully working end-to-end right now, using a **synthetic
 dataset** generated with realistic behavioral patterns (see
@@ -31,12 +70,13 @@ fraud-intelligence-platform/
 │   └── app/
 │       ├── config.py                    # all file paths, resolved automatically
 │       ├── main.py                      # FastAPI app (run this to start the API)
-│       ├── inference_pipeline.py        # orchestrates LSTM -> DNN -> SHAP -> similarity
+│       ├── inference_pipeline.py        # orchestrates LSTM -> classifier -> SHAP -> similarity
 │       ├── schemas.py                   # request/response models
 │       ├── features/feature_engineering.py   # Behavioral Fraud DNA feature builder
 │       ├── models/
-│       │   ├── lstm_model.py            # LSTM risk predictor
-│       │   ├── dnn_model.py              # DNN fraud classifier
+│       │   ├── lstm_model.py            # LSTM temporal risk model
+│       │   ├── dnn_model.py              # DNN fraud classifier (previous default)
+│       │   ├── downstream_classifier.py  # random forest / scikit-learn classifier wrapper + SHAP (default)
 │       │   ├── shap_explainer.py          # Explainable AI (SHAP) wrapper
 │       │   └── similarity.py              # Behavioral Similarity Score
 │       └── db/                          # SQLAlchemy models + session (SQLite by default)
@@ -57,7 +97,7 @@ fraud-intelligence-platform/
 
 Install these first if you don't have them:
 
-- **Python 3.10 or newer** — check with `python3 --version`
+- **Python 3.12 or newer** (tested on 3.12 and 3.13; the pinned `shap`/`numpy`/`pandas` versions don't install on 3.10/3.11) — check with `python3 --version`
 - **Node.js 18 or newer** — check with `node --version`
 - **VS Code** (recommended) with the Python extension installed
 
@@ -108,8 +148,14 @@ You should see output ending with something like:
 ```
 [pipeline] Loading trained models...
 [pipeline] Loaded history for 500 customers.
+[startup] Restored 0 previously scored transaction(s) from the database.
 INFO:     Application startup complete.
 ```
+
+Every transaction you score is saved to the database. When the server
+restarts, those saved transactions are replayed into each customer's
+behavioral history, so the models still know about them (for example, a
+device first used before the restart is not treated as "new" after it).
 
 Leave this terminal running. Open **http://localhost:8000/docs** in your
 browser — you'll see the auto-generated Swagger UI where you can test every
@@ -130,9 +176,49 @@ curl -X POST http://localhost:8000/predict \
   }'
 ```
 
-You should get back a JSON response with `risk_score`, `fraud_probability`,
+You should get back a JSON response with `risk_score`, `fraud_probability`
+(the Fraud Score; the field name is historical, it is not a probability),
 `alert_level: "Critical Risk"`, and a list of `reasons` like "Foreign
 Location" and "New Device".
+
+### 3.5 Run the backend test suite
+
+With the virtual environment activated, from inside `backend/`:
+
+```bash
+pip install -r requirements-dev.txt   # pytest, httpx, pypdf (test-only)
+pytest                                # full suite, about 12-15 minutes on a laptop CPU
+pytest -m "not slow"                  # skip the slowest tests (metrics, restart, env-var checks)
+```
+
+The tests use a throwaway SQLite database in a temp folder, so they never
+touch `fraud_platform.db`, and they don't need the API server running.
+
+### 3.6 Configuration (environment variables)
+
+All settings are optional; the defaults work for local development.
+`backend/.env.example` lists them.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `MODEL_SET` | `v2_lstm_rf_seed14` (when unset) | Which model set to load. Leave it unset: the default is the seed-14 LSTM followed by the random forest (Step 4D). `production` loads the previous default (v1 LSTM -> DNN); `v2_dnn_lstm_seed14` loads the evaluation-only seed-14 LSTM -> DNN. An unknown value stops start-up. |
+| `DATABASE_URL` | `sqlite:///./fraud_platform.db` | Database for scored transactions (PostgreSQL is configurable but untested). |
+| `CORS_ALLOW_ORIGINS` | `http://localhost:5173`, `http://127.0.0.1:5173`, `http://localhost:4173`, `http://127.0.0.1:4173` | Comma-separated browser origins allowed to call the API directly. |
+
+The dashboard's dev server reaches the API through Vite's `/api` proxy,
+which is same-origin, so local development needs no CORS setup at all.
+Set `CORS_ALLOW_ORIGINS` only when the frontend is served from another
+origin and calls the backend directly (i.e. `VITE_API_BASE_URL` is set),
+for example `CORS_ALLOW_ORIGINS=https://fraud-dashboard.example.com`.
+`*` allows any origin, with credentials disabled.
+
+Set variables in the shell before starting uvicorn, or put them in
+`backend/.env` and start the server with `--env-file .env`:
+
+```bash
+cp .env.example .env        # then edit .env
+uvicorn app.main:app --reload --port 8000 --env-file .env
+```
 
 ---
 
@@ -156,8 +242,9 @@ You'll see output like:
 Open **http://localhost:5173** in your browser. Select a customer from the
 dropdown (e.g. `CUST_0001`), click one of the quick scenario buttons
 ("Typical purchase" / "Suspicious pattern"), and click **Scan Transaction**.
-You'll see the risk gauge, fraud probability, alert banner, SHAP
-explanation chart, and the fraud evolution timeline update live.
+You'll see the Risk Score, the Fraud Score (a model score, not a
+probability), the alert verdict, the SHAP explanation, behavioral
+similarity and the fraud evolution timeline update live.
 
 The dev server automatically proxies `/api` requests to your backend on
 port 8000 (configured in `vite.config.js`), so no extra setup is needed for
@@ -181,6 +268,13 @@ python -m app.models.dnn_model                  # trains the DNN, ~1 minute
 python -m app.models.shap_explainer              # sanity-check SHAP explanations
 ```
 
+These scripts produce the **previous default** models (`MODEL_SET=production`,
+`models/saved/`). They still use the original random 80/20 split, so their
+printed test scores are not a valid held-out evaluation; use the evaluation
+below for reported numbers. The default model set (LSTM + random forest) is
+produced by the Step 4D pipeline (`python -m app.evaluation.downstream ...`,
+reproduction commands in `docs/model_selection_report.md`, section 12).
+
 To regenerate the underlying synthetic dataset from scratch first (only
 needed if you want a different random sample):
 
@@ -192,6 +286,42 @@ python -m app.features.feature_engineering
 python -m app.models.lstm_model
 python -m app.models.dnn_model
 ```
+
+### Evaluating the models (corrected methodology)
+
+```bash
+cd backend
+python -m app.evaluation.run                  # ~11 minutes on a 2-core CPU
+python -m app.evaluation.run --skip-customer  # time-based split only, ~half the time
+```
+
+This trains **evaluation copies** of the LSTM and DNN (same architectures and
+hyperparameters) and writes `models/evaluation/evaluation_report.json`, which
+`GET /metrics` and `GET /metrics/report` serve when `MODEL_SET=production`
+is loaded. For the default model set they serve the Step 4D model-selection
+reports (`models/evaluation/downstream/`). It never touches the
+production models. Methodology, in short:
+
+- **Time-based split** (primary). Train on the earliest transactions, choose
+  thresholds on the next period, test on the latest. The boundaries are
+  derived from the data (see `models/evaluation/split_time.json`), and a fraud
+  episode is never split across periods. A **customer-grouped split** is run
+  as a secondary check.
+- **Past-only LSTM windows**: the 10 transactions before each target.
+- **Leakage-safe stacking**: the DNN trains on *out-of-fold* LSTM risk
+  scores, and validation/test rows are scored by an LSTM trained on the
+  training period only.
+- **Thresholds chosen on validation**, never on test.
+- Reports PR-AUC, ROC-AUC, precision, recall, F1, confusion matrix, alerts
+  per 1,000 transactions, recall at 0.1% / 1% FPR, and fraud-episode
+  metrics (first-fraud recall, detection delay). It also includes baselines:
+  an amount/hour rule, logistic regression, and the DNN without the LSTM
+  score.
+
+Results and their interpretation are in `docs/EVALUATION.md`.
+
+Seeds are fixed and TensorFlow determinism is enabled; the split definitions
+are saved next to the report.
 
 ### Swapping in a real dataset (PaySim / IEEE-CIS)
 
@@ -216,16 +346,31 @@ models, and API all work off that one schema.
    customer's prior history (no lookahead) — amount z-score vs their own
    average, whether the hour/device/location/category is new or unusual,
    transaction velocity, failed logins.
-2. **LSTM Risk Predictor** (`lstm_model.py`): takes the customer's last 10
-   transactions' behavioral features as a sequence, predicts the
-   probability that the *next* transaction will be fraudulent. This score
-   (0-100) represents risk building up *before* an attack.
-3. **DNN Fraud Detector** (`dnn_model.py`): takes the current transaction's
-   own behavioral features *plus* the LSTM risk score, and outputs a
-   calibrated fraud probability for *this specific transaction*.
-4. **SHAP Explainer** (`shap_explainer.py`): wraps the DNN with
-   `shap.GradientExplainer` and maps the top contributing features to
-   human-readable reasons ("New Device", "Foreign Location", etc.).
+2. **LSTM temporal risk model** (`lstm_model.py`): processes the customer's
+   previous 10 transactions (9 behavioral features each) as a sequence to
+   capture temporal behavioral patterns, and outputs a temporal risk signal,
+   the Risk Score (0-100). It is trained to score whether the *next*
+   transaction after the window is fraudulent. It was designed in the hope
+   that it would rise *before* an attack; the evaluation does not support
+   that claim. On v1 it flags 0 of 16 first-fraud transactions in the test
+   period and rises only once an episode is under way, and removing it from
+   the DNN does not change detection (`docs/EVALUATION.md`).
+3. **Random forest fraud classifier** (`models/downstream_classifier.py`,
+   artifact in `models/candidates_downstream/v2/seed_14/lstm_random_forest/`):
+   takes the current transaction's 9 behavioral features *plus* the LSTM
+   Risk Score and outputs the Fraud Score (0-100) for *this specific
+   transaction*. 200 trees, max depth 12, at least 5 samples per leaf, no
+   class weighting; trained on out-of-fold LSTM scores. It was selected over
+   the previous DNN, logistic regression and gradient boosting by a
+   pre-registered rule (`docs/step4d-downstream-selection-protocol.md`). The
+   Fraud Score is a model score, not a calibrated probability: it
+   understates the fraud rate above about 30 (section 8 of
+   `docs/model_selection_report.md`).
+4. **SHAP Explainer** (`shap_explainer.py`): exact Tree SHAP
+   (`shap.TreeExplainer`, interventional, on the random forest's own score)
+   maps the top contributing features to human-readable reasons ("New
+   Device", "Foreign Location", etc.). For the previous DNN model set it
+   uses `shap.GradientExplainer`.
 5. **Behavioral Similarity Score** (`similarity.py`): z-scores the current
    transaction against the customer's own historical mean/std per feature,
    and maps the average deviation to a 0-100 similarity percentage via
@@ -233,6 +378,17 @@ models, and API all work off that one schema.
 
 ### Known limitations (be upfront about these in your paper — reviewers expect it)
 
+- The **Fraud Score is a model score, not a calibrated probability**.
+- The fixed alert bands (Low < 25 ≤ Medium < 50 ≤ High < 80 ≤ Critical) were
+  designed for the earlier DNN and were not derived for the random forest,
+  whose scores are much lower (its validation alert cut-off is a score of
+  4.39). Many fraud transactions therefore show as "Low Risk" in the
+  dashboard; the reported metrics use the validation cut-offs, not the bands.
+- For customers with fewer than 10 earlier transactions (no LSTM window) the
+  random forest raises more false alerts than the DNN did (59.4 against 25.0
+  per 1,000 on the fresh new-customer hold-out).
+- The LSTM does not detect the first fraud of an episode; do not describe
+  it as predicting fraud before it happens.
 - The dataset is **synthetic**. Real bank data is never public, so this is
   standard practice in fraud-detection research, but say so explicitly in
   your methodology section.
@@ -240,13 +396,15 @@ models, and API all work off that one schema.
   every request (`O(n)` per prediction). Fine at demo scale; a production
   system would maintain incrementally-updated rolling statistics instead.
 - The Behavioral Similarity Score weights all 9 features equally. It can
-  diverge from the DNN's fraud probability for customers with naturally
+  diverge from the Fraud Score for customers with naturally
   tight variance in one dimension (e.g. very consistent spending amounts).
   This is a good "future work" paragraph for your paper: learned feature
   weighting for the similarity metric.
-- Report **Precision, Recall, F1, and AUC-ROC** in your results — not just
-  accuracy, since fraud is heavily imbalanced and accuracy alone looks
-  artificially high.
+- Report **PR-AUC, Precision, Recall, F1 and AUC-ROC** from the corrected
+  evaluation (section 5), not accuracy: fraud is heavily imbalanced and
+  accuracy alone looks artificially high. Include the baselines and the
+  first-fraud recall. On the current synthetic data, simple baselines are
+  already near-perfect, because the generator makes fraud easy to separate.
 
 See `docs/RESEARCH_NOTES.md` for a full IEEE/Springer paper structure
 template and suggested related-work citations.

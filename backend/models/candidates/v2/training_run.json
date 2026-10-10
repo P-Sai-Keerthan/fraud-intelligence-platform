@@ -1,0 +1,43 @@
+{
+  "command": "python -m app.training.candidates ",
+  "candidates": [
+    "dnn_lstm",
+    "dnn_only"
+  ],
+  "training_seconds": 268.6,
+  "production_models_unchanged": true,
+  "production_checksums": {
+    "dnn_feature_mean.npy": "cb12c7e19545e838c185c3e3684f601c7ec3fdbd387add15d7d7f907befa75a8",
+    "dnn_feature_std.npy": "5f526f065ae0d635eecbabb0b9f636fc4dc63eed778ccb4a8e738fa5aacab155",
+    "dnn_fraud_model.keras": "4fd3ab2e190f7c5073d7d100c7f68114babf89b02b321e72a8fb4ebb3c6d3add",
+    "lstm_feature_mean.npy": "cd7d3fda6554f7f027d10faf5755a01a9fe2a7d0a67eb5a748d72682a3bcb7e6",
+    "lstm_feature_std.npy": "86b57e2ce8b31e366397d3a5b98cb9fbf44d07ecfabf717ad4647e539e927b34",
+    "lstm_risk_model.keras": "81c2ab738b6d109fa3ba94f4c8fa5f7303d6f8d114f7ec892e4f5f76abb3f588",
+    "shap_background.npy": "ac8ffe3b53434b13880af6a7c76b1746d5a9828701af04be14c54cef697b1519"
+  },
+  "reproduction_of_4c2d_evaluation": {
+    "dnn_lstm": {
+      "dnn_predictions_identical": true,
+      "dnn_max_abs_prediction_difference": 0.0,
+      "lstm_predictions_identical": true,
+      "lstm_max_abs_prediction_difference": 0.0,
+      "threshold_candidate": 0.959282,
+      "threshold_evaluation_report": 0.959282,
+      "threshold_identical": true,
+      "dnn_weights_identical": true,
+      "lstm_weights_identical": true,
+      "dnn_mean_identical": true,
+      "dnn_std_identical": true,
+      "lstm_mean_identical": true,
+      "lstm_std_identical": true
+    },
+    "dnn_only": {
+      "dnn_predictions_identical": true,
+      "dnn_max_abs_prediction_difference": 0.0,
+      "threshold_candidate": 0.769814,
+      "threshold_evaluation_report": 0.769814,
+      "threshold_identical": true,
+      "note": "the evaluation did not save its DNN-only model; predictions and threshold are compared"
+    }
+  }
+}

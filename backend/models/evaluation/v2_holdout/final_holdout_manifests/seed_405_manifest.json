@@ -1,0 +1,648 @@
+{
+  "generator": "data/v2/synth_v2",
+  "generator_version": "2.0.1",
+  "command": "python data/v2/generate.py --seed 405 --customers 500",
+  "seed": 405,
+  "config": {
+    "seed": 405,
+    "n_customers": 500,
+    "start_date": "2026-01-12",
+    "days": 176,
+    "episodes_per_customer": 0.22,
+    "repeat_victim_share": 0.1,
+    "min_days_between_episodes": 30,
+    "first_episode_day": 21,
+    "ring_size": [
+      3,
+      6
+    ],
+    "min_rings": 2,
+    "ring_wave_max_hours": 72.0,
+    "precursor_days": [
+      1,
+      7
+    ],
+    "precursor_attack_bursts": [
+      1,
+      3
+    ],
+    "precursor_failures_per_burst": [
+      2,
+      6
+    ],
+    "household_share": 0.15,
+    "household_size": [
+      2,
+      3
+    ],
+    "p_household_device_use": [
+      0.2,
+      0.35
+    ],
+    "p_secondary_device": 0.55,
+    "secondary_device_use": [
+      0.1,
+      0.2
+    ],
+    "p_device_upgrade": 0.25,
+    "upgrade_overlap_days": 14,
+    "p_borrowed_device": 0.08,
+    "domestic_trips": [
+      1,
+      3
+    ],
+    "domestic_trip_days": [
+      2,
+      7
+    ],
+    "foreign_trip_days": [
+      4,
+      10
+    ],
+    "p_benign_foreign_destination": 0.8,
+    "cover_foreign_destinations": true,
+    "hour_peak_width": [
+      0.7,
+      1.0
+    ],
+    "hour_uniform_floor": [
+      0.03,
+      0.08
+    ],
+    "amount_sigma": [
+      0.25,
+      0.6
+    ],
+    "p_big_purchase": 0.015,
+    "big_purchase_multiple": [
+      3.0,
+      15.0
+    ],
+    "p_small_purchase": 0.05,
+    "small_purchase_inr": [
+      10.0,
+      200.0
+    ],
+    "p_new_category": 0.03,
+    "p_burst_day": 0.01,
+    "burst_extra_txns": [
+      2,
+      5
+    ],
+    "salary_days": [
+      1,
+      2,
+      3
+    ],
+    "salary_rate_uplift": 1.4,
+    "forgot_password_per_day": 0.012,
+    "forgot_password_failures": [
+      1,
+      4
+    ],
+    "typo_failures_per_day": 0.015,
+    "p_public_network": 0.05,
+    "p_carrier_network": 0.4,
+    "p_vpn_user": 0.05,
+    "vpn_use": 0.3,
+    "carrier_networks_per_city": 3,
+    "public_networks_per_city": 3,
+    "merchants_per_category": 40,
+    "fraud_proxy_networks": 25,
+    "segments": {
+      "salaried_commuter": {
+        "share": 0.4,
+        "peaks": [
+          [
+            9,
+            1.0
+          ],
+          [
+            13,
+            0.8
+          ],
+          [
+            20,
+            1.0
+          ]
+        ],
+        "amount_median": [
+          600,
+          3500
+        ],
+        "weekly": [
+          4,
+          10
+        ],
+        "p_domestic_trip": 0.25,
+        "p_foreign_trip": 0.04
+      },
+      "night_shift": {
+        "share": 0.1,
+        "peaks": [
+          [
+            23,
+            1.0
+          ],
+          [
+            2,
+            0.8
+          ],
+          [
+            6,
+            0.5
+          ]
+        ],
+        "amount_median": [
+          300,
+          2000
+        ],
+        "weekly": [
+          3,
+          9
+        ],
+        "p_domestic_trip": 0.15,
+        "p_foreign_trip": 0.02
+      },
+      "student": {
+        "share": 0.15,
+        "peaks": [
+          [
+            12,
+            0.8
+          ],
+          [
+            18,
+            1.0
+          ],
+          [
+            23,
+            0.8
+          ]
+        ],
+        "amount_median": [
+          150,
+          900
+        ],
+        "weekly": [
+          5,
+          14
+        ],
+        "p_domestic_trip": 0.2,
+        "p_foreign_trip": 0.02
+      },
+      "business_traveller": {
+        "share": 0.1,
+        "peaks": [
+          [
+            7,
+            0.8
+          ],
+          [
+            13,
+            0.8
+          ],
+          [
+            21,
+            1.0
+          ]
+        ],
+        "amount_median": [
+          2000,
+          8000
+        ],
+        "weekly": [
+          5,
+          12
+        ],
+        "p_domestic_trip": 0.8,
+        "p_foreign_trip": 0.35
+      },
+      "retiree": {
+        "share": 0.1,
+        "peaks": [
+          [
+            9,
+            1.0
+          ],
+          [
+            11,
+            0.9
+          ],
+          [
+            16,
+            0.7
+          ]
+        ],
+        "amount_median": [
+          400,
+          2500
+        ],
+        "weekly": [
+          3,
+          7
+        ],
+        "p_domestic_trip": 0.2,
+        "p_foreign_trip": 0.03
+      },
+      "household": {
+        "share": 0.15,
+        "peaks": [
+          [
+            10,
+            0.9
+          ],
+          [
+            18,
+            1.0
+          ],
+          [
+            21,
+            0.7
+          ]
+        ],
+        "amount_median": [
+          800,
+          4000
+        ],
+        "weekly": [
+          4,
+          11
+        ],
+        "p_domestic_trip": 0.25,
+        "p_foreign_trip": 0.04
+      }
+    },
+    "archetypes": {
+      "account_takeover": {
+        "share": 0.2,
+        "n_txns": [
+          2,
+          8
+        ],
+        "span_hours": [
+          6,
+          72
+        ],
+        "p_new_device": 0.8,
+        "p_foreign": 0.25,
+        "p_other_city": 0.15,
+        "p_off_hours": 0.5,
+        "amount": [
+          1.0,
+          6.0
+        ],
+        "p_category_shift": 0.6,
+        "shift_categories": [
+          "electronics",
+          "online_retail",
+          "travel"
+        ],
+        "p_attack_logins": 0.7,
+        "attack_failures": [
+          2,
+          8
+        ],
+        "p_fraud_network": 0.8,
+        "p_precursor": 0.5
+      },
+      "stolen_card_online": {
+        "share": 0.2,
+        "n_txns": [
+          3,
+          10
+        ],
+        "span_hours": [
+          12,
+          120
+        ],
+        "p_new_device": 0.6,
+        "p_foreign": 0.25,
+        "p_other_city": 0.15,
+        "p_off_hours": 0.4,
+        "amount": [
+          0.8,
+          4.0
+        ],
+        "p_category_shift": 0.7,
+        "shift_categories": [
+          "electronics",
+          "online_retail",
+          "entertainment",
+          "travel"
+        ],
+        "p_attack_logins": 0.1,
+        "attack_failures": [
+          1,
+          3
+        ],
+        "p_fraud_network": 0.6,
+        "p_precursor": 0.0
+      },
+      "card_testing_cashout": {
+        "share": 0.15,
+        "n_probes": [
+          3,
+          10
+        ],
+        "probe_span_hours": [
+          1,
+          6
+        ],
+        "probe_amount_inr": [
+          1.0,
+          150.0
+        ],
+        "p_cashout": 0.5,
+        "n_cashout": [
+          1,
+          2
+        ],
+        "cashout_delay_hours": [
+          0.5,
+          24
+        ],
+        "amount": [
+          3.0,
+          10.0
+        ],
+        "p_new_device": 0.7,
+        "p_foreign": 0.3,
+        "p_other_city": 0.1,
+        "p_off_hours": 0.5,
+        "p_category_shift": 0.8,
+        "shift_categories": [
+          "online_retail",
+          "entertainment"
+        ],
+        "p_attack_logins": 0.2,
+        "attack_failures": [
+          1,
+          4
+        ],
+        "p_fraud_network": 0.7,
+        "p_precursor": 0.3
+      },
+      "device_takeover": {
+        "share": 0.1,
+        "n_txns": [
+          1,
+          4
+        ],
+        "span_hours": [
+          1,
+          24
+        ],
+        "p_new_device": 0.1,
+        "p_foreign": 0.05,
+        "p_other_city": 0.1,
+        "p_off_hours": 0.3,
+        "amount": [
+          2.0,
+          10.0
+        ],
+        "p_category_shift": 0.5,
+        "shift_categories": [
+          "electronics",
+          "online_retail",
+          "travel"
+        ],
+        "p_attack_logins": 0.3,
+        "attack_failures": [
+          1,
+          4
+        ],
+        "p_fraud_network": 0.3,
+        "p_precursor": 0.0
+      },
+      "high_value_single": {
+        "share": 0.1,
+        "n_txns": [
+          1,
+          2
+        ],
+        "span_hours": [
+          0.1,
+          12
+        ],
+        "p_new_device": 0.5,
+        "p_foreign": 0.15,
+        "p_other_city": 0.15,
+        "p_off_hours": 0.4,
+        "amount": [
+          5.0,
+          20.0
+        ],
+        "p_category_shift": 0.8,
+        "shift_categories": [
+          "electronics",
+          "travel",
+          "fashion"
+        ],
+        "p_attack_logins": 0.3,
+        "attack_failures": [
+          1,
+          5
+        ],
+        "p_fraud_network": 0.5,
+        "p_precursor": 0.0
+      },
+      "normal_looking": {
+        "share": 0.1,
+        "n_txns": [
+          1,
+          4
+        ],
+        "span_hours": [
+          12,
+          96
+        ],
+        "p_new_device": 0.15,
+        "p_foreign": 0.03,
+        "p_other_city": 0.07,
+        "p_off_hours": 0.1,
+        "amount": [
+          0.8,
+          2.5
+        ],
+        "p_category_shift": 0.3,
+        "shift_categories": [
+          "online_retail",
+          "fashion",
+          "electronics"
+        ],
+        "p_attack_logins": 0.05,
+        "attack_failures": [
+          1,
+          2
+        ],
+        "p_fraud_network": 0.1,
+        "p_precursor": 0.0
+      },
+      "ring": {
+        "share": 0.15,
+        "n_txns": [
+          1,
+          4
+        ],
+        "span_hours": [
+          0.5,
+          8
+        ],
+        "p_ring_device": 0.6,
+        "p_ring_network": 0.7,
+        "p_ring_merchant": 0.5,
+        "p_ring_location": 0.6,
+        "amount": [
+          1.0,
+          5.0
+        ],
+        "p_category_shift": 0.5,
+        "p_attack_logins": 0.4,
+        "attack_failures": [
+          1,
+          5
+        ],
+        "p_precursor": 0.3
+      }
+    }
+  },
+  "metadata_columns": [
+    "merchant_id",
+    "network_id",
+    "fraud_type",
+    "fraud_episode_id",
+    "fraud_stage",
+    "fraud_ring_id",
+    "is_precursor",
+    "legit_context",
+    "customer_segment"
+  ],
+  "note": "metadata_columns are ground truth / analysis aids and must never be model features",
+  "summary": {
+    "customers": 500,
+    "transactions": 102283,
+    "fraud_transactions": 469,
+    "fraud_rate_pct": 0.459,
+    "episodes": 110,
+    "episodes_by_type": {
+      "account_takeover": 22,
+      "card_testing_cashout": 17,
+      "device_takeover": 11,
+      "high_value_single": 11,
+      "normal_looking": 11,
+      "ring": 16,
+      "stolen_card_online": 22
+    },
+    "rings": 4,
+    "episodes_with_precursor": 21,
+    "precursor_transactions": 110,
+    "households": 27,
+    "first_timestamp": "2026-01-12 00:00:51",
+    "last_timestamp": "2026-07-06 23:59:05"
+  },
+  "files": {
+    "transactions.csv": {
+      "rows": 102283,
+      "columns": [
+        "customer_id",
+        "transaction_id",
+        "timestamp",
+        "amount",
+        "merchant_category",
+        "device_id",
+        "location",
+        "failed_logins_24h",
+        "is_fraud",
+        "is_new_device",
+        "is_new_location",
+        "merchant_id",
+        "network_id",
+        "fraud_type",
+        "fraud_episode_id",
+        "fraud_stage",
+        "fraud_ring_id",
+        "is_precursor",
+        "legit_context",
+        "customer_segment"
+      ],
+      "sha256": "a64a6284bf9314fdfe0d780de11423b7d33b9ca16ffba6df31f608127e107ed7"
+    },
+    "customers.csv": {
+      "rows": 500,
+      "columns": [
+        "customer_id",
+        "customer_segment",
+        "home_city",
+        "household_id",
+        "primary_device",
+        "secondary_device",
+        "upgrade_device",
+        "upgrade_date",
+        "has_foreign_trip",
+        "n_domestic_trips"
+      ],
+      "sha256": "b8fad7063c1b2022af86eb2e315162d16396f4cfbc5dde81f511a35cc2009c7e"
+    },
+    "episodes.csv": {
+      "rows": 110,
+      "columns": [
+        "fraud_episode_id",
+        "customer_id",
+        "fraud_type",
+        "fraud_ring_id",
+        "precursor_start",
+        "first_fraud_time",
+        "last_fraud_time",
+        "n_fraud_transactions"
+      ],
+      "sha256": "06d803cbf9a1e70ffa3c11714452bd9cab94ea4e7480503ab5ecc8ed849c98d5"
+    },
+    "login_failures.csv": {
+      "rows": 4227,
+      "columns": [
+        "customer_id",
+        "timestamp",
+        "source"
+      ],
+      "sha256": "8b16128782917c6b18234c4b610a577988f886fca72f4910575b6d7632a7b003"
+    },
+    "transactions_with_features.csv": {
+      "rows": 102283,
+      "columns": [
+        "customer_id",
+        "transaction_id",
+        "timestamp",
+        "amount",
+        "merchant_category",
+        "device_id",
+        "location",
+        "is_fraud",
+        "amount_zscore",
+        "hour_is_unusual",
+        "is_new_device",
+        "is_new_location",
+        "is_foreign_location",
+        "failed_logins_24h",
+        "category_is_unusual",
+        "txn_velocity_1h",
+        "amount_pct_of_avg",
+        "merchant_id",
+        "network_id",
+        "fraud_type",
+        "fraud_episode_id",
+        "fraud_stage",
+        "fraud_ring_id",
+        "is_precursor",
+        "legit_context",
+        "customer_segment"
+      ],
+      "sha256": "41ab05627c49d6882adb0fcacae956214d27effdf8e2dc5369d83f4ab0fd85ab"
+    }
+  },
+  "versions": {
+    "python": "3.13.13",
+    "numpy": "2.4.4",
+    "pandas": "3.0.2"
+  }
+}

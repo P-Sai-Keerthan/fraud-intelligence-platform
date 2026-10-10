@@ -1,0 +1,37 @@
+{
+  "method": "customer-grouped (components)",
+  "rule": "customers linked by a fraud ring or a household form one component; components shuffled with seed 42, stratified by has-fraud, split 60/20/20; a component stays together",
+  "components": 441,
+  "splits": {
+    "train": {
+      "transactions": 61965,
+      "fraud_transactions": 320,
+      "fraud_rate_pct": 0.516,
+      "fraud_episodes": 73,
+      "customers": 304,
+      "first_timestamp": "2026-01-12 00:02:36",
+      "last_timestamp": "2026-07-06 23:59:17",
+      "transaction_ids_sha256": "32a0a0f8716ba66c248e368038a050fd100b2ad3ddabbd8f405e89621af334d0"
+    },
+    "validation": {
+      "transactions": 19125,
+      "fraud_transactions": 78,
+      "fraud_rate_pct": 0.408,
+      "fraud_episodes": 20,
+      "customers": 97,
+      "first_timestamp": "2026-01-12 02:43:06",
+      "last_timestamp": "2026-07-06 23:49:15",
+      "transaction_ids_sha256": "85011c3da95cdb53b2c6d2a49cd461a9799098fc1bd43cf99856ebdf023c5b48"
+    },
+    "test": {
+      "transactions": 20207,
+      "fraud_transactions": 73,
+      "fraud_rate_pct": 0.361,
+      "fraud_episodes": 17,
+      "customers": 99,
+      "first_timestamp": "2026-01-12 02:16:16",
+      "last_timestamp": "2026-07-06 23:51:21",
+      "transaction_ids_sha256": "451b509c1d121a78d066f75be85bed4ed97d1b8ed99f35089da710940157f7bd"
+    }
+  }
+}
