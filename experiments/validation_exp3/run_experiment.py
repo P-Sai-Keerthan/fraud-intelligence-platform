@@ -64,6 +64,16 @@ def sha256_file(path) -> str:
     return d.hexdigest()
 
 
+def sha256_gz_content(path) -> str:
+    """SHA-256 of the decompressed content (the gzip header carries a timestamp, so the file hash is not reproducible)."""
+    import gzip
+    d = hashlib.sha256()
+    with gzip.open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            d.update(chunk)
+    return d.hexdigest()
+
+
 def check_seeds():
     from app.evaluation.selection import SPENT_SEEDS
     spent = {s for s in ALL_SEEDS if s in USED_ELSEWHERE or s in SPENT_SEEDS}
@@ -117,11 +127,19 @@ def similarity_columns(frame: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(out)
 
 
-def fit_baselines():
+TRAINING_DATASET_SHA256 = "a09d06114ce7c0dec4b93ff9946ab9506f5c7d25317bb95396b596f2f7b1ef08"   # seed-42 v2 dataset (data/v2/manifest.json)
+
+
+def fit_baselines(train_data):
     """RF without the LSTM input and logistic regression, on the seed-42 training rows with >= 10 earlier transactions."""
     from sklearn.ensemble import RandomForestClassifier
-    from app.evaluation import downstream
-    data, labels = downstream.training_data()
+    from app.evaluation.datasets import load_evaluation_data, resolve_dataset
+    from app.training import candidates as cand
+    spec = resolve_dataset("v2").with_data_dir(train_data)
+    data = load_evaluation_data(spec)
+    if data.sha256 != TRAINING_DATASET_SHA256:
+        raise SystemExit(f"{train_data}: not the seed-42 training dataset (sha256 {data.sha256})")
+    labels, _, _, _ = cand.load_saved_split(spec, data)
     f = data.frame
     mask = (np.asarray(labels) == "train") & (h.prior_counts(f) >= MIN_PRIOR)
     X = f[FEATURE_COLUMNS].to_numpy(dtype=np.float32)[mask]
@@ -140,7 +158,7 @@ def cmd_score(args):
     data_root, scores_dir = Path(args.data), Path(args.scores)
     scores_dir.mkdir(parents=True, exist_ok=True)
     sets = {k: load_model_set(v) for k, v in SAVED_SETS.items()}
-    rf, lr, base_info = fit_baselines()
+    rf, lr, base_info = fit_baselines(args.train_data)
     (scores_dir / "baselines_info.json").write_text(json.dumps(base_info, indent=1))
     for seed in ALL_SEEDS:
         t0 = time.time()
@@ -162,7 +180,7 @@ def cmd_score(args):
         table = pd.concat([table, similarity_columns(f)], axis=1)
         path = scores_dir / f"scores_seed_{seed}.csv.gz"
         table.to_csv(path, index=False, float_format="%.9g")
-        print(f"seed {seed}: {len(table):,} rows scored ({time.time() - t0:.0f}s) -> {path.name} {sha256_file(path)[:12]}")
+        print(f"seed {seed}: {len(table):,} rows scored ({time.time() - t0:.0f}s) -> {path.name} content sha256 {sha256_gz_content(path)[:12]}")
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -341,7 +359,7 @@ def meta_block(scores_dir):
         "generator_version": manifests[ALL_SEEDS[0]].get("generator_version"),
         "generator_commands": {str(s): m.get("command") for s, m in manifests.items()},
         "model_artifact_sha256": model_files,
-        "scores_sha256": {str(s): sha256_file(Path(scores_dir) / f"scores_seed_{s}.csv.gz") for s in ALL_SEEDS},
+        "scores_content_sha256": {str(s): sha256_gz_content(Path(scores_dir) / f"scores_seed_{s}.csv.gz") for s in ALL_SEEDS},
         "versions": {"python": platform.python_version(), "numpy": np.__version__, "pandas": pd.__version__,
                      "scikit_learn": sklearn.__version__, "tensorflow": tf.__version__},
         "baselines": json.loads((Path(scores_dir) / "baselines_info.json").read_text()),
@@ -682,6 +700,7 @@ def main(argv=None):
     s = sub.add_parser("score")
     s.add_argument("--data", required=True)
     s.add_argument("--scores", default=str(RESULTS / "scores"))
+    s.add_argument("--train-data", required=True, help="directory holding the regenerated seed-42 v2 dataset (sha256 is checked)")
     a = sub.add_parser("analyze")
     a.add_argument("--scores", default=str(RESULTS / "scores"))
     args = p.parse_args(argv)

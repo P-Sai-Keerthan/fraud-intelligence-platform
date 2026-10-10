@@ -1,0 +1,45 @@
+{
+ "description": "Second complete run (score then analyze) from the same generated datasets, compared with the first.",
+ "scores_content_sha256": {
+  "9301": {
+   "run1": "b94f0a1bf6c2cc20c8c932114182829a3af63c6a989234db4974137d5fe72a31",
+   "run2": "b94f0a1bf6c2cc20c8c932114182829a3af63c6a989234db4974137d5fe72a31",
+   "identical": true
+  },
+  "9302": {
+   "run1": "115f019033fcceb152c761aea5434a98cf2bdf9fc30c472894b9f1ca053274f3",
+   "run2": "115f019033fcceb152c761aea5434a98cf2bdf9fc30c472894b9f1ca053274f3",
+   "identical": true
+  },
+  "9303": {
+   "run1": "0e2a156513766e58eca89e1a26acd355885d6ab9fc230cc4bab8321415d47fa3",
+   "run2": "0e2a156513766e58eca89e1a26acd355885d6ab9fc230cc4bab8321415d47fa3",
+   "identical": true
+  },
+  "9304": {
+   "run1": "97308a0022ccdf71a7c9a84fc0febf1fce166b67ab653ecc2eff6da15ab0b4c8",
+   "run2": "97308a0022ccdf71a7c9a84fc0febf1fce166b67ab653ecc2eff6da15ab0b4c8",
+   "identical": true
+  },
+  "9305": {
+   "run1": "cc88cec4fbb3fcc22811226073e94f72f6b3f07fad37c25ce60763c655c302ae",
+   "run2": "cc88cec4fbb3fcc22811226073e94f72f6b3f07fad37c25ce60763c655c302ae",
+   "identical": true
+  }
+ },
+ "results_identical_except_meta": {
+  "similarity": {
+   "run1_vs_run2": true,
+   "run1_vs_final": true
+  },
+  "calibration": {
+   "run1_vs_run2": true,
+   "run1_vs_final": true
+  },
+  "ablation": {
+   "run1_vs_run2": true,
+   "run1_vs_final": true
+  }
+ },
+ "note": "Run 1 and run 2 metadata recorded the hash of the gzip file, which differs between runs because the gzip header holds a timestamp; the final run records the hash of the decompressed content. No metric differs."
+}

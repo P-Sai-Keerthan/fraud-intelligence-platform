@@ -1,0 +1,582 @@
+{
+ "meta": {
+  "experiment": "EXP3-v1",
+  "protocol_sha256": "8b181c6c3309763716b4e9150714fc63208657191112b81a5cc3671fe673ac37",
+  "seeds": {
+   "validation": [
+    9301,
+    9302
+   ],
+   "test": [
+    9303,
+    9304,
+    9305
+   ]
+  },
+  "customers_per_seed": 1000,
+  "bootstrap": {
+   "seed": 9101,
+   "reps": 2000,
+   "unit": "customer component (ring/household whole), within seed, pooled"
+  },
+  "dataset_sha256": {
+   "9301": "71223895b88991d5aca61f70d9cc130235610d2fe07b99e215ccbcecacb4c26a",
+   "9302": "09d436bc86a8bb0fe5877250048c2c5560ccb2d163f4b88535917e614b9087d8",
+   "9303": "4b62a697ca8757119fb20560224d8f7f678c95b5d231a0d323551d875f300244",
+   "9304": "22d8f4d1823940942866a061e16ef738788d7f62b4b1b5c7e4b5041442751274",
+   "9305": "3549e268c71aea461e55cdc7550b185df121bc59116e3c53622ae9c0d487e682"
+  },
+  "generator_version": "2.0.1",
+  "generator_commands": {
+   "9301": "python data/v2/generate.py --seed 9301 --customers 1000",
+   "9302": "python data/v2/generate.py --seed 9302 --customers 1000",
+   "9303": "python data/v2/generate.py --seed 9303 --customers 1000",
+   "9304": "python data/v2/generate.py --seed 9304 --customers 1000",
+   "9305": "python data/v2/generate.py --seed 9305 --customers 1000"
+  },
+  "model_artifact_sha256": {
+   "v2_lstm_rf_seed14": {
+    "classifier.joblib": "483c1b395789bb1bc7ad3e4cd5f056135edecc84d0b213d8946f59e66ab434fb",
+    "classifier_input_mean.npy": "2071d1baa335af2c06d26ec63cc6623e0e46e6626ee349f79face3bc0f01c681",
+    "classifier_input_std.npy": "b472068a64760b13ab4f959b81309cf5df7abd1c56afbb8372d878aa515eadd8",
+    "lstm_feature_mean.npy": "fbfc1a0afd79ad236b27932198a6a6a6c1d6ac4b2e61b335db1269b9be91e90c",
+    "lstm_feature_std.npy": "e3e7765d84d6b6d2f3ebc665c0798ef36d015cbf604acc53f00d8cd8aaff5a35",
+    "lstm_risk_model.keras": "5a327ccba85f86e90a927cf5c0a4cd2f1cc6d040f8ded2e47734705b0c1a7600",
+    "manifest.json": "21d4c732d5f6898631ef53996ac7614376f83e7b9cb4b5741bcdb20e67204337",
+    "shap_background.npy": "ef63280f701e04b5a25dfc47e41457782c1e3152474104560d6c71b3d9761a59"
+   },
+   "v2_dnn_lstm_seed14": {
+    "dnn_feature_mean.npy": "2071d1baa335af2c06d26ec63cc6623e0e46e6626ee349f79face3bc0f01c681",
+    "dnn_feature_std.npy": "b472068a64760b13ab4f959b81309cf5df7abd1c56afbb8372d878aa515eadd8",
+    "dnn_fraud_model.keras": "c033fa8d4ed9888b135a308959ab7596c5db8824665121876cde0f2a28655351",
+    "lstm_feature_mean.npy": "fbfc1a0afd79ad236b27932198a6a6a6c1d6ac4b2e61b335db1269b9be91e90c",
+    "lstm_feature_std.npy": "e3e7765d84d6b6d2f3ebc665c0798ef36d015cbf604acc53f00d8cd8aaff5a35",
+    "lstm_risk_model.keras": "5a327ccba85f86e90a927cf5c0a4cd2f1cc6d040f8ded2e47734705b0c1a7600",
+    "manifest.json": "90f2e2f580f1a1e51f5bb842f960ee8990f9f2c7f95059cf8cd3cd23dfe7f59a",
+    "shap_background.npy": "ef63280f701e04b5a25dfc47e41457782c1e3152474104560d6c71b3d9761a59"
+   },
+   "v2_dnn_only": {
+    "dnn_feature_mean.npy": "2c16523aadb3be1a55a9cea8cea592726a3e9806f952414aa985d89eda3293c8",
+    "dnn_feature_std.npy": "a5af72814b69b48901c30b0a8604d6a43fb07cce8e121c46c3fba26232cf968f",
+    "dnn_fraud_model.keras": "a77a209b35828850c4ee117fd9fa24e9420aea30f3e0b5d1015f33a1e0880493",
+    "manifest.json": "e3e8f1d256a13943d585967d086f4580776ccaec6f3fe485cbfdccc6196871a2",
+    "shap_background.npy": "66f839bc18f11ab0f7b6f456a4c5557784d04af794ef9a26483855eef847aa8a"
+   },
+   "production": {
+    "dnn_feature_mean.npy": "cb12c7e19545e838c185c3e3684f601c7ec3fdbd387add15d7d7f907befa75a8",
+    "dnn_feature_std.npy": "5f526f065ae0d635eecbabb0b9f636fc4dc63eed778ccb4a8e738fa5aacab155",
+    "dnn_fraud_model.keras": "4fd3ab2e190f7c5073d7d100c7f68114babf89b02b321e72a8fb4ebb3c6d3add",
+    "lstm_feature_mean.npy": "cd7d3fda6554f7f027d10faf5755a01a9fe2a7d0a67eb5a748d72682a3bcb7e6",
+    "lstm_feature_std.npy": "86b57e2ce8b31e366397d3a5b98cb9fbf44d07ecfabf717ad4647e539e927b34",
+    "lstm_risk_model.keras": "81c2ab738b6d109fa3ba94f4c8fa5f7303d6f8d114f7ec892e4f5f76abb3f588",
+    "shap_background.npy": "ac8ffe3b53434b13880af6a7c76b1746d5a9828701af04be14c54cef697b1519"
+   }
+  },
+  "scores_content_sha256": {
+   "9301": "b94f0a1bf6c2cc20c8c932114182829a3af63c6a989234db4974137d5fe72a31",
+   "9302": "115f019033fcceb152c761aea5434a98cf2bdf9fc30c472894b9f1ca053274f3",
+   "9303": "0e2a156513766e58eca89e1a26acd355885d6ab9fc230cc4bab8321415d47fa3",
+   "9304": "97308a0022ccdf71a7c9a84fc0febf1fce166b67ab653ecc2eff6da15ab0b4c8",
+   "9305": "cc88cec4fbb3fcc22811226073e94f72f6b3f07fad37c25ce60763c655c302ae"
+  },
+  "versions": {
+   "python": "3.13.16",
+   "numpy": "2.4.4",
+   "pandas": "3.0.2",
+   "scikit_learn": "1.8.0",
+   "tensorflow": "2.21.0"
+  },
+  "baselines": {
+   "training_rows": 58840,
+   "training_fraud": 291,
+   "dataset_sha256": "a09d06114ce7c0dec4b93ff9946ab9506f5c7d25317bb95396b596f2f7b1ef08",
+   "rf": "RandomForest(200, sqrt, leaf 5, depth 12, seed 14)",
+   "logreg": "StandardScaler + LogisticRegression(balanced, seed 42)"
+  },
+  "populations": {
+   "dev": {
+    "rows": 411234,
+    "fraud": 1928,
+    "customers": 1000,
+    "p10_rows": 391234,
+    "p10_fraud": 1928,
+    "fraud_under_10_prior": 0,
+    "fraud_episodes": 440
+   },
+   "test": {
+    "rows": 620877,
+    "fraud": 2910,
+    "customers": 1000,
+    "p10_rows": 590877,
+    "p10_fraud": 2910,
+    "fraud_under_10_prior": 0,
+    "fraud_episodes": 660
+   },
+   "test_by_seed": {
+    "9303": {
+     "rows": 205069,
+     "fraud": 959,
+     "customers": 1000,
+     "p10_rows": 195069,
+     "p10_fraud": 959,
+     "fraud_under_10_prior": 0,
+     "fraud_episodes": 220
+    },
+    "9304": {
+     "rows": 208565,
+     "fraud": 980,
+     "customers": 1000,
+     "p10_rows": 198565,
+     "p10_fraud": 980,
+     "fraud_under_10_prior": 0,
+     "fraud_episodes": 220
+    },
+    "9305": {
+     "rows": 207243,
+     "fraud": 971,
+     "customers": 1000,
+     "p10_rows": 197243,
+     "p10_fraud": 971,
+     "fraud_under_10_prior": 0,
+     "fraud_episodes": 220
+    }
+   }
+  }
+ },
+ "experiment_id": "EXP3-SIM",
+ "distributions_deviation": {
+  "all_p10": {
+   "legit": {
+    "n": 587967,
+    "q25": 8.8,
+    "median": 11.53,
+    "q75": 15.28,
+    "mean": 13.478
+   },
+   "fraud": {
+    "n": 2910,
+    "q25": 18.358,
+    "median": 30.16,
+    "q75": 44.017,
+    "mean": 32.972
+   }
+  },
+  "by_fraud_type_p10": {
+   "account_takeover": {
+    "n": 647,
+    "q25": 20.94,
+    "median": 31.8,
+    "q75": 47.78,
+    "mean": 35.68
+   },
+   "card_testing_cashout": {
+    "n": 714,
+    "q25": 26.168,
+    "median": 34.79,
+    "q75": 43.987,
+    "mean": 36.025
+   },
+   "device_takeover": {
+    "n": 159,
+    "q25": 26.17,
+    "median": 33.31,
+    "q75": 45.88,
+    "mean": 35.994
+   },
+   "high_value_single": {
+    "n": 105,
+    "q25": 45.52,
+    "median": 56.46,
+    "q75": 69.16,
+    "mean": 57.022
+   },
+   "normal_looking": {
+    "n": 165,
+    "q25": 10.3,
+    "median": 14.32,
+    "q75": 20.7,
+    "mean": 16.849
+   },
+   "ring": {
+    "n": 262,
+    "q25": 36.153,
+    "median": 48.58,
+    "q75": 60.057,
+    "mean": 48.553
+   },
+   "stolen_card_online": {
+    "n": 858,
+    "q25": 12.982,
+    "median": 19.575,
+    "q75": 30.823,
+    "mean": 23.229
+   }
+  },
+  "by_history_bin_diagnostic": {
+   "0": {
+    "served_by_api": false,
+    "legit": null,
+    "fraud": null
+   },
+   "1-9": {
+    "served_by_api": false,
+    "legit": {
+     "n": 27000,
+     "q25": 16.01,
+     "median": 20.0,
+     "q75": 28.47,
+     "mean": 28.892
+    },
+    "fraud": null
+   },
+   "10-29": {
+    "served_by_api": true,
+    "legit": {
+     "n": 59917,
+     "q25": 11.99,
+     "median": 14.33,
+     "q75": 18.33,
+     "mean": 16.358
+    },
+    "fraud": {
+     "n": 83,
+     "q25": 15.805,
+     "median": 28.76,
+     "q75": 40.35,
+     "mean": 30.882
+    }
+   },
+   "30-99": {
+    "served_by_api": true,
+    "legit": {
+     "n": 208056,
+     "q25": 9.41,
+     "median": 11.87,
+     "q75": 15.63,
+     "mean": 13.936
+    },
+    "fraud": {
+     "n": 1194,
+     "q25": 18.41,
+     "median": 29.91,
+     "q75": 41.52,
+     "mean": 31.654
+    }
+   },
+   ">=100": {
+    "served_by_api": true,
+    "legit": {
+     "n": 319994,
+     "q25": 8.12,
+     "median": 10.41,
+     "q75": 14.39,
+     "mean": 12.641
+    },
+    "fraud": {
+     "n": 1633,
+     "q25": 18.41,
+     "median": 30.72,
+     "q75": 46.42,
+     "mean": 34.042
+    }
+   }
+  }
+ },
+ "discrimination_pooled_test": {
+  "s0_p10": {
+   "pr_auc": 0.069261,
+   "pr_auc_ci95": [
+    0.059353,
+    0.08077
+   ],
+   "roc_auc": 0.8658,
+   "roc_auc_ci95": [
+    0.851641,
+    0.878453
+   ],
+   "cliffs_delta": 0.7316,
+   "rows": 590877,
+   "fraud": 2910,
+   "auc_interval_excludes_0.5": true
+  },
+  "s1_p10": {
+   "pr_auc": 0.04391,
+   "pr_auc_ci95": [
+    0.038453,
+    0.049886
+   ],
+   "roc_auc": 0.859275,
+   "roc_auc_ci95": [
+    0.845679,
+    0.871926
+   ],
+   "cliffs_delta": 0.71855,
+   "rows": 590877,
+   "fraud": 2910,
+   "auc_interval_excludes_0.5": true
+  },
+  "classifier_p10": {
+   "pr_auc": 0.507012,
+   "pr_auc_ci95": [
+    0.465712,
+    0.547373
+   ],
+   "roc_auc": 0.941416,
+   "roc_auc_ci95": [
+    0.932418,
+    0.949736
+   ],
+   "cliffs_delta": 0.882832,
+   "rows": 590877,
+   "fraud": 2910,
+   "auc_interval_excludes_0.5": true
+  },
+  "s0_type_account_takeover": {
+   "pr_auc": 0.033247,
+   "pr_auc_ci95": [
+    0.023367,
+    0.046541
+   ],
+   "roc_auc": 0.894964,
+   "roc_auc_ci95": [
+    0.87672,
+    0.913345
+   ],
+   "cliffs_delta": 0.789928,
+   "rows": 588614,
+   "fraud": 647,
+   "auc_interval_excludes_0.5": true
+  },
+  "s0_type_card_testing_cashout": {
+   "pr_auc": 0.019922,
+   "pr_auc_ci95": [
+    0.01496,
+    0.026193
+   ],
+   "roc_auc": 0.948428,
+   "roc_auc_ci95": [
+    0.937437,
+    0.957996
+   ],
+   "cliffs_delta": 0.896855,
+   "rows": 588681,
+   "fraud": 714,
+   "auc_interval_excludes_0.5": true
+  },
+  "s0_type_device_takeover": {
+   "pr_auc": 0.00477,
+   "pr_auc_ci95": [
+    0.003364,
+    0.006837
+   ],
+   "roc_auc": 0.92922,
+   "roc_auc_ci95": [
+    0.903893,
+    0.949689
+   ],
+   "cliffs_delta": 0.858439,
+   "rows": 588126,
+   "fraud": 159,
+   "auc_interval_excludes_0.5": true
+  },
+  "s0_type_high_value_single": {
+   "pr_auc": 0.032542,
+   "pr_auc_ci95": [
+    0.019991,
+    0.054939
+   ],
+   "roc_auc": 0.989135,
+   "roc_auc_ci95": [
+    0.984038,
+    0.992947
+   ],
+   "cliffs_delta": 0.97827,
+   "rows": 588072,
+   "fraud": 105,
+   "auc_interval_excludes_0.5": true
+  },
+  "s0_type_normal_looking": {
+   "pr_auc": 0.000488,
+   "pr_auc_ci95": [
+    0.000344,
+    0.000699
+   ],
+   "roc_auc": 0.618259,
+   "roc_auc_ci95": [
+    0.56877,
+    0.67008
+   ],
+   "cliffs_delta": 0.236518,
+   "rows": 588132,
+   "fraud": 165,
+   "auc_interval_excludes_0.5": true
+  },
+  "s0_type_ring": {
+   "pr_auc": 0.030757,
+   "pr_auc_ci95": [
+    0.017886,
+    0.050748
+   ],
+   "roc_auc": 0.972063,
+   "roc_auc_ci95": [
+    0.960275,
+    0.982412
+   ],
+   "cliffs_delta": 0.944126,
+   "rows": 588229,
+   "fraud": 262,
+   "auc_interval_excludes_0.5": true
+  },
+  "s0_type_stolen_card_online": {
+   "pr_auc": 0.006114,
+   "pr_auc_ci95": [
+    0.0046,
+    0.007951
+   ],
+   "roc_auc": 0.763358,
+   "roc_auc_ci95": [
+    0.737034,
+    0.790052
+   ],
+   "cliffs_delta": 0.526715,
+   "rows": 588825,
+   "fraud": 858,
+   "auc_interval_excludes_0.5": true
+  },
+  "s0_bin_10-29": {
+   "pr_auc": 0.013258,
+   "pr_auc_ci95": [
+    0.006965,
+    0.024213
+   ],
+   "roc_auc": 0.775459,
+   "roc_auc_ci95": [
+    0.672137,
+    0.879834
+   ],
+   "cliffs_delta": 0.550918,
+   "rows": 60000,
+   "fraud": 83,
+   "auc_interval_excludes_0.5": true
+  },
+  "s0_bin_30-99": {
+   "pr_auc": 0.067967,
+   "pr_auc_ci95": [
+    0.054383,
+    0.082177
+   ],
+   "roc_auc": 0.861239,
+   "roc_auc_ci95": [
+    0.839464,
+    0.879991
+   ],
+   "cliffs_delta": 0.722478,
+   "rows": 209250,
+   "fraud": 1194,
+   "auc_interval_excludes_0.5": true
+  },
+  "s0_bin_>=100": {
+   "pr_auc": 0.089513,
+   "pr_auc_ci95": [
+    0.071901,
+    0.1103
+   ],
+   "roc_auc": 0.880154,
+   "roc_auc_ci95": [
+    0.863778,
+    0.894537
+   ],
+   "cliffs_delta": 0.760307,
+   "rows": 321627,
+   "fraud": 1633,
+   "auc_interval_excludes_0.5": true
+  },
+  "combo_p10": {
+   "pr_auc": 0.508127,
+   "pr_auc_ci95": [
+    0.466867,
+    0.54853
+   ],
+   "roc_auc": 0.941217,
+   "roc_auc_ci95": [
+    0.932172,
+    0.949515
+   ],
+   "cliffs_delta": 0.882433,
+   "rows": 590877,
+   "fraud": 2910,
+   "auc_interval_excludes_0.5": true
+  }
+ },
+ "prevalence_p10_test": 0.004925,
+ "incremental_value_over_classifier": {
+  "model": "StandardScaler + LogisticRegression on [logit(clipped classifier score), deviation S0], fitted on validation seeds 9301-9302, P10 rows",
+  "combo_minus_classifier_pr_auc": {
+   "difference": 0.001115,
+   "ci95": [
+    -0.000166,
+    0.002338
+   ],
+   "excludes_zero": false
+  },
+  "combo_minus_classifier_roc_auc": {
+   "difference": -0.0002,
+   "ci95": [
+    -0.000354,
+    -3.4e-05
+   ],
+   "excludes_zero": true
+  },
+  "coefficients_standardised": {
+   "logit_classifier": 1.241958,
+   "deviation_s0": 0.053165
+  },
+  "interpretation_rule_met_discriminatory_value": true
+ },
+ "s1_minus_s0": {
+  "pr_auc": {
+   "difference": -0.025351,
+   "ci95": [
+    -0.032601,
+    -0.019272
+   ],
+   "excludes_zero": true
+  },
+  "roc_auc": {
+   "difference": -0.006525,
+   "ci95": [
+    -0.008797,
+    -0.004196
+   ],
+   "excludes_zero": true
+  }
+ },
+ "within_fraud_spearman_deviation_vs_classifier": 0.76672,
+ "within_legit_spearman_deviation_vs_classifier": 0.380539,
+ "per_seed_roc_auc_s0_p10": {
+  "9303": 0.856857,
+  "9304": 0.873448,
+  "9305": 0.866925
+ },
+ "near_constant_features": {
+  "p10_all": {
+   "rows": 590877,
+   "share_with_a_zero_std_feature": 0.945,
+   "share_with_a_std_below_0.1": 0.9684,
+   "mean_zero_std_features": 1.174
+  },
+  "p10_legit": {
+   "rows": 587967,
+   "share_with_a_zero_std_feature": 0.9458,
+   "share_with_a_std_below_0.1": 0.969,
+   "mean_zero_std_features": 1.175
+  },
+  "p10_fraud": {
+   "rows": 2910,
+   "share_with_a_zero_std_feature": 0.7873,
+   "share_with_a_std_below_0.1": 0.8426,
+   "mean_zero_std_features": 0.866
+  }
+ },
+ "circularity_note": "Fraud in this generator departs from the generator's own customer baselines on the same nine features the similarity uses, so a high AUC shows only that the score reflects the generator's fraud rules."
+}

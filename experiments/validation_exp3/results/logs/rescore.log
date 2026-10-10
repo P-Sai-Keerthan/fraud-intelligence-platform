@@ -1,0 +1,6 @@
+seed 9301: 205,612 rows scored (41s) -> scores_seed_9301.csv.gz 33b65c02c38d
+seed 9302: 205,622 rows scored (40s) -> scores_seed_9302.csv.gz b17b8289ba1f
+seed 9303: 205,069 rows scored (38s) -> scores_seed_9303.csv.gz 0e772bbc2f73
+seed 9304: 208,565 rows scored (37s) -> scores_seed_9304.csv.gz 037e8c898c2b
+seed 9305: 207,243 rows scored (37s) -> scores_seed_9305.csv.gz 45c54a975d8f
+score exit 0
