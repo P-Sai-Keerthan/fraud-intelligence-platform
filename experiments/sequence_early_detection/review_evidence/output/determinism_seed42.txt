@@ -1,0 +1,6 @@
+transactions.csv                   matches committed manifest: True
+customers.csv                      matches committed manifest: True
+episodes.csv                       matches committed manifest: True
+login_failures.csv                 matches committed manifest: True
+transactions_with_features.csv     matches committed manifest: True
+ALL MATCH

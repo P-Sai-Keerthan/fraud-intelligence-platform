@@ -1,12 +1,16 @@
 # Sequence learning for early fraud detection (Experiment 2)
 
-**Status: Phase 1 — audit and protocol draft. No model trained, no results.**
+**Status: review complete, awaiting your approval. No model trained, no final data generated, nothing merged.**
 
 | File | What it is |
 |---|---|
-| [`AUDIT.md`](AUDIT.md) | What the existing generator, features, splits and metrics do; what limits the earlier comparison; power analysis; environment limits; public-dataset suitability. |
-| [`PROTOCOL_DRAFT.md`](PROTOCOL_DRAFT.md) | Proposed models, inputs, endpoints, splits, tuning budgets, seeds, metrics, leakage controls. **Not frozen.** Becomes `PROTOCOL.md` plus `FREEZE.json` and a git tag only after the project owner approves. |
+| [`REVIEW_CHECKLIST.md`](REVIEW_CHECKLIST.md) | **Start here.** Git/merge plan and risks, where the ablation is and what is missing, verdicts on the protocol, issues, required fixes, tests, commands, runtime/disk, stop conditions, what to do next. |
+| [`PROTOCOL_DRAFT_v1.md`](PROTOCOL_DRAFT_v1.md) | The **current** proposed protocol (evidence-backed changes from v0). Not frozen. |
+| [`PROTOCOL_DRAFT.md`](PROTOCOL_DRAFT.md) | v0, kept unchanged for the audit trail. Superseded by v1. |
+| [`AUDIT.md`](AUDIT.md) | Phase 1 audit of the generator, features, splits, metrics. Two factual corrections are marked in place; earlier text is in git history. |
+| [`review_evidence/`](review_evidence/) | Scripts and raw outputs behind the measured/simulated statements. Not results. |
+| [`requirements.txt`](requirements.txt) | Versions used for the measurements. |
 
-Nothing here modifies the production application or any completed experiment. The new experiment depends on
-the v2 generator and evaluation code from `origin/Keerthan` (see AUDIT §0 for the branch question) and on the
-files of `experiments/lstm_value_ablation/`, which were not available when this was written.
+Nothing here modifies the production application or any completed experiment. The experiment depends on the v2 generator and
+evaluation code from `origin/Keerthan` (see `REVIEW_CHECKLIST.md` §0) and on `experiments/lstm_value_ablation/`, which has not
+been available to read.

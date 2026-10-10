@@ -10,7 +10,7 @@ infrastructure timing on a throw-away seed that will never be used for any resul
 |---|---|---|
 | `experiments/lstm_value_ablation/REPORT.md` and README | **No.** The attachments are Windows paths on the user's machine (`C:\Users\Keerthan\Downloads\…`); nothing arrived in the container (`/mnt/attach`, `/mnt/user-data/uploads` are empty). The folder is also absent from every remote branch I could list (`main`, `Keerthan`, `keerthan`, this branch). | I have **not** read the ablation's findings, decision rule, seeds, or the definition of its "historical-window aggregates". Nothing in this audit relies on them. |
 | Existing aggregate-based Random Forest | **No.** A search of `backend/app/` on `origin/Keerthan` finds no historical-window aggregate features (only the 9 point features and the 10-step LSTM window). It presumably lives inside the ablation, which I cannot see. | The Phase 1 requirement "use the existing aggregate RF as the initial baseline" cannot be met yet. I will not guess its feature list. |
-| Code base | **Yes, but not on this branch.** This branch (`claude/fair-sequence-fraud-detection-baiokj`) equals `main` (`23206d4`). The generator v2, split, metrics and holdout code live on `origin/Keerthan` (17 commits ahead; `main` is a strict ancestor, so a fast-forward is possible). | The audit below reads `origin/Keerthan` read-only. Nothing there was modified. |
+| Code base | **Yes, but not on this branch.** This branch (`claude/fair-sequence-fraud-detection-baiokj`) equals `main` (`23206d4`). The generator v2, split, metrics and holdout code live on `origin/Keerthan` (14 commits ahead of `main`, 17 in total; when the audit was written `main` was a strict ancestor of this branch. **Correction made in review:** the earlier text said "17 commits ahead" and "a fast-forward is possible"; since the audit commit `cc0e1d0` a plain fast-forward is no longer possible, see `REVIEW_CHECKLIST.md` §0). | The audit below reads `origin/Keerthan` read-only. Nothing there was modified. |
 
 Paths below are relative to `origin/Keerthan`.
 
@@ -174,7 +174,7 @@ lead-time claims on real data are not possible.
 
 1. Provide `experiments/lstm_value_ablation/` (README, REPORT.md, REPORT_1.md, code, seed list) —
    committed to a branch of this repository is simplest.
-2. Confirm the base branch: fast-forward this branch to `origin/Keerthan` (recommended), or keep
-   it on `main` and vendor the needed generator/split code.
+2. Confirm the base branch. (Superseded: the fast-forward option no longer exists; the merge options and
+   their risks are in `REVIEW_CHECKLIST.md` §0.)
 3. Approve the draft protocol, or amend it.
 4. Real-data check: supply the IEEE-CIS files, or allow the hosts, or accept synthetic-only.

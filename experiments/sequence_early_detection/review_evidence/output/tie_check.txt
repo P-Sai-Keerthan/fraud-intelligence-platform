@@ -1,0 +1,8 @@
+target FPR | scores        | existing threshold_for_fpr realised val FPR | multiseed.tie_safe_cutoff realised val FPR
+     0.01 | RF 300 trees, 8% noisy negs  | 0.00673                                  | 0.00673
+    0.001 | RF 300 trees, 8% noisy negs  | 0.00074                                  | 0.00074
+     0.01 | RF 300 trees, 25% noisy negs | 0.00465                                  | 0.00465
+    0.001 | RF 300 trees, 25% noisy negs | 0.00085                                  | 0.00085
+     0.01 | RF 100 trees, 25% noisy negs | 0.00365                                  | 0.00365
+    0.001 | RF 100 trees, 25% noisy negs | 0.00100                                  | 0.00100
+distinct score values in last example: 92

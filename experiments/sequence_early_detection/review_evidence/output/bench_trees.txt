@@ -1,0 +1,6 @@
+{"model": "RF(60 trees, leaf=5, sqrt)", "rows": 100000, "feats": 45, "fit_s": 21.0, "s_per_tree": 0.35, "predict_100k_s": 0.16}
+{"model": "RF(60 trees, leaf=5, sqrt)", "rows": 200000, "feats": 45, "fit_s": 49.6, "s_per_tree": 0.83, "predict_100k_s": 0.18}
+{"model": "RF(60 trees, leaf=5, sqrt)", "rows": 400000, "feats": 45, "fit_s": 119.1, "s_per_tree": 1.99, "predict_100k_s": 0.2}
+{"model": "LightGBM(100 rounds, 31 leaves)", "rows": 200000, "feats": 45, "fit_s": 2.4, "s_per_round": 0.024, "predict_100k_s": 0.11}
+{"model": "LightGBM(100 rounds, 31 leaves)", "rows": 200000, "feats": 877, "fit_s": 34.9, "s_per_round": 0.349, "predict_100k_s": 0.22}
+{"peak_rss_mb": 3438}

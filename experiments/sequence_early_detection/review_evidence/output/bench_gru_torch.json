@@ -1,0 +1,52 @@
+{
+ "framework": "torch",
+ "threads": 3,
+ "K": 32,
+ "step_dim": 26,
+ "context_dim": 45,
+ "batch": 512,
+ "rows": [
+  {
+   "hidden": 32,
+   "layers": 1,
+   "params": 10817,
+   "train_samples_per_s": 22487,
+   "infer_samples_per_s_batch256": 65499,
+   "latency_ms_batch1": 0.96
+  },
+  {
+   "hidden": 64,
+   "layers": 1,
+   "params": 24769,
+   "train_samples_per_s": 11186,
+   "infer_samples_per_s_batch256": 38338,
+   "latency_ms_batch1": 1.05
+  },
+  {
+   "hidden": 128,
+   "layers": 1,
+   "params": 71105,
+   "train_samples_per_s": 6780,
+   "infer_samples_per_s_batch256": 18021,
+   "latency_ms_batch1": 1.56
+  },
+  {
+   "hidden": 64,
+   "layers": 2,
+   "params": 49729,
+   "train_samples_per_s": 5645,
+   "infer_samples_per_s_batch256": 22655,
+   "latency_ms_batch1": 1.38
+  },
+  {
+   "hidden": 128,
+   "layers": 2,
+   "params": 170177,
+   "train_samples_per_s": 3325,
+   "infer_samples_per_s_batch256": 9397,
+   "latency_ms_batch1": 1.81
+  }
+ ],
+ "version": "2.14.1+cu130",
+ "peak_rss_mb": 1152
+}

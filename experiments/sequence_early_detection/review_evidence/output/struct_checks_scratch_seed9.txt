@@ -1,0 +1,17 @@
+== 1. transaction_id / customer_id carry identity and order (so they must never be features)
+rows: 102972 | transaction_id strictly increasing in file order: True | file order is (customer, time): True
+Spearman-like: corr(transaction_id, customer index) = 0.9999
+
+== 2. device-id STRING FORMAT vs fraud (hazard if ids were used as raw categories)
+share of rows whose device id looks like DEV_dddd_[AB]:  legit 0.8544 | fraud 0.3087
+share of rows whose device id is a 'neutral hash' DEV_XXXXXXXX: legit 0.1456 | fraud 0.6913
+original-format device carries the customer's OWN index in 99.9% of such rows (rest: another customer's device)
+
+== 3. warning period: when is the first OBSERVABLE signal, versus precursor_start?
+episodes with a warning period: 19 | by type: {'ring': 8, 'account_takeover': 7, 'card_testing_cashout': 4}
+episodes with >=1 credential_attack event inside the window: 19
+gap between precursor_start and first observable attack event (hours): median 20.0, mean 29.1, max 98.6
+nominal window (precursor_start -> first fraud) hours: median 115.9 | lead measured from first observable signal: median 80.2
+legit transactions in nominal window: total 95 | AFTER the first observable signal: total 64
+episodes with at least one transaction after the first signal (= an opportunity to alert at all): 18 of 19
+of those post-signal transactions, those with failed_logins_24h>0: 37 of 64

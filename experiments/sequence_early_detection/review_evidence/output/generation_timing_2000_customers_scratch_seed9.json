@@ -1,0 +1,24 @@
+{
+ "customers": 2000,
+ "seed": 9,
+ "generate_s": 30.4,
+ "features_s": 441.4,
+ "write_s": 6.3,
+ "peak_rss_mb": 728,
+ "transactions": 416056,
+ "fraud_transactions": 1904,
+ "episodes": 440,
+ "episodes_with_precursor": 79,
+ "precursor_transactions": 425,
+ "rings": 15,
+ "disk_bytes": {
+  "customers.csv": 130201,
+  "episodes.csv": 34568,
+  "manifest.json": 12953,
+  "login_failures.csv": 721790,
+  "transactions_with_features.csv": 80203652,
+  "transactions.csv": 61058425
+ },
+ "disk_total_mb": 135.6
+}
+Sat Oct 10 16:19:28 UTC 2026

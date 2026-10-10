@@ -1,0 +1,52 @@
+{
+ "framework": "tf",
+ "threads": 3,
+ "K": 32,
+ "step_dim": 26,
+ "context_dim": 45,
+ "batch": 512,
+ "rows": [
+  {
+   "hidden": 32,
+   "layers": 1,
+   "params": 10817,
+   "train_samples_per_s": 13904,
+   "infer_samples_per_s_batch256": 27714,
+   "latency_ms_batch1": 3.5
+  },
+  {
+   "hidden": 64,
+   "layers": 1,
+   "params": 24769,
+   "train_samples_per_s": 6257,
+   "infer_samples_per_s_batch256": 19010,
+   "latency_ms_batch1": 3.42
+  },
+  {
+   "hidden": 128,
+   "layers": 1,
+   "params": 71105,
+   "train_samples_per_s": 3182,
+   "infer_samples_per_s_batch256": 9766,
+   "latency_ms_batch1": 4.28
+  },
+  {
+   "hidden": 64,
+   "layers": 2,
+   "params": 49729,
+   "train_samples_per_s": 2982,
+   "infer_samples_per_s_batch256": 10435,
+   "latency_ms_batch1": 6.51
+  },
+  {
+   "hidden": 128,
+   "layers": 2,
+   "params": 170177,
+   "train_samples_per_s": 1191,
+   "infer_samples_per_s_batch256": 4387,
+   "latency_ms_batch1": 7.36
+  }
+ ],
+ "version": "2.21.0",
+ "peak_rss_mb": 1057
+}

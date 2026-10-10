@@ -1,0 +1,15 @@
+assumed DEV-train rows 748,900 (positives 3,427); DEV-validation rows 249,633
+
+hours PER TRIAL by negative-sampling ratio (mean over sampled hyper-parameters):
+neg ratio rows/epoch | RF A0/A1*  LGBM A2  LGBM A3 | GRU 12ep GRU 25ep   (*RF cost for 45 features; A0 with 9 features ~0.4x)
+     1:10     37,697 |      0.01    0.001     0.01 |     0.03     0.06
+     1:50    174,777 |      0.09    0.002     0.03 |     0.09     0.19
+      all    748,900 |      0.54    0.010     0.15 |     0.36     0.76
+
+TOTAL tuning wall-clock (hours, 3 threads, one trial at a time), by budget variant:
+  v0 as drafted: 40 trials, ratios {10,50,all}, GRU <=25 epochs
+    A0   1.7  A1   8.6  A2   0.2  A3   2.5  S1  13.4  S2  14.7   | TOTAL  41.1 h
+  proposed: 40 trials, ratios {10,50}, GRU search cap 12 epochs
+    A0   0.4  A1   2.0  A2   0.1  A3   0.8  S1   2.4  S2   2.6   | TOTAL   8.3 h
+  lean: 30 trials, ratios {10,50}, GRU search cap 12 epochs
+    A0   0.3  A1   1.5  A2   0.0  A3   0.6  S1   1.8  S2   2.0   | TOTAL   6.2 h

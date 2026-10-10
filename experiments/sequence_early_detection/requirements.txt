@@ -1,0 +1,14 @@
+# Experiment 2 environment: the versions the review measurements were made with (Python 3.13).
+# These differ from backend/requirements.txt (pandas 3.0.2, numpy 2.4.4, scikit-learn 1.8.0). The v2 generator was verified to
+# reproduce its committed SHA-256 hashes under these newer versions (review_evidence/output/determinism_seed42.txt).
+numpy==2.5.3
+pandas==3.0.6
+scikit-learn==1.9.1
+scipy==1.18.1
+lightgbm==4.7.0
+matplotlib==3.11.2
+joblib==1.6.0
+pytest==9.1.1
+torch==2.14.1          # PyPI Linux wheel pulls CUDA libraries: venv ~5.8 GB even on CPU
+# Disk-constrained fallback (venv ~1.8 GB, ~0.4-0.6x GRU speed): replace torch with
+# tensorflow-cpu==2.21.0 and keras>=3.15,<3.16  (the project's own pins)
