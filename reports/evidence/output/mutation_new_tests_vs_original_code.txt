@@ -1,0 +1,40 @@
+E       AssertionError: {"transaction_id":"TXN_7DE8409120","customer_id":"CUST_0001","timestamp":"1999-12-31T23:59:59","amount":3800.0,"merchant_category":"fashion","device_id":"DEV_0001_A","location":"Pune","failed_logins_24h":0,"risk_score":13.6,"fraud_probability":1.85,"alert_level":"Low Risk","similarity_pct":1.93,"deviation_pct":98.07,"reasons":[]}
+E       AssertionError: {"transaction_id":"TXN_9CBC2C65E0","customer_id":"CUST_0001","timestamp":"2100-01-01T00:00:00","amount":3800.0,"merchant_category":"fashion","device_id":"DEV_0001_A","location":"Pune","failed_logins_24h":0,"risk_score":23.89,"fraud_probability":72.75,"alert_level":"High Risk","similarity_pct":81.1,"deviation_pct":18.9,"reasons":[{"feature":"hour_is_unusual","display_name":"Unusual Transaction Time","shap_value":0.46498623490333557},{"feature":"risk_score","display_name":"Elevated Behavioral Risk Score","shap_value":0.15371018648147583},{"feature":"txn_velocity_1h","display_name":"High Transaction Velocity","shap_value":0.03448251634836197},{"feature":"amount_pct_of_avg","display_name":"Amount Far Above Average","shap_value":0.0010561092058196664}]}
+E       AssertionError: {"transaction_id":"TXN_6642D70867","customer_id":"CUST_0001","timestamp":"0001-01-01T00:00:00","amount":3800.0,"merchant_category":"fashion","device_id":"DEV_0001_A","location":"Pune","failed_logins_24h":0,"risk_score":13.6,"fraud_probability":1.85,"alert_level":"Low Risk","similarity_pct":1.93,"deviation_pct":98.07,"reasons":[]}
+E       AssertionError: {"transaction_id":"TXN_66D8E84D74","customer_id":"CUST_0001","timestamp":"9999-12-31T23:59:59","amount":3800.0,"merchant_category":"fashion","device_id":"DEV_0001_A","location":"Pune","failed_logins_24h":0,"risk_score":23.89,"fraud_probability":72.75,"alert_level":"High Risk","similarity_pct":81.1,"deviation_pct":18.9,"reasons":[{"feature":"hour_is_unusual","display_name":"Unusual Transaction Time","shap_value":0.46498623490333557},{"feature":"risk_score","display_name":"Elevated Behavioral Risk Score","shap_value":0.15371018648147583},{"feature":"txn_velocity_1h","display_name":"High Transaction Velocity","shap_value":0.03448251634836197},{"feature":"amount_pct_of_avg","display_name":"Amount Far Above Average","shap_value":0.0010561092058196664}]}
+                             "location", "failed_logins_24h", "risk_score", "fraud_probability", "alert_level",
+ERROR tests/test_similarity_history.py
+FAILED tests/test_security_defaults.py::test_preflight_for_other_methods_is_refused[DELETE]
+FAILED tests/test_security_defaults.py::test_preflight_for_other_methods_is_refused[PUT]
+FAILED tests/test_security_defaults.py::test_preflight_for_other_methods_is_refused[PATCH]
+FAILED tests/test_security_defaults.py::test_preflight_for_unlisted_request_headers_is_refused
+FAILED tests/test_security_defaults.py::test_api_responses_are_not_cacheable_and_not_sniffable[/health]
+FAILED tests/test_security_defaults.py::test_api_responses_are_not_cacheable_and_not_sniffable[/customers]
+FAILED tests/test_security_defaults.py::test_api_responses_are_not_cacheable_and_not_sniffable[/customer/CUST_0001/profile]
+FAILED tests/test_security_defaults.py::test_reports_and_predictions_are_not_cacheable
+FAILED tests/test_security_defaults.py::test_interactive_docs_stay_available_by_default_and_are_cacheable_assets
+FAILED tests/test_security_defaults.py::test_a_declared_oversized_body_is_refused_before_it_is_read
+FAILED tests/test_security_defaults.py::test_docs_can_be_switched_off[off]
+FAILED tests/test_security_defaults.py::test_docs_can_be_switched_off[OFF]
+FAILED tests/test_security_defaults.py::test_docs_can_be_switched_off[0]
+FAILED tests/test_security_defaults.py::test_docs_can_be_switched_off[false]
+FAILED tests/test_security_defaults.py::test_docs_can_be_switched_off[no]
+FAILED tests/test_security_defaults.py::test_docs_default_to_on[env0]
+FAILED tests/test_security_defaults.py::test_docs_default_to_on[env1]
+FAILED tests/test_security_defaults.py::test_docs_default_to_on[env2]
+FAILED tests/test_v1_generator.py::test_same_seed_and_start_date_give_identical_data
+FAILED tests/test_v1_generator.py::test_a_different_seed_changes_the_data
+FAILED tests/test_v1_generator.py::test_timestamp_window[1999-12-31T23:59:59-False]
+FAILED tests/test_v1_generator.py::test_timestamp_window[2100-01-01T00:00:00-False]
+FAILED tests/test_v1_generator.py::test_timestamp_window[0001-01-01T00:00:00-False]
+FAILED tests/test_v1_generator.py::test_timestamp_window[9999-12-31T23:59:59-False]
+FAILED tests/test_report.py::test_pdf_report_for_an_unknown_transaction_is_404
+FAILED tests/test_report.py::test_pdf_report_only_needs_the_transaction_id
+FAILED tests/test_report.py::test_client_supplied_scores_cannot_change_the_report
+FAILED tests/test_report.py::test_report_prints_the_stored_values
+FAILED tests/test_report.py::test_report_explanation_survives_a_round_trip_through_the_database
+FAILED tests/test_report.py::test_report_for_a_row_without_a_stored_explanation_says_so_instead_of_inventing_one
+FAILED tests/test_cold_start.py::test_api_schema_unchanged_for_cold_start
+FAILED tests/test_observability.py::test_migration_adds_provenance_columns_to_an_old_database
+FAILED tests/test_observability.py::test_pdf_for_unknown_transaction_is_404_not_a_report_built_from_client_data
+33 failed, 66 passed, 133 warnings, 1 error in 38.91s

@@ -1,0 +1,52 @@
+OK   test rows: recomputed 620877 vs stored 620877
+OK   test fraud: recomputed 2910 vs stored 2910
+OK   default ROC-AUC p10: recomputed 0.94141621 vs stored 0.941416
+OK   default PR-AUC p10: recomputed 0.507012 vs stored 0.507012
+OK   default TP: recomputed 1868 vs stored 1868
+OK   default FP: recomputed 5575 vs stored 5575
+OK   default recall: recomputed 0.6419244 vs stored 0.641924
+OK   default validation FPR <= 1%: recomputed 1 vs stored 1
+OK   dnn_lstm ROC-AUC p10: recomputed 0.93200641 vs stored 0.932006
+OK   dnn_lstm PR-AUC p10: recomputed 0.37257231 vs stored 0.372572
+OK   dnn_lstm TP: recomputed 1625 vs stored 1625
+OK   dnn_lstm FP: recomputed 5765 vs stored 5765
+OK   dnn_lstm recall: recomputed 0.55841924 vs stored 0.558419
+OK   dnn_lstm validation FPR <= 1%: recomputed 1 vs stored 1
+OK   dnn_only ROC-AUC p10: recomputed 0.89317724 vs stored 0.893177
+OK   dnn_only PR-AUC p10: recomputed 0.20864123 vs stored 0.208641
+OK   dnn_only TP: recomputed 1180 vs stored 1180
+OK   dnn_only FP: recomputed 5624 vs stored 5624
+OK   dnn_only recall: recomputed 0.40549828 vs stored 0.405498
+OK   dnn_only validation FPR <= 1%: recomputed 1 vs stored 1
+OK   production ROC-AUC p10: recomputed 0.70915449 vs stored 0.709154
+OK   production PR-AUC p10: recomputed 0.17218597 vs stored 0.172186
+OK   production TP: recomputed 813 vs stored 813
+OK   production FP: recomputed 5708 vs stored 5708
+OK   production recall: recomputed 0.27938144 vs stored 0.279381
+OK   production validation FPR <= 1%: recomputed 1 vs stored 1
+OK   rf_nolstm ROC-AUC p10: recomputed 0.91008892 vs stored 0.910089
+OK   rf_nolstm PR-AUC p10: recomputed 0.42378753 vs stored 0.423788
+OK   rf_nolstm TP: recomputed 1631 vs stored 1631
+OK   rf_nolstm FP: recomputed 5656 vs stored 5656
+OK   rf_nolstm recall: recomputed 0.5604811 vs stored 0.560481
+OK   rf_nolstm validation FPR <= 1%: recomputed 1 vs stored 1
+OK   logreg ROC-AUC p10: recomputed 0.89093596 vs stored 0.890936
+OK   logreg PR-AUC p10: recomputed 0.28925282 vs stored 0.289253
+OK   logreg TP: recomputed 1197 vs stored 1197
+OK   logreg FP: recomputed 5715 vs stored 5715
+OK   logreg recall: recomputed 0.41134021 vs stored 0.41134
+OK   logreg validation FPR <= 1%: recomputed 1 vs stored 1
+OK   rule ROC-AUC p10: recomputed 0.66571081 vs stored 0.665711
+OK   rule PR-AUC p10: recomputed 0.032304957 vs stored 0.032305
+OK   rule TP: recomputed 585 vs stored 585
+OK   rule FP: recomputed 6016 vs stored 6016
+OK   rule recall: recomputed 0.20103093 vs stored 0.201031
+OK   rule validation FPR <= 1%: recomputed 1 vs stored 1
+OK   similarity ROC-AUC p10: recomputed 0.86580007 vs stored 0.8658
+OK   similarity PR-AUC p10: recomputed 0.069261034 vs stored 0.069261
+OK   Brier uncalibrated: recomputed 0.0032947069 vs stored 0.00329471
+OK   log loss uncalibrated: recomputed 0.016092145 vs stored 0.016092
+OK   Brier isotonic: recomputed 0.003159266 vs stored 0.00315927
+OK   log loss isotonic: recomputed 0.015749267 vs stored 0.015749
+OK   seeds are the five declared seeds: recomputed 1 vs stored 1
+51/51 checks passed

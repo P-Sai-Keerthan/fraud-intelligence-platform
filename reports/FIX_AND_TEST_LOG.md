@@ -85,5 +85,42 @@ End-to-end results (screenshots in `reports/assets/ui_*.png`):
 * `python data/v2/sanity_report.py`, model retraining, and the evaluation commands in README §5 (about 11 minutes each or more) were not run.
 * PostgreSQL (`DATABASE_URL`) was not tested; the README itself says it is untested.
 * Authentication, rate limiting and TLS do not exist; there was nothing to test. Load and concurrency beyond the project's own 3 concurrency tests were not tested.
-* No frontend unit tests exist, so none were run.
+* (First pass only; frontend unit tests were added in the follow-up, section 7.)
 * The lower-case branch `origin/keerthan` (rate limiter, body-size limit, stricter CORS) was read but not run.
+
+## 7. Follow-up pass (software change group, commit `6c7eea9`; verification run on that code)
+
+Items: A1 cold-start similarity (R-05), A2 trusted PDF reports (R-04), A3 security defaults and requirements (R-01 documentation), A4 timestamp window (R-06),
+v1 generator reproducibility (R-09), readable API errors (R-11), first frontend tests (R-12). Register entries describe each change.
+
+New or changed test modules: `test_similarity_history.py`, `test_security_defaults.py`, `test_v1_generator.py` (new); `test_report.py`, `test_cold_start.py`,
+`test_model_sets.py`, `test_observability.py`, `test_audit_fixes.py` (updated for the new contracts: nullable similarity, id-only PDF request, 404/422 on reports);
+`frontend/src/__tests__/frontend.test.jsx` (13 vitest tests).
+
+| Check | Command | Result (from the saved output) |
+|---|---|---|
+| Full backend suite | `cd backend && pytest -q` (started on the working tree whose contents were then committed as `6c7eea9`) | **707 passed, 4 skipped, 0 failed**, 846.84 s, exit code 0. The 4 skips are the same as before: 1 in `test_model_sets.py` and 3 in `test_multiseed.py` need `data/v2` CSVs that are intentionally not committed. Log: `evidence/output/pytest_FOLLOWUP_full_suite.log` |
+| Frontend tests | `npm test` (vitest, static rendering with `react-dom/server`, no browser) | **13 passed, 0 failed** (`frontend_vitest.txt`) |
+| Frontend lint | `npm run lint` (oxlint) | exit 0 (`frontend_lint.txt`) |
+| Frontend production build | `npm run build` | exit 0; one chunk-size warning (689 kB JS) remains |
+| Frontend dependency audit | `npm audit` | found 0 vulnerabilities (`frontend_npm_audit.txt`) |
+| Backend dependency audit | `pip-audit -r backend/requirements.txt` | No known vulnerabilities found (`pip_audit_followup.txt`). *Different scope from the first pass, which audited the installed set; this audits the pinned requirements file.* |
+| Do the new backend tests detect the defects? | the six new/changed test modules copied onto an untouched copy of the code at `48ec4e0` | **33 failed, 66 passed, 1 collection error** (the whole `test_similarity_history.py` module cannot import the new interface). The 66 passes are tests of behaviour that did not change. On the fixed code all pass. Output: `mutation_new_tests_vs_original_code.txt` |
+| Do the new frontend tests detect the defects? | run against the old components (during development) | 3 of 13 failed (similarity card, behavioural card, request body); not re-run for this log, no saved output |
+| Browser run, real stack | headless Chromium against `uvicorn` (default model set, throw-away database) and `vite preview` of the production build; `evidence/scripts/e2e_followup.py` | see below; raw result `evidence/output/e2e_followup_result.json` |
+
+Browser run observations (what the script asserted and found):
+
+| Step | Observed |
+|---|---|
+| New customer, real API call | HTTP 200; `similarity_pct` and `deviation_pct` are `null`, `similarity_status = "insufficient_history"`, `history_transactions = 0` |
+| Established customer scan in the real UI | a similarity ring with numbers is shown; no "insufficient" element |
+| Download Report | the request body sent by the dashboard is exactly `{"transaction_id":"TXN_…"}`; the PDF downloaded. In an earlier run of the same script the PDF text was compared with the stored row (risk 97.4, fraud 1.3, similarity 65.8 = stored 97.36, 1.26, 65.79; that comparison was done interactively and its output was not saved) |
+| New-customer payload shown by the real UI | "Not enough history" with the text "this customer has 0 earlier transactions; at least 10 are needed", no ring, no number; the behavioural card shows the matching note. **Caveat:** the dashboard has no way to create a customer, so this payload (the real API response above) was supplied to the UI by request interception; the screenshot (`assets/ui_followup_new_customer.png`) therefore shows the selected customer's profile beside a new customer's response |
+| 422 from the API | readable text naming the field ("amount … greater than 0"), no "[object Object]" (the 422 itself was an injected response, so this verifies the formatter in the real UI, not the server's message text, which the backend tests cover) |
+| Console errors | an expected 404 (history before the first scan) and the 422 above; nothing else |
+
+### Not executed in the follow-up pass
+* The 4 skipped backend tests (need `data/v2` CSVs). Experiment 3 regenerated the seed-42 dataset (SHA-256 matched `data/v2/manifest.json`) in a scratch directory, not in `data/v2`, so the skips remain.
+* A mutation check of the frontend tests was not repeated for the log; PostgreSQL, authentication, TLS and rate limiting were not tested (they do not exist).
+* A browser-driven new-customer flow (the UI has none).

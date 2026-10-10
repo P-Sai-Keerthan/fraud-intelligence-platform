@@ -26,7 +26,7 @@ today = date.today().isoformat()
 text = (REPORTS / "tools" / "main_template.md").read_text()
 text = text.replace("@@DATE@@", today).replace("@@REV@@", rev)
 text = re.sub(r"@@FILE:([^@]+)@@", lambda m: (REPORTS / m.group(1)).read_text().strip(), text)
-inv = [line.split() for line in (REPORTS / "evidence/output/test_inventory_after_fixes.txt").read_text().splitlines() if line.strip()]
+inv = [line.split() for line in (REPORTS / "evidence/output/test_inventory_followup.txt").read_text().splitlines() if line.strip()]
 rows = ["| Test module | Tests |", "|---|---|"] + [f"| `{name.replace('tests/', '')}` | {n} |" for n, name in inv]
 rows.append(f"| **Total** | **{sum(int(n) for n, _ in inv)}** |")
 text = text.replace("@@TESTINV@@", "\n".join(rows))

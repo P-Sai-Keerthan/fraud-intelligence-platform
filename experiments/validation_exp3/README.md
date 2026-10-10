@@ -15,7 +15,7 @@ Synthetic data only. Pre-registered in `PROTOCOL.md` (committed before any data 
 | `INDEPENDENT_VALIDATION_STATUS.md` | what independent evidence is missing and what a valid test needs |
 
 Data: validation seeds 9301–9302, test seeds 9303–9305, 1,000 customers each, `data/v2/generate.py` (generator 2.0.1). Datasets and per-row scores are written outside the repository
-(about 340 MB and 54 MB); they are regenerated bit for bit from the manifests' commands, and each results file records the SHA-256 of every dataset and of the decompressed score files.
+(about 340 MB and 54 MB); the generator is deterministic (verified for seed 42; these five datasets were generated once and each was checked against its manifest hashes, not generated a second time), and each results file records the SHA-256 of every dataset and of the decompressed score files.
 
 Reproduce (backend virtual environment; the seed-42 v2 dataset must first be regenerated into a scratch directory with `python data/v2/generate.py --seed 42 --customers 500 --out <dir>`; its SHA-256 is checked):
 

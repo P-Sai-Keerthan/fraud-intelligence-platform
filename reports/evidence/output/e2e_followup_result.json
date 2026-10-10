@@ -1,0 +1,23 @@
+{
+ "new_customer_api": {
+  "status": 200,
+  "similarity_pct": null,
+  "deviation_pct": null,
+  "similarity_status": "insufficient_history",
+  "history_transactions": 0
+ },
+ "established_insufficient_visible": 0,
+ "established_meter_aria": [
+  "Similarity 38.1 percent, deviation 61.9 percent"
+ ],
+ "report_request_body": "{\"transaction_id\":\"TXN_500F30486C\"}",
+ "new_customer_insufficient_visible": 1,
+ "new_customer_behavioral_note_visible": 1,
+ "new_customer_text": "BEHAVIORAL SIMILARITY\nNot enough history\n\nNo baseline yet: this customer has 0 earlier transactions; at least 10 are needed.",
+ "error_message_has_object_object": false,
+ "error_message_mentions_amount": true,
+ "console_errors": [
+  "Failed to load resource: the server responded with a status of 404 (Not Found)",
+  "Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)"
+ ]
+}
