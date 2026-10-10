@@ -20,16 +20,18 @@ Endpoints:
 
 import io
 import math
+import os
 import re
 from contextlib import asynccontextmanager
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
+from fastapi import FastAPI, HTTPException, Depends, Query, Request, UploadFile, File
 from fastapi.concurrency import run_in_threadpool
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, text
 
 from .config import cors_allow_origins
 from .db.database import engine, get_db, Base, SessionLocal
@@ -37,7 +39,7 @@ from .db import models as db_models
 from .schemas import (
     TransactionInput, PredictionResponse, ExplanationReason,
     CustomerHistoryResponse, TimelinePoint, CustomerProfile,
-    FraudRingsResponse, BatchPredictionResponse,
+    FraudRingsResponse, BatchPredictionResponse, MAX_ID_LENGTH, MAX_AMOUNT, MAX_FAILED_LOGINS,
 )
 from .inference_pipeline import get_pipeline
 from .db.migrations import ensure_schema
@@ -106,13 +108,41 @@ app.add_middleware(
 )
 
 
+def _json_safe(value):
+    """Replace non-finite floats (which JSON cannot carry) so a validation error that echoes
+    the offending input can always be serialised. Without this, amount=NaN made the 422
+    response itself fail and the client saw a 500 (audit fix F-02)."""
+    if isinstance(value, float) and not math.isfinite(value):
+        return str(value)
+    if isinstance(value, dict):
+        return {k: _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    return value
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request: Request, exc: RequestValidationError):
+    errors = [{k: _json_safe(v) for k, v in e.items() if k in ("type", "loc", "msg", "input")} for e in exc.errors()]
+    return JSONResponse(status_code=422, content={"detail": errors})
+
+
 @app.get("/health")
 def health_check():
+    """Liveness plus the one dependency every request needs: a reachable database.
+    The models are loaded at start-up, so a running server has them. Returns 503
+    when the database cannot be queried (audit fix F-09); the body stays
+    {"status": "ok"} when healthy, as before."""
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception:
+        return JSONResponse(status_code=503, content={"status": "database unavailable"})
     return {"status": "ok"}
 
 
 @app.get("/customers")
-def list_customers(limit: int = 50):
+def list_customers(limit: int = Query(50, ge=1, le=10000)):
     pipeline = get_pipeline()
     ids = pipeline.known_customer_ids()
     return {"count": len(ids), "customer_ids": ids[:limit]}
@@ -144,8 +174,15 @@ def _persist_transaction(db: Session, result: dict):
 def predict_transaction(txn: TransactionInput, db: Session = Depends(get_db)):
     pipeline = get_pipeline()
     result = pipeline.score_transaction(txn.model_dump())
-    _persist_transaction(db, result)
-    db.commit()
+    try:
+        _persist_transaction(db, result)
+        db.commit()
+    except Exception:
+        # scoring already added the transaction to the customer's in-memory history;
+        # undo it so memory never holds a transaction the database lacks (F-05)
+        db.rollback()
+        pipeline.remove_transaction(result["customer_id"], result["transaction_id"])
+        raise
 
     return PredictionResponse(
         transaction_id=result["transaction_id"],
@@ -181,7 +218,7 @@ def get_customer_profile(customer_id: str):
 
 
 @app.get("/customer/{customer_id}/history", response_model=CustomerHistoryResponse)
-def get_customer_history(customer_id: str, limit: int = 100, db: Session = Depends(get_db)):
+def get_customer_history(customer_id: str, limit: int = Query(100, ge=1, le=1000), db: Session = Depends(get_db)):
     # the `limit` MOST RECENT scored transactions, newest first
     rows = (
         db.query(db_models.Transaction)
@@ -215,7 +252,7 @@ def get_customer_history(customer_id: str, limit: int = 100, db: Session = Depen
 
 
 @app.get("/fraud-rings", response_model=FraudRingsResponse)
-def get_fraud_rings(min_customers: int = 2):
+def get_fraud_rings(min_customers: int = Query(2, ge=1)):
     """Customers who share a device (or other identifier) that a single
     legitimate customer would never plausibly share with another -- a
     strong signal of an organized fraud ring rather than one customer
@@ -337,6 +374,11 @@ def get_metrics_report(refresh: bool = False):
 _DECIMAL_RE = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?")
 _WHOLE_NUMBER_RE = re.compile(r"\d+(\.0*)?")
 _MAX_REPORTED_ROW_ERRORS = 20
+# Batch scoring costs roughly 0.4-0.6 s per row (measured), the dashboard waits at most 5 minutes
+# and the endpoint is unauthenticated, so an unbounded upload could occupy the server for hours
+# (audit fix F-08). Both limits can be raised with environment variables.
+MAX_BATCH_BYTES = int(os.getenv("BATCH_MAX_BYTES", 2_000_000))
+MAX_BATCH_ROWS = int(os.getenv("BATCH_MAX_ROWS", 500))
 
 
 def _validate_batch_rows(df: pd.DataFrame, pipeline) -> tuple[list[dict], list[str]]:
@@ -357,6 +399,8 @@ def _validate_batch_rows(df: pd.DataFrame, pipeline) -> tuple[list[dict], list[s
 
         if not customer_id:
             row_errors.append("customer_id is required")
+        elif len(customer_id) > MAX_ID_LENGTH:
+            row_errors.append(f"customer_id is longer than {MAX_ID_LENGTH} characters")
 
         raw_amount = row["amount"].strip()
         amount = None
@@ -370,10 +414,14 @@ def _validate_batch_rows(df: pd.DataFrame, pipeline) -> tuple[list[dict], list[s
                 row_errors.append(f"amount must be a finite number, got '{raw_amount}'")
             elif amount <= 0:
                 row_errors.append(f"amount must be greater than 0, got '{raw_amount}'")
+            elif amount > MAX_AMOUNT:
+                row_errors.append(f"amount must not exceed {MAX_AMOUNT:,.0f}, got '{raw_amount}'")
 
         merchant_category = row["merchant_category"].strip()
         if not merchant_category:
             row_errors.append("merchant_category is required")
+        elif len(merchant_category) > MAX_ID_LENGTH:
+            row_errors.append(f"merchant_category is longer than {MAX_ID_LENGTH} characters")
 
         failed_logins = 0
         raw_logins = row["failed_logins_24h"].strip() if has_logins else ""
@@ -382,9 +430,14 @@ def _validate_batch_rows(df: pd.DataFrame, pipeline) -> tuple[list[dict], list[s
                 row_errors.append(f"failed_logins_24h must be a whole number >= 0, got '{raw_logins}'")
             else:
                 failed_logins = int(float(raw_logins))
+                if failed_logins > MAX_FAILED_LOGINS:
+                    row_errors.append(f"failed_logins_24h must not exceed {MAX_FAILED_LOGINS}, got '{raw_logins}'")
 
         device_id = row["device_id"].strip() if has_device else ""
         location = row["location"].strip() if has_location else ""
+        for field_name, value in (("device_id", device_id), ("location", location)):
+            if len(value) > MAX_ID_LENGTH:
+                row_errors.append(f"{field_name} is longer than {MAX_ID_LENGTH} characters")
         if customer_id and (not device_id or not location):
             profile = pipeline.get_customer_profile(customer_id)
             if profile is None:
@@ -418,7 +471,9 @@ async def predict_batch(file: UploadFile = File(...), db: Session = Depends(get_
     failed_logins_24h. The whole file is validated before anything is
     scored: if any row is invalid, nothing is scored or saved and the 400
     response lists the bad rows."""
-    contents = await file.read()
+    contents = await file.read(MAX_BATCH_BYTES + 1)
+    if len(contents) > MAX_BATCH_BYTES:
+        raise HTTPException(status_code=413, detail=f"CSV is larger than {MAX_BATCH_BYTES:,} bytes; nothing was scored.")
     # parsing, validation and model scoring are CPU-bound; run them on a
     # worker thread so a large batch doesn't block the event loop (and every
     # other request) until it finishes
@@ -439,6 +494,11 @@ def _score_batch_csv(contents: bytes, db: Session) -> BatchPredictionResponse:
     if missing:
         raise HTTPException(status_code=400, detail=f"CSV is missing required columns: {sorted(missing)}")
 
+    if len(df) > MAX_BATCH_ROWS:
+        raise HTTPException(
+            status_code=413,
+            detail=f"CSV has {len(df):,} rows; the limit is {MAX_BATCH_ROWS:,} rows per upload. Nothing was scored.",
+        )
     txns, errors = _validate_batch_rows(df, pipeline)
     if errors:
         shown = errors[:_MAX_REPORTED_ROW_ERRORS]
@@ -451,21 +511,29 @@ def _score_batch_csv(contents: bytes, db: Session) -> BatchPredictionResponse:
         raise HTTPException(status_code=400, detail=detail)
 
     results = []
+    scored = []        # (customer_id, transaction_id) already added to the in-memory histories
     summary = {"Low Risk": 0, "Medium Risk": 0, "High Risk": 0, "Critical Risk": 0}
-    for txn in txns:
-        result = pipeline.score_transaction(txn)
-        _persist_transaction(db, result)
-        summary[result["alert_level"]] = summary.get(result["alert_level"], 0) + 1
-        results.append({
-            "transaction_id": result["transaction_id"],
-            "customer_id": result["customer_id"],
-            "amount": result["amount"],
-            "risk_score": result["risk_score"],
-            "fraud_probability": result["fraud_probability"],
-            "alert_level": result["alert_level"],
-        })
-
-    db.commit()
+    try:
+        for txn in txns:
+            result = pipeline.score_transaction(txn)
+            scored.append((result["customer_id"], result["transaction_id"]))
+            _persist_transaction(db, result)
+            summary[result["alert_level"]] = summary.get(result["alert_level"], 0) + 1
+            results.append({
+                "transaction_id": result["transaction_id"],
+                "customer_id": result["customer_id"],
+                "amount": result["amount"],
+                "risk_score": result["risk_score"],
+                "fraud_probability": result["fraud_probability"],
+                "alert_level": result["alert_level"],
+            })
+        db.commit()
+    except Exception:
+        # all-or-nothing: nothing is saved, so nothing may stay in memory either (F-05)
+        db.rollback()
+        for customer_id, transaction_id in reversed(scored):
+            pipeline.remove_transaction(customer_id, transaction_id)
+        raise
     return BatchPredictionResponse(count=len(results), summary=summary, results=results)
 
 
@@ -494,7 +562,10 @@ def get_pdf_report(prediction: PredictionResponse, db: Session = Depends(get_db)
     report (and its risk-score wording) is the one recorded with the
     transaction in the database, not the currently loaded one."""
     pdf_bytes = build_pdf_report(prediction.model_dump(), _provenance(prediction.transaction_id, db))
-    filename = f"fraud_report_{prediction.transaction_id}.pdf"
+    # the id comes from the client: keep only filename-safe characters, so a quote, newline or
+    # non-Latin-1 character cannot break or inject into the Content-Disposition header (F-07)
+    safe_id = re.sub(r"[^A-Za-z0-9_.-]", "_", prediction.transaction_id)[:64] or "transaction"
+    filename = f"fraud_report_{safe_id}.pdf"
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",

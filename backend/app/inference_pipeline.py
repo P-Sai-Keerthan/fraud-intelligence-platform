@@ -241,6 +241,28 @@ class FraudIntelligencePipeline:
         return restored
 
     @_synchronized
+    def remove_transaction(self, customer_id: str, transaction_id: str) -> bool:
+        """Undo score_transaction for one transaction: drop it from the customer's
+        in-memory history and recompute the history's features and new-device /
+        new-location flags from the remaining rows. Called when the transaction
+        could not be saved to the database, so that memory never holds a
+        transaction the database lacks (audit fix F-05). Returns True if a row
+        was removed."""
+        history = self.customer_histories.get(customer_id)
+        if history is None or transaction_id not in set(history["transaction_id"]):
+            return False
+        remaining = history[history["transaction_id"] != transaction_id]
+        if len(remaining) == 0:
+            del self.customer_histories[customer_id]       # a customer created by this very request
+            return True
+        raw = remaining[RAW_COLUMNS_FOR_FEATURES].reset_index(drop=True).copy()
+        # "not used in any EARLIER transaction", the definition insert_chronologically applies
+        raw["is_new_device"] = (~raw["device_id"].duplicated()).astype(int)
+        raw["is_new_location"] = (~raw["location"].duplicated()).astype(int)
+        self.customer_histories[customer_id] = build_point_features(raw)
+        return True
+
+    @_synchronized
     def known_customer_ids(self):
         return sorted(self.customer_histories.keys())
 

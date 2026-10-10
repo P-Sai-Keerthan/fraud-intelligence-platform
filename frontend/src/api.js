@@ -18,17 +18,17 @@ export async function predictTransaction(payload) {
 }
 
 export async function getCustomerHistory(customerId) {
-  const { data } = await api.get(`/customer/${customerId}/history`)
+  const { data } = await api.get(`/customer/${encodeURIComponent(customerId)}/history`)
   return data
 }
 
 export async function getCustomerProfile(customerId) {
-  const { data } = await api.get(`/customer/${customerId}/profile`)
+  const { data } = await api.get(`/customer/${encodeURIComponent(customerId)}/profile`)
   return data
 }
 
 export async function listCustomers(limit = 100) {
-  const { data } = await api.get(`/customers?limit=${limit}`)
+  const { data } = await api.get('/customers', { params: { limit } })
   return data
 }
 
@@ -64,7 +64,7 @@ export async function downloadReportPdf(prediction) {
   const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
   const link = document.createElement('a')
   link.href = url
-  link.download = `fraud_report_${prediction.transaction_id}.pdf`
+  link.download = `fraud_report_${String(prediction.transaction_id).replace(/[^A-Za-z0-9_.-]/g, '_')}.pdf`
   document.body.appendChild(link)
   link.click()
   link.remove()

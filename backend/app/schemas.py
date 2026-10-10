@@ -1,16 +1,36 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Annotated, List, Optional
+
+from pydantic import BaseModel, Field, StringConstraints, field_validator
+
+# Input limits for POST /predict (audit fix F-01..F-04). A value outside these bounds is
+# rejected with 422 instead of being stored: a non-finite or absurd amount would otherwise
+# corrupt the customer's behavioural history (mean/std become inf/NaN) permanently.
+MAX_AMOUNT = 1_000_000_000.0          # 100 crore INR; far above any amount in the data (max ~1e6)
+MAX_FAILED_LOGINS = 10_000
+MAX_ID_LENGTH = 64
+
+# identifiers and labels: surrounding whitespace is removed, blank values and over-long values are rejected
+ShortText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_ID_LENGTH)]
 
 
 class TransactionInput(BaseModel):
-    customer_id: str = Field(..., example="CUST_0001")
-    amount: float = Field(..., gt=0, example=15000.0)
-    merchant_category: str = Field(..., example="electronics")
-    device_id: str = Field(..., example="DEV_UNKNOWN_1234")
-    location: str = Field(..., example="Lagos")
-    failed_logins_24h: int = Field(0, ge=0, example=3)
-    timestamp: Optional[datetime] = Field(None, description="Defaults to now if omitted")
+    customer_id: ShortText = Field(..., example="CUST_0001")
+    amount: float = Field(..., gt=0, le=MAX_AMOUNT, allow_inf_nan=False, example=15000.0)
+    merchant_category: ShortText = Field(..., example="electronics")
+    device_id: ShortText = Field(..., example="DEV_UNKNOWN_1234")
+    location: ShortText = Field(..., example="Lagos")
+    failed_logins_24h: int = Field(0, ge=0, le=MAX_FAILED_LOGINS, example=3)
+    timestamp: Optional[datetime] = Field(
+        None, description="Defaults to now if omitted. A timezone-aware value is converted to UTC; histories are stored without a timezone.")
+
+    @field_validator("timestamp")
+    @classmethod
+    def _timestamp_to_naive_utc(cls, value):
+        # the stored histories use naive timestamps: a tz-aware value (e.g. "...Z") made scoring fail with a 500
+        if value is not None and value.tzinfo is not None:
+            return value.astimezone(timezone.utc).replace(tzinfo=None)
+        return value
 
 
 class ExplanationReason(BaseModel):
