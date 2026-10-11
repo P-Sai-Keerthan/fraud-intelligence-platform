@@ -124,3 +124,19 @@ Browser run observations (what the script asserted and found):
 * The 4 skipped backend tests (need `data/v2` CSVs). Experiment 3 regenerated the seed-42 dataset (SHA-256 matched `data/v2/manifest.json`) in a scratch directory, not in `data/v2`, so the skips remain.
 * A mutation check of the frontend tests was not repeated for the log; PostgreSQL, authentication, TLS and rate limiting were not tested (they do not exist).
 * A browser-driven new-customer flow (the UI has none).
+
+## 8. R-02 pass (alert-level semantics): `docs/R-02-alert-score-decision.md`
+
+Change: for the default model set the alert level comes from the validated cut-offs (new `backend/app/alerting.py`; `inference_pipeline.py`, `model_metadata.py`; frontend `severity.js`, `RiskGauge.jsx`, `App.jsx`, `AlertBanner.jsx`, `ModelPerformance.jsx`); README limitation text. No threshold was chosen here, nothing was calibrated, and no evaluation module, model file or protected report changed (`git diff` of `backend/models`, `backend/app/evaluation`, `experiments/sequence_early_detection` is empty).
+
+| Check | Command | Result (saved output) |
+|---|---|---|
+| New backend tests | `pytest tests/test_alert_policy.py tests/test_observability.py tests/test_seed14_model_set.py` | 69 passed (the 12 new tests are in `test_alert_policy.py`) |
+| Full backend suite | `cd backend && pytest -q` | **719 passed, 4 skipped, 0 failed**, 918.7 s, exit 0 (`evidence/output/pytest_R02_full_suite.log`); the same 4 skips as before (need `data/v2` CSVs) |
+| Test collection | `pytest --collect-only` | 723 tests in 38 modules (`test_inventory_followup.txt`) |
+| Do the new tests detect the defect? | copy `test_alert_policy.py` onto the changed code with `policy_for` forced to the legacy bands | **5 failed, 7 passed** (`mutation_r02_policy_disabled.txt`) |
+| Frontend | `npm test`; `npm run lint`; `npm run build`; `npm audit` | 16 passed (13 + 3 new); lint exit 0; build exit 0 (chunk-size warning remains); 0 vulnerabilities |
+| Browser, real stack | `evidence/scripts/e2e_r02.py` | typical purchase scored 0.09 → Low Risk; suspicious pattern 89.45 → Critical Risk, banner "at or above the critical cut-off · fraud score ≥ 26.23", Risk Score ring in the neutral colour; Model Performance tab shows "Threshold status: validated cut-offs" and the measured tier text (`e2e_r02_result.json`, `assets/ui_r02_*.png`). A score between the cut-offs was not produced in the browser run; that case is covered by the forced-score backend test |
+| Impact analysis | `evidence/scripts/r02_alert_band_impact.py` | hold-out numbers read from the committed report; Experiment 3 re-check: alert cut-off recall 0.644 / precision 0.248, legacy bands show 60.4 % of fraud as Low (`r02_alert_band_impact.json`) |
+
+Not executed in this pass: a frontend mutation check (the three new tests were not run against the old components); the 4 skipped backend tests; PostgreSQL; authentication tests (none exist).

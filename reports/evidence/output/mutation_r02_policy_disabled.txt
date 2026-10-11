@@ -1,0 +1,7 @@
+[pipeline] model set 'v2_lstm_rf_seed14' from /tmp/claude-0/-home-user-fraud-intelligence-platform/527dc48d-359d-5191-9848-70d441a8a4bc/scratchpad/exp3/mut2/backend/models/candidates_downstream/v2/seed_14/lstm_random_forest; LSTM risk score -> random forest; classifier inputs ['amount_zscore', 'hour_is_unusual', 'is_new_device', 'is_new_location', 'is_foreign_location', 'failed_logins_24h', 'category_is_unusual', 'txn_velocity_1h', 'amount_pct_of_avg', 'risk_score']
+FAILED tests/test_alert_policy.py::test_only_the_default_random_forest_gets_validated_cutoffs
+FAILED tests/test_alert_policy.py::test_pipeline_uses_the_validated_policy
+FAILED tests/test_alert_policy.py::test_predict_levels_match_the_policy
+FAILED tests/test_alert_policy.py::test_a_score_between_the_cutoffs_is_not_low
+FAILED tests/test_alert_policy.py::test_model_info_publishes_the_policy_and_its_evidence
+5 failed, 7 passed, 1 warning in 1.57s

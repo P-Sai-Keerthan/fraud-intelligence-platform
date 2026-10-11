@@ -4,12 +4,13 @@ Produced by the project audit (code revision `140731d` plus these reports) and u
 
 | File | Content |
 |---|---|
-| `PROJECT_AUDIT_AND_TECHNICAL_DOCUMENTATION.pdf` | the complete technical documentation and audit (21 pages) |
+| `PROJECT_AUDIT_AND_TECHNICAL_DOCUMENTATION.pdf` | the complete technical documentation and audit (23 pages) |
 | `PROJECT_AUDIT_AND_TECHNICAL_DOCUMENTATION.md` | its editable source; the PDF is rendered from exactly this text |
 | `BUG_AND_RISK_REGISTER.md` | every finding with evidence, root cause, fix status and limits |
 | `FIX_AND_TEST_LOG.md` | environment, baseline, fixes, tests actually run, tests not run |
 | `ML_EXPERIMENT_STATUS.md` | what the ML evidence shows, what was re-checked, what is missing |
 | `RECOMMENDED_IMPROVEMENTS.md` | prioritised next steps, including decisions that belong to the owner |
+| `RESEARCH_READINESS_REPORT.md` | what can and cannot be claimed in a paper now: confirmed software behaviour, verified synthetic findings, missing experiments, weaknesses, independent-validation evidence |
 | `evidence/` | probe scripts and their raw before/after output, test logs (first pass and follow-up), test inventory, browser-run result, audit outputs |
 | `assets/` | figures, dashboard screenshots, tables generated from the committed result files |
 | `tools/` | the scripts that build the figures, tables and PDF |

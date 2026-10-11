@@ -1,0 +1,68 @@
+{
+ "cutoffs_frozen_0_1": {
+  "policy_b": 0.04393065348267555,
+  "critical": 0.2623065412044525
+ },
+ "final_holdout_501_505": {
+  "population": "customers with at least 10 earlier transactions",
+  "legacy_bands_share_of_fraud_by_level": {
+   "low_below_25": 0.6213,
+   "medium_25_to_50": 0.2188,
+   "high_50_to_80": 0.1368,
+   "critical_80_and_above": 0.023
+  },
+  "legacy_bands_share_of_legitimate_by_level": {
+   "low_below_25": 0.999,
+   "medium_25_to_50": 0.0009,
+   "high_50_to_80": 0.0001,
+   "critical_80_and_above": 0.0
+  },
+  "validated_alert_tier": {
+   "recall": 0.645188,
+   "precision": 0.236249,
+   "legit_alerts_per_1000": 10.228411
+  },
+  "validated_critical_tier": {
+   "recall": 0.363598,
+   "precision": 0.6659,
+   "legit_alerts_per_1000": 0.894601
+  }
+ },
+ "experiment3_test_seeds_9303_9305": {
+  "note": "independent re-check of the frozen cut-offs on data not used to choose them; synthetic",
+  "rows": 590877,
+  "fraud": 2910,
+  "legacy_ge_25": {
+   "alerts": 1610,
+   "recall": 0.3955,
+   "precision": 0.7149,
+   "legit_alerts_per_1000_legit": 0.781
+  },
+  "legacy_ge_50": {
+   "alerts": 584,
+   "recall": 0.1907,
+   "precision": 0.9503,
+   "legit_alerts_per_1000_legit": 0.049
+  },
+  "legacy_ge_80": {
+   "alerts": 86,
+   "recall": 0.0296,
+   "precision": 1.0,
+   "legit_alerts_per_1000_legit": 0.0
+  },
+  "validated_alert": {
+   "alerts": 7546,
+   "recall": 0.6436,
+   "precision": 0.2482,
+   "legit_alerts_per_1000_legit": 9.649
+  },
+  "validated_critical": {
+   "alerts": 1511,
+   "recall": 0.3828,
+   "precision": 0.7373,
+   "legit_alerts_per_1000_legit": 0.675
+  },
+  "fraud_shown_low_under_legacy": 0.6045,
+  "fraud_shown_low_under_validated": 0.3564
+ }
+}

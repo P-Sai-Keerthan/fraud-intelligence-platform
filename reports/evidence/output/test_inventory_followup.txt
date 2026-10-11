@@ -1,3 +1,4 @@
+12 tests/test_alert_policy.py
 42 tests/test_audit_fixes.py
 10 tests/test_backdated.py
 5 tests/test_basic_endpoints.py

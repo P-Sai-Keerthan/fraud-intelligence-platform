@@ -1,0 +1,8 @@
+ RUN  v5.0.3 /home/user/fraud-intelligence-platform/frontend
+
+
+ Test Files  1 passed (1)
+      Tests  16 passed (16)
+   Start at  04:35:26
+   Duration  684ms (transform 74%, import 16%, tests 9%, worker 1%)
+

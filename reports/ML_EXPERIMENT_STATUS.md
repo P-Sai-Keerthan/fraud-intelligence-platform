@@ -161,3 +161,9 @@ Only the ranking metrics are comparable: datasets are different draws with twice
 * Same generator as training: fraud patterns, features and customer behaviour are the authors' assumptions (`experiments/validation_exp3/INDEPENDENT_VALIDATION_STATUS.md`).
 * Three test datasets are independent draws, not independent worlds; the calibration assumes the same base rate; there is no fraud on short histories in these data.
 * The re-trained baselines were fitted once; no seeds of the baselines' own training were varied.
+
+## 8. Alert levels (R-02 pass)
+
+The Fraud Score is the random forest's `predict_proba` × 100 (capped at 99.9): a model score, not a calibrated probability (hold-out reliability: scores averaging 0.34, 0.45 and 0.55 correspond to observed fraud rates of 0.59, 0.67 and 0.85). Serving used the earlier DNN's bands 25/50/80, under which 62.1 % of fraud on the fresh hold-out showed as "Low Risk";
+the evaluation always used the validation-period cut-offs. Since the R-02 pass the default model set's levels are those cut-offs (Low < 4.39 ≤ Medium < 26.23 ≤ Critical). Measured behaviour of the tiers: alert cut-off recall 0.645, precision 0.236, 10.2 false alerts per 1,000 legitimate (hold-out 501–505); critical cut-off recall 0.364, precision 0.666, 0.9 per 1,000;
+re-check on Experiment 3's seeds (not used to choose them): 0.644 / 0.248 and 0.383 / 0.737. Details, options and impact: `docs/R-02-alert-score-decision.md`. No protocol, hold-out, threshold or model file was changed; calibration remains outside serving.

@@ -1,0 +1,14 @@
+{
+ "typical": {
+  "fraud_probability": 0.09,
+  "alert_level": "Low Risk",
+  "risk_score": 15.49
+ },
+ "suspicious": {
+  "fraud_probability": 89.45,
+  "alert_level": "Critical Risk"
+ },
+ "perf_tab_has_validated_badge": true,
+ "perf_tab_has_legacy_badge": false,
+ "perf_tab_has_evidence_text": true
+}

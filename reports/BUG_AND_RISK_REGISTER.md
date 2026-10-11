@@ -1,7 +1,7 @@
 # Bug and risk register
 
 Explainable Fraud Intelligence Platform — audit of branch `claude/fair-sequence-fraud-detection-baiokj`
-(base: `origin/Keerthan` @ `5a3a7c8`, merged with approval as `843535a`). **Updated in the follow-up pass** (software commit `6c7eea9`,
+(base: `origin/Keerthan` @ `5a3a7c8`, merged with approval as `843535a`). **Updated in the follow-up pass and the R-02 pass** (R-02 is now fixed; see its row) (software commit `6c7eea9`,
 Experiment 3 commits `b58fa52`, `e81b356`, `687dc7e` and the results commit that follows them): R-04, R-05, R-06 and R-09 are now fixed, R-11 and R-12 partly,
 and the scientific findings in section C are extended with Experiment 3.
 
@@ -9,17 +9,17 @@ and the scientific findings in section C are extended with Experiment 3.
 *Potential risk* = follows from the code but depends on a condition (stated). *Unverified* = not tested here.
 Priorities: **P0** critical (immediate, severe), **P1** high, **P2** medium, **P3** low.
 "Fixed" means the fix was verified by regression tests **and** by before/after probes or the browser run; the full suite passed after the first pass
-(652 passed, 4 skipped, 0 failed) and again after the follow-up pass (**707 passed, 4 skipped, 0 failed**, run on the code of commit `6c7eea9`).
+(652 passed, 4 skipped, 0 failed) and again after the follow-up pass (**707 passed, 4 skipped, 0 failed**, run on the code of commit `6c7eea9`) and after the R-02 change (**719 passed, 4 skipped, 0 failed**).
 
 ## Summary
 
-| Priority | Confirmed defects fixed in the first pass (F-xx) | Open items fixed in the follow-up | Open items partly fixed | Open items still open |
+| Priority | Confirmed defects fixed in the first pass (F-xx) | Open items fixed in later passes | Open items partly fixed | Open items still open |
 |---|---|---|---|---|
 | P0 | 0 | 0 | 0 | 0 |
 | P1 | 1 (F-01) | 0 | 0 | 1 (R-01, conditional; documented requirements, no scheme chosen) |
-| P2 | 5 (F-02, F-03, F-04, F-05, F-08) | 2 (R-04, R-05) | 0 | 2 (R-02, R-03) |
-| P3 | 5 (F-06, F-07, F-09, F-10, F-11) | 2 (R-06, R-09) | 2 (R-11, R-12) | 6 (R-07, R-08, R-10, R-13, R-14, R-15) |
-| **Total** | **11** | **4** | **2** | **9** (R-01, R-07 are potential risks) |
+| P2 | 5 (F-02, F-03, F-04, F-05, F-08) | 3 (R-02, R-04, R-05) | 0 | 1 (R-03) |
+| P3 | 5 (F-06, F-07, F-09, F-10, F-11) | 2 (R-06, R-09) | 2 (R-11, R-12) | 7 (R-07, R-08, R-10, R-13, R-14, R-15, R-16) |
+| **Total** | **11** | **5** | **2** | **9** (R-01, R-07 are potential risks) |
 
 No P0 finding was identified. The project is a synthetic-data demonstrator with no authentication; the ratings
 assume it is run locally. R-01 changes materially if the API is ever exposed on a network.
@@ -106,7 +106,7 @@ assume it is run locally. R-01 changes materially if the API is ever exposed on 
 | ID | Pri | Type | Finding | Evidence | Why not fixed / next step |
 |---|---|---|---|---|---|
 | R-01 | P1* | Potential risk | **No authentication or authorisation** on any endpoint (scoring, history, rings, reports, batch). *P1 only if the API is reachable beyond the local machine; P3 for a local demo.* | `main.py` has no auth dependency | Needs a decision on the scheme. Requirements, three options and the open decisions are written in `docs/deployment-security-requirements.md`. Safe defaults added without choosing a scheme: CORS limited to GET/POST/OPTIONS and two headers, `X-Content-Type-Options: nosniff`, `Cache-Control: no-store` on API responses, a declared-`Content-Length` guard (413), and `API_DOCS=off` to hide the interactive docs. **Limits:** the length guard sees only a declared header (a chunked body is not counted; the proxy must enforce size), and none of this authenticates or rate-limits anything. |
-| R-02 | P2 | Confirmed (documented) | **Alert bands (25/50/80) were designed for the earlier DNN and are applied to the random forest**, whose validated alert cut-off is a score of 4.39. A typical purchase scored 6.01 and is shown "Low Risk" although it exceeds the model's own operating point; reasons are listed under "Why was this transaction flagged?" for it. | `/model-info` states "legacy fixed bands … not derived from any evaluation of the loaded model"; probe 1 §A; `final_holdout_report.json` `cutoffs.policy_b.selected = 0.0439` | Changing it alters API semantics and every threshold-dependent test. Decision: adopt the validated policy cut-offs (`policy_b`, `critical`) as alert bands, or keep the bands and relabel them. |
+| R-02 | P2 | **Fixed** (R-02 pass; owner review pending) | The default forest's alert levels used the earlier DNN's fixed 25/50/80 bands: on the fresh hold-out 62.1 % of fraud rows showed as "Low Risk" and only 2.3 % reached "Critical", while the model's own validated cut-offs (4.39 alert, 26.23 critical) find 64.5 % and 36.4 %. Gauges tinted the LSTM Risk Score with the same bands. | `docs/R-02-alert-score-decision.md`; `final_holdout_report.json`; `reports/evidence/output/r02_alert_band_impact.json` | For the default model set only: Low < 4.39 ≤ Medium < 26.23 ≤ Critical (High Risk not emitted), from the frozen validation-period cut-offs; every other model set keeps the legacy bands. `/model-info` publishes the policy and its measured tier performance; the dashboard colours the Fraud Score by it and the Risk Score neutrally. No threshold re-chosen, no calibration, evaluation protocols untouched. Tests: `test_alert_policy.py` (12; 5 fail when the policy is disabled) + 3 frontend tests; full suite 719 passed, 4 skipped. **Impact:** about 10 instead of 1 false alerts per 1,000 legitimate transactions reach Medium or above; more Medium alerts for new customers. **Owner decisions:** the names ("Medium" for a tier whose alerts are about 13 % fraud), the unused "High Risk", alert policy for other sets, cold-start policy. |
 | R-03 | P2 | Confirmed (documented) | **Per-request cost grows with history length**: features are recomputed from the full history on every request (≈1–2 ms per row; 6.1 s at 3,200 transactions) and all scored rows are held in memory and replayed at start-up. | `reports/assets/fig_latency.png`; `inference_pipeline.py` docstring | Architectural (incremental rolling statistics). Not needed at demo scale. |
 | R-04 | P2 | **Fixed** | `/report/pdf` used to print client-supplied scores (a forged `fraud_probability`/`alert_level` for a real id was accepted with 200). | probe 1 §D (before) | `POST /report/pdf` now takes only a validated `transaction_id`, reads the stored row (404 if unknown) and prints stored values; the SHAP reasons are persisted in a new nullable `reasons_json` column (added by `ensure_schema`). Tests: tampered extra fields are ignored; malformed/missing ids are 422; unknown id 404; rows stored before the change print "explanation not stored". **Compatibility change:** extra fields in the body are ignored; the dashboard now sends only the id. |
 | R-05 | P2 | **Fixed** | Behavioral Similarity was computed against placeholder baselines for customers with little history (98 % "deviation" for an ordinary first purchase). | probe 1 (before); `test_similarity_history.py` | `similarity_pct`/`deviation_pct` are `null` with `similarity_status = "insufficient_history"` and `history_transactions = n` below 10 earlier transactions (same threshold as the LSTM); the formula is unchanged above it. API schema, PDF ("n/a"), batch output and both dashboard cards updated; the UI shows "Not enough history" and no number, ring or bar. Tests for 0, 1, 9 (insufficient) and 10, 50 (sufficient) earlier transactions; 3 of 13 frontend tests fail on the old components. **Compatibility change:** clients must accept `null`. |
@@ -120,6 +120,7 @@ assume it is run locally. R-01 changes materially if the API is ever exposed on 
 | R-13 | P3 | Confirmed (documented) | **Reports and history stored before the follow-up have no stored explanation:** transactions saved before `reasons_json` existed print "the explanation was not stored" in PDFs. | `test_report.py` | Expected; no back-fill (the reasons cannot be recomputed from the stored row without replaying the model). |
 | R-14 | P3 | Confirmed (Experiment 3) | **The Behavioral Similarity formula is dominated by near-constant features:** in 94.5 % of scored rows at least one of the nine features has zero standard deviation in the customer's history and the formula replaces that standard deviation by 1, so a binary flag that is always 0 and suddenly 1 contributes a z-score of 1 while a continuous feature can contribute hundreds. Flooring the standard deviation at 0.5 did **not** help (ROC-AUC and PR-AUC lower, intervals exclude 0). | `experiments/validation_exp3/RESULTS.md` | Report only; the formula is unchanged by design (changing it needs its own protocol). |
 | R-15 | P3 | Confirmed | **Per-row scoring in Experiment 3 and the API are consistent but the dashboard cannot create a new customer**, so the "Not enough history" UI state was verified in the browser by feeding the real API response of a new customer through the real UI (request interception), not by clicking through a new-customer flow. | `reports/evidence/` e2e notes | Add a customer-creation or manual-id path if that flow is wanted. |
+| R-16 | P3 | Confirmed (documented) | **Stored alert levels mix semantics:** transactions saved before the R-02 change keep the level computed with the legacy bands, and the database records the model version but not the alert policy, so history views and reports can show both for one model version. | `docs/R-02-alert-score-decision.md` §6 | Record an alert-policy version with each stored transaction (owner decision) or recompute from `fraud_probability` for display. |
 
 ## C. Scientific and evaluation findings (see `ML_EXPERIMENT_STATUS.md`)
 
