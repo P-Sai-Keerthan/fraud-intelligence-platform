@@ -379,11 +379,14 @@ models, and API all work off that one schema.
 ### Known limitations (be upfront about these in your paper — reviewers expect it)
 
 - The **Fraud Score is a model score, not a calibrated probability**.
-- The fixed alert bands (Low < 25 ≤ Medium < 50 ≤ High < 80 ≤ Critical) were
-  designed for the earlier DNN and were not derived for the random forest,
-  whose scores are much lower (its validation alert cut-off is a score of
-  4.39). Many fraud transactions therefore show as "Low Risk" in the
-  dashboard; the reported metrics use the validation cut-offs, not the bands.
+- **Alert levels (R-02, resolved):** for the default random forest the levels
+  are the model's validated cut-offs: Low below a Fraud Score of 4.39, Medium
+  from 4.39, Critical from 26.23 ("High Risk" is not emitted; there is no
+  validated third operating point). Before this change the earlier DNN's fixed
+  bands (25/50/80) were applied and 62 % of fraud on the fresh hold-out showed
+  as "Low Risk". The levels are score cut-offs, not probabilities. Every other
+  model set keeps the legacy 25/50/80 bands. Decision record, evidence and
+  impact: `docs/R-02-alert-score-decision.md`.
 - For customers with fewer than 10 earlier transactions (no LSTM window) the
   random forest raises more false alerts than the DNN did (59.4 against 25.0
   per 1,000 on the fresh new-customer hold-out).

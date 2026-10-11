@@ -8,6 +8,13 @@ const VERDICT_TEXT = {
   'Low Risk': 'Fraud score below every alert band.',
 }
 
+// Wording for the validated-cut-off policy (default random forest): the levels are score cut-offs, not probabilities.
+const VALIDATED_TEXT = {
+  'Critical Risk': 'Fraud score at or above the critical cut-off.',
+  'Medium Risk': 'Fraud score at or above the alert cut-off: review recommended.',
+  'Low Risk': 'Fraud score below the alert cut-off.',
+}
+
 function Meta({ label, children }) {
   return (
     <div className="min-w-0">
@@ -67,7 +74,7 @@ export default function AlertBanner({ prediction, modelInfo, loading, onDownload
               {level}
             </p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-              {VERDICT_TEXT[level] || 'Alert level from fixed bands on the Fraud Score.'}
+              {(modelInfo?.thresholds?.alert_policy?.kind === 'validated_cutoffs' ? VALIDATED_TEXT[level] : VERDICT_TEXT[level]) || 'Alert level from the Fraud Score.'}
               {band && <span className="mono" style={{ color: 'var(--text-muted)' }}> &middot; {band}</span>}
             </p>
           </div>

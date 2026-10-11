@@ -1,14 +1,14 @@
 import { scoreColor } from '../severity'
 
-// A thin progress ring with the value in the middle. `color` overrides the
-// score-based tint (the similarity ring uses the brand colour).
-export function ScoreRing({ value, color, size = 132, stroke = 9, children }) {
+// A thin progress ring with the value in the middle. `color` overrides the tint (the similarity and
+// risk-score rings use the brand colour); `tiers` are the alert tiers that tint a Fraud Score ring.
+export function ScoreRing({ value, color, tiers, size = 132, stroke = 9, children }) {
   const hasValue = value != null
   const clamped = Math.max(0, Math.min(100, value ?? 0))
   const radius = (size - stroke) / 2 - 2
   const circumference = 2 * Math.PI * radius
   const offset = circumference * (1 - clamped / 100)
-  const tint = color || scoreColor(hasValue ? clamped : null)
+  const tint = color || scoreColor(hasValue ? clamped : null, tiers)
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full -rotate-90" aria-hidden="true">
@@ -28,7 +28,7 @@ export function ScoreRing({ value, color, size = 132, stroke = 9, children }) {
 }
 
 // Metric card body: label, ring with "value / 100", one-line meaning, fine print.
-export default function RiskGauge({ label, value, decimals = 0, caption, note, loading = false }) {
+export default function RiskGauge({ label, value, decimals = 0, caption, note, loading = false, color, tiers }) {
   const hasValue = value != null
   const clamped = Math.max(0, Math.min(100, value ?? 0))
   const text = hasValue ? clamped.toFixed(decimals) : '—'
@@ -36,7 +36,7 @@ export default function RiskGauge({ label, value, decimals = 0, caption, note, l
     <div className="flex flex-col items-center text-center h-full">
       <div className="eyebrow self-start">{label}</div>
       <div className="my-3" style={{ opacity: loading ? 0.45 : 1, transition: 'opacity 0.2s ease' }}>
-        <ScoreRing value={value}>
+        <ScoreRing value={value} color={color} tiers={tiers}>
           <span className="text-[30px] leading-none tnum" style={{ fontWeight: 600, color: 'var(--text-primary)' }}
             aria-label={hasValue ? `${label}: ${text} out of 100` : `${label}: no value yet`}>
             {text}

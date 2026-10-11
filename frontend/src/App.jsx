@@ -17,6 +17,7 @@ import {
 } from './api'
 import { scoreWording } from './modelWording'
 import { formatApiError } from './apiError'
+import { alertTiers } from './severity'
 
 const TABS = [
   { key: 'live', label: 'Live Scan', icon: 'scan' },
@@ -241,13 +242,13 @@ export default function App() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                 <Card>
                   <RiskGauge
-                    label={wording.riskLabel} value={prediction?.risk_score} loading={loading}
+                    label={wording.riskLabel} value={prediction?.risk_score} loading={loading} color="var(--brand)"
                     caption={wording.riskShort} note={<span title={wording.riskCaption}>From the previous 10 transactions</span>}
                   />
                 </Card>
                 <Card>
                   <RiskGauge
-                    label="Fraud Score" value={prediction?.fraud_probability} decimals={1} loading={loading}
+                    label="Fraud Score" value={prediction?.fraud_probability} decimals={1} loading={loading} tiers={alertTiers(modelInfo)}
                     caption="Model score, not a calibrated probability." note={<span title={wording.fraudCaption}>For this transaction</span>}
                   />
                 </Card>

@@ -339,6 +339,19 @@ function DownstreamSelection({ de }) {
   )
 }
 
+// Measured behaviour of the validated alert tiers (from the committed hold-out report, via GET /model-info).
+function AlertEvidence({ evidence }) {
+  const pct = (x) => (x == null ? '—' : `${(x * 100).toFixed(1)} %`)
+  const m = evidence.medium_tier_and_above || {}
+  const c = evidence.critical_tier || {}
+  return (
+    <p className="text-[11px] mt-2" style={{ color: 'var(--text-muted)' }}>
+      {evidence.population}. Medium or above: finds {pct(m.recall)} of fraud, {pct(m.precision)} of alerts are fraud, {Number(m.legit_alerts_per_1000).toFixed(1)} false alerts per 1,000
+      legitimate transactions. Critical: finds {pct(c.recall)}, {pct(c.precision)} of alerts are fraud, {Number(c.legit_alerts_per_1000).toFixed(1)} per 1,000. Synthetic data; scores are not probabilities.
+    </p>
+  )
+}
+
 // A compact technical card built from GET /model-info.
 function ModelCard({ info }) {
   if (!info) {
@@ -376,7 +389,9 @@ function ModelCard({ info }) {
       <div className="mt-4">
         <div className="flex items-center justify-between mb-2">
           <span className="eyebrow">Alert bands</span>
-          <Badge tone="warn" title={info.thresholds?.alert_bands_status || ''}>Threshold status: legacy fixed bands</Badge>
+          {info.thresholds?.alert_policy?.kind === 'validated_cutoffs'
+            ? <Badge tone="good" title={info.thresholds?.alert_bands_status || ''}>Threshold status: validated cut-offs</Badge>
+            : <Badge tone="warn" title={info.thresholds?.alert_bands_status || ''}>Threshold status: legacy fixed bands</Badge>}
         </div>
         <div className="grid grid-cols-2 gap-2">
           {Object.entries(bands).map(([level, rule]) => (
@@ -389,13 +404,14 @@ function ModelCard({ info }) {
         {info.thresholds?.alert_bands_status && (
           <p className="text-[11px] mt-2" style={{ color: 'var(--text-muted)' }}>{info.thresholds.alert_bands_status}.</p>
         )}
+        {info.thresholds?.alert_policy?.evidence && <AlertEvidence evidence={info.thresholds.alert_policy.evidence} />}
       </div>
 
       {frozen && (
         <div className="mt-4">
           <div className="flex items-center justify-between mb-2">
             <span className="eyebrow">Evaluation cut-offs (validation period)</span>
-            <Badge tone="warn" title={frozen.status || ''}>Not applied to live scoring</Badge>
+            <Badge tone={info.thresholds?.alert_policy?.kind === 'validated_cutoffs' ? 'good' : 'warn'} title={frozen.status || ''}>{info.thresholds?.alert_policy?.kind === 'validated_cutoffs' ? 'Applied to live alert levels' : 'Not applied to live scoring'}</Badge>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="panel px-3 py-2">

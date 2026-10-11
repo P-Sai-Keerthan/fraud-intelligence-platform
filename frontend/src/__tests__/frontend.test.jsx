@@ -3,7 +3,8 @@
 import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { formatApiError } from '../apiError'
-import { severityOf, scoreColor, bandText } from '../severity'
+import { severityOf, scoreColor, bandText, alertTiers } from '../severity'
+import AlertBanner from '../components/AlertBanner'
 import { scoreWording } from '../modelWording'
 import SimilarityMeter from '../components/SimilarityMeter'
 import BehavioralAnalysis from '../components/BehavioralAnalysis'
@@ -93,5 +94,41 @@ describe('BehavioralAnalysis', () => {
     expect(html).toContain('60.0%')
     expect(html).toMatch(/width:40%/)
     expect(html).toMatch(/width:60%/)
+  })
+})
+
+// R-02: gauge colours and verdict wording follow the alert policy the backend publishes for the loaded model set.
+const VALIDATED_INFO = {
+  thresholds: {
+    alert_policy: {
+      kind: 'validated_cutoffs',
+      tiers: [{ level: 'Low Risk', min_score: 0 }, { level: 'Medium Risk', min_score: 4.3931 }, { level: 'Critical Risk', min_score: 26.2307 }],
+    },
+    alert_bands: { 'Medium Risk': '4.39 <= fraud_probability < 26.23' },
+  },
+}
+
+describe('alert policy (R-02)', () => {
+  it('falls back to the legacy 25/50/80 tiers when no policy is published', () => {
+    expect(alertTiers(null).map((t) => t.min_score)).toEqual([0, 25, 50, 80])
+    expect(scoreColor(6)).toBe(severityOf('Low Risk').color)
+    expect(scoreColor(30)).toBe(severityOf('Medium Risk').color)
+    expect(scoreColor(85)).toBe(severityOf('Critical Risk').color)
+  })
+  it('colours a Fraud Score by the validated tiers', () => {
+    const tiers = alertTiers(VALIDATED_INFO)
+    expect(scoreColor(3, tiers)).toBe(severityOf('Low Risk').color)
+    expect(scoreColor(6, tiers)).toBe(severityOf('Medium Risk').color)       // above the alert cut-off, was tinted "low" before
+    expect(scoreColor(4.3931, tiers)).toBe(severityOf('Medium Risk').color)   // the cut-off itself alerts
+    expect(scoreColor(30, tiers)).toBe(severityOf('Critical Risk').color)
+    expect(scoreColor(null, tiers)).toBe('var(--border-strong)')
+  })
+  it('words the verdict as cut-offs for the validated policy and keeps the legacy wording otherwise', () => {
+    const pred = { alert_level: 'Medium Risk', transaction_id: 'T1', customer_id: 'C1', timestamp: '2026-07-10T13:30:00' }
+    const validated = renderToStaticMarkup(<AlertBanner prediction={pred} modelInfo={VALIDATED_INFO} />)
+    expect(validated).toContain('at or above the alert cut-off')
+    expect(validated).toContain('4.39 ≤ fraud score &lt; 26.23')
+    const legacy = renderToStaticMarkup(<AlertBanner prediction={pred} modelInfo={{ thresholds: { alert_bands: { 'Medium Risk': '25 <= fraud_probability < 50' } } }} />)
+    expect(legacy).toContain('medium alert band')
   })
 })

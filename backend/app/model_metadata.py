@@ -25,6 +25,7 @@ Feature versions (docs/step4c2f-1-v1-feature-version-audit.md):
 import hashlib
 import inspect
 import json
+from typing import Optional
 from functools import lru_cache
 from pathlib import Path
 
@@ -33,16 +34,42 @@ from .features.feature_engineering import FEATURE_COLUMNS, build_point_features
 from .model_sets import (DEFAULT_MODEL_SET, LEGACY_PRODUCTION, MODEL_SETS, RF_FROZEN_CUTOFFS, SEED14_FROZEN_CUTOFFS,
                          architecture_name)
 from .models.downstream_classifier import FAMILY_LABELS
-from .models.dnn_model import alert_level_from_probability  # noqa: F401  (the bands documented below)
+from .alerting import LEGACY_POLICY, policy_for
+from .models.dnn_model import alert_level_from_probability  # noqa: F401  (the legacy bands)
 
-ALERT_BANDS = {
-    "Low Risk": "fraud_probability < 25",
-    "Medium Risk": "25 <= fraud_probability < 50",
-    "High Risk": "50 <= fraud_probability < 80",
-    "Critical Risk": "fraud_probability >= 80",
-}
-ALERT_BANDS_STATUS = ("legacy fixed bands, applied by /predict to every model set; not derived from any "
-                      "evaluation of the loaded model; candidate-specific thresholds have not been approved")
+# The legacy bands, kept for every model set except the default random forest (see alerting.py).
+ALERT_BANDS = LEGACY_POLICY.bands()
+ALERT_BANDS_STATUS = ("legacy fixed bands, applied by /predict to every model set except the default random forest; "
+                      "not derived from any evaluation of the loaded model; candidate-specific thresholds have "
+                      "not been approved")
+
+
+def alert_policy_block(policy, evidence=None) -> dict:
+    """Machine-readable alert policy for /model-info: the dashboard colours gauges from it."""
+    block = {
+        "kind": policy.kind,
+        "scale": "fraud_probability field, 0-100 (classifier output x 100); a model score, not a probability",
+        "tiers": [{"level": name, "min_score": round(lower * 100, 4)} for name, lower in policy.tiers],
+        "levels_used": [name for name, _ in policy.tiers],
+    }
+    if evidence:
+        block["evidence"] = evidence
+    return block
+
+
+def _alert_tier_evidence(final) -> Optional[dict]:
+    """Measured behaviour of the two validated tiers on the confirmation hold-out (read from the committed report)."""
+    try:
+        m = final["final"]["primary"]["models"]["selected"]["metrics"]
+        return {
+            "source": _rel(DOWNSTREAM_FINAL_REPORT),
+            "population": "fresh synthetic hold-out, seeds 501-505, customers with at least 10 earlier transactions",
+            "medium_tier_and_above": {k: m[k]["value"] for k in ("recall", "precision", "legit_alerts_per_1000")},
+            "critical_tier": {"recall": m["critical_recall"]["value"], "precision": m["critical_precision"]["value"],
+                              "legit_alerts_per_1000": m["critical_legit_alerts_per_1000"]["value"]},
+        }
+    except (KeyError, TypeError):
+        return None
 
 FEATURE_VERSION_LEGACY_V1 = {
     "name": "legacy-v1",
@@ -201,14 +228,16 @@ def lstm_classifier_metadata(ms) -> dict:
         "explanations": {"method": "shap.TreeExplainer (exact interventional Tree SHAP on the classifier's score), "
                                    "background: 200 training rows", "explains": "this model set's random forest"},
         "thresholds": {
-            "alert_bands": ALERT_BANDS,
-            "alert_bands_status": ALERT_BANDS_STATUS,
+            "alert_bands": policy_for(ms.name, RF_FROZEN_CUTOFFS).bands(),
+            "alert_bands_status": policy_for(ms.name, RF_FROZEN_CUTOFFS).status,
+            "alert_policy": alert_policy_block(policy_for(ms.name, RF_FROZEN_CUTOFFS), _alert_tier_evidence(final)),
             "frozen_cutoffs": {
                 "policy_b": RF_FROZEN_CUTOFFS["policy_b"], "critical": RF_FROZEN_CUTOFFS["critical"],
                 "scale": "classifier output, 0-1 (fraud score / 100)",
                 "source": "validation period of the training dataset, 4C-3B rule (false-positive rate within 1% / "
                           "0.1%), recorded in selection_record.json",
-                "status": "used for every reported metric; NOT applied by /predict, which keeps the fixed bands",
+                "status": "used for every reported metric and, since the R-02 decision, applied by /predict as the "
+                          "Medium Risk (policy_b) and Critical Risk (critical) levels for this model set",
             },
         },
         "cold_start": {
@@ -244,7 +273,8 @@ def lstm_classifier_metadata(ms) -> dict:
             "all data is synthetic (generator v2); no result describes real banking traffic",
             "the application's customer histories are the v1 seed data, while this model was trained on v2 data",
             "the score is not a calibrated probability",
-            "the fixed 25/50/80 alert bands were not derived for this model; see the model selection report",
+            "alert levels are score cut-offs (Medium from the validated alert cut-off, Critical from the validated critical "
+            "cut-off), not probabilities; the cut-offs were fixed on synthetic validation data and only confirmed on synthetic hold-outs",
         ],
     }
 
@@ -271,6 +301,7 @@ def model_metadata(ms) -> dict:
         "thresholds": {
             "alert_bands": ALERT_BANDS,
             "alert_bands_status": ALERT_BANDS_STATUS,
+            "alert_policy": alert_policy_block(LEGACY_POLICY),
         },
         "cold_start": {
             "min_prior_transactions": config.SEQUENCE_LENGTH,

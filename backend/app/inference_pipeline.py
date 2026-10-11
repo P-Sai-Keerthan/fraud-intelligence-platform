@@ -74,8 +74,8 @@ import pandas as pd
 from .config import FEATURES_CSV, SEQUENCE_LENGTH
 from .features.feature_engineering import build_point_features, FEATURE_COLUMNS
 from .model_metadata import model_metadata
-from .model_sets import load_model_set
-from .models.dnn_model import alert_level_from_probability
+from .alerting import policy_for
+from .model_sets import RF_FROZEN_CUTOFFS, load_model_set
 from .models.lstm_model import risk_probability_to_score
 from .models.shap_explainer import FraudExplainer
 from .models.similarity import behavioral_similarity
@@ -152,6 +152,11 @@ class FraudIntelligencePipeline:
         print("[pipeline] Loading trained models...")
         self.model_set = load_model_set(model_set, candidates_root=candidates_root)
         print(f"[pipeline] {self.model_set.describe()}")
+        self.alert_policy = policy_for(self.model_set.name, RF_FROZEN_CUTOFFS)
+        recorded = (self.model_set.manifest or {}).get("cutoffs_validation")
+        if self.alert_policy.kind == "validated_cutoffs" and recorded is not None and (
+                recorded.get("policy_b") != RF_FROZEN_CUTOFFS["policy_b"] or recorded.get("critical") != RF_FROZEN_CUTOFFS["critical"]):
+            raise ValueError("the alert cut-offs in the code differ from the model set's manifest (cutoffs_validation)")
         self.lstm_model = self.model_set.lstm_model        # None for a DNN-only model set
         self.dnn_model = self.model_set.dnn_model
 
@@ -418,7 +423,7 @@ class FraudIntelligencePipeline:
         # the output is the model's fraud score (not a calibrated probability: see
         # docs/model_selection_report.md); cap it so it is never shown as 100% certain
         fraud_prob = min(fraud_prob, 0.999)
-        alert_level = alert_level_from_probability(fraud_prob)
+        alert_level = self.alert_policy.level(fraud_prob)
         if not self.model_set.uses_lstm:
             # no behavioral LSTM score exists; the response keeps the risk_score
             # field (same name, float, 0-100) and fills it with the DNN's score

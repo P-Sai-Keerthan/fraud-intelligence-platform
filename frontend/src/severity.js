@@ -17,15 +17,27 @@ export function severityOf(level) {
   return SEVERITY[level] || UNKNOWN
 }
 
-// Gauge colour for a 0-100 score. The cut points are the alert bands the
-// backend applies to the fraud score (25 / 50 / 80); they are used here only
-// to tint the gauge, never to decide an alert.
-export function scoreColor(score) {
+// Legacy cut points (25 / 50 / 80) used when the backend publishes no alert policy for the loaded model set.
+const LEGACY_TIERS = [
+  { level: 'Low Risk', min_score: 0 },
+  { level: 'Medium Risk', min_score: 25 },
+  { level: 'High Risk', min_score: 50 },
+  { level: 'Critical Risk', min_score: 80 },
+]
+
+// Alert tiers of the loaded model set, from GET /model-info (thresholds.alert_policy.tiers); legacy bands otherwise.
+export function alertTiers(modelInfo) {
+  const tiers = modelInfo?.thresholds?.alert_policy?.tiers
+  return Array.isArray(tiers) && tiers.length ? tiers : LEGACY_TIERS
+}
+
+// Gauge colour for a 0-100 *Fraud Score*: the colour of the alert level that score falls in. The tiers come from the
+// backend's alert policy and are used here only to tint the gauge, never to decide an alert (R-02).
+export function scoreColor(score, tiers = LEGACY_TIERS) {
   if (score == null) return 'var(--border-strong)'
-  if (score < 25) return 'var(--risk-low)'
-  if (score < 50) return 'var(--risk-medium)'
-  if (score < 80) return 'var(--risk-high)'
-  return 'var(--risk-critical)'
+  let chosen = tiers[0]
+  for (const t of tiers) if (score >= t.min_score) chosen = t
+  return severityOf(chosen.level).color
 }
 
 // "fraud_probability >= 80" (backend wording of an alert band) -> "fraud score ≥ 80"
